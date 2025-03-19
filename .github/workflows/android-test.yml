@@ -39,6 +39,7 @@ jobs:
           arch: x86_64
           ram-size: 4096M
           heap-size: 2048M
+          working-directory: Android
           emulator-options: -no-snapshot-save -no-window -gpu off -noaudio -no-boot-anim -camera-back none -memory 4096 -partition-size 4096
           script: |
             echo "Waiting for emulator to fully boot..."
@@ -62,5 +63,4 @@ jobs:
             adb shell input keyevent 82
             echo "Device is ready, running tests..."
             ./gradlew :wallet:connectedAndroidTest --info --stacktrace
-        working-directory: Android
 
