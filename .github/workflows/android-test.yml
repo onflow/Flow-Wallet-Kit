@@ -55,8 +55,20 @@ jobs:
           script: |
             adb logcat -c
             adb logcat > logcat.txt &
-            ./gradlew :wallet:connectedAndroidTest --stacktrace
+            adb wait-for-device
+            adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
+            adb shell input keyevent 82
+            adb shell settings put global window_animation_scale 0
+            adb shell settings put global transition_animation_scale 0
+            adb shell settings put global animator_duration_scale 0
+            echo "Device is ready, running tests..."
+            ./gradlew :wallet:connectedAndroidTest --info --stacktrace
+            echo "Tests completed, checking logcat..."
             pkill -f "adb logcat"
+            echo "=== LOGCAT OUTPUT ==="
             cat logcat.txt
+            echo "=== END LOGCAT ==="
+            echo "=== TEST RESULTS ==="
+            find . -name "TEST-*.xml" -exec cat {} \;
           working-directory: Android
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096 -partition-size 4096
