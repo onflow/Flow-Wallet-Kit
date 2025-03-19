@@ -40,13 +40,23 @@ jobs:
         run: chmod +x gradlew
         working-directory: Android
 
-      - name: Run Android Tests
+      - name: Run Android Unit Tests
         run: ./gradlew :wallet:test
         working-directory: Android
 
       - name: Run Android Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 24
+          target: google_apis
+          arch: x86_64
+          ram-size: 4096M
+          heap-size: 2048M
+          script: |
+            adb logcat -c
+            adb logcat > logcat.txt &
+            ./gradlew :wallet:connectedAndroidTest --stacktrace
+            pkill -f "adb logcat"
+            cat logcat.txt
           working-directory: Android
-          script: ./gradlew :wallet:connectedAndroidTest 
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096 -partition-size 4096
