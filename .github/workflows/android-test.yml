@@ -19,6 +19,19 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: Debug - List root directory
+        run: ls -la
+
+      - name: Debug - List Android directory
+        run: ls -la Android
+
+      - name: Debug - Check Gradle files
+        run: |
+          echo "Root build.gradle:"
+          cat Android/build.gradle
+          echo "\nSettings.gradle:"
+          cat Android/settings.gradle
+
       - name: Generate Gradle Wrapper
         run: gradle wrapper
         working-directory: Android
