@@ -65,11 +65,15 @@ public class SecureEnclaveKey: KeyProtocol {
         try storage.set(id, value: encrypted)
     }
 
-    public func publicKey(signAlgo: Flow.SignatureAlgorithm = .ECDSA_P256) throws -> Data? {
+    public func publicKey(signAlgo: Flow.SignatureAlgorithm = .ECDSA_P256) -> Data? {
         if signAlgo != .ECDSA_P256 {
             return nil
         }
         return key.publicKey.rawRepresentation
+    }
+
+    public func privateKey(signAlgo: Flow.SignatureAlgorithm) -> Data? {
+        return nil
     }
 
     public func isValidSignature(signature: Data, message: Data, signAlgo: Flow.SignatureAlgorithm = .ECDSA_P256) -> Bool {
