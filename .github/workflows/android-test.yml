@@ -28,10 +28,21 @@ jobs:
         working-directory: Android
 
       - name: Run Android Unit Tests
+        id: unit_tests
+        continue-on-error: true
         run: ./gradlew :wallet:test
         working-directory: Android
 
+      - name: Upload Unit Test Reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: unit-test-reports
+          path: Android/wallet/build/reports/tests/
+
       - name: Run Android Instrumented Tests
+        id: instrumented_tests
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 24
@@ -63,4 +74,19 @@ jobs:
             adb shell input keyevent 82
             echo "Device is ready, running tests..."
             ./gradlew :wallet:connectedAndroidTest --info --stacktrace
+
+      - name: Upload Instrumented Test Reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: instrumented-test-reports
+          path: Android/wallet/build/reports/androidTests/
+
+      - name: Check Test Results
+        if: always()
+        run: |
+          if [[ "${{ steps.unit_tests.outcome }}" == "failure" || "${{ steps.instrumented_tests.outcome }}" == "failure" ]]; then
+            echo "Tests failed. Please check the test reports in the artifacts."
+            exit 1
+          fi
 
