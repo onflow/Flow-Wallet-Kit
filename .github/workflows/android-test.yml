@@ -19,16 +19,12 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Initialize Gradle Wrapper
-        run: gradle wrapper
-        working-directory: Android
-
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
         working-directory: Android
 
       - name: Run Android Tests
-        run: ./gradlew test
+        run: ./gradlew :wallet:test
         working-directory: Android
 
       - name: Run Android Instrumented Tests
@@ -36,4 +32,4 @@ jobs:
         with:
           api-level: 29
           working-directory: Android
-          script: ./gradlew connectedAndroidTest 
+          script: ./gradlew :wallet:connectedAndroidTest 
