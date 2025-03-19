@@ -20,13 +20,16 @@ jobs:
           cache: gradle
 
       - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+        run: chmod +x Android/gradlew
+        working-directory: .
 
       - name: Run Android Tests
         run: ./gradlew test
+        working-directory: Android
 
       - name: Run Android Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
+          working-directory: Android
           script: ./gradlew connectedAndroidTest 
