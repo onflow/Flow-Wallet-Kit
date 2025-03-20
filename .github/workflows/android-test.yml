@@ -10,11 +10,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Set up JDK 11
+      - name: Set up JDK 17 (Required for sdkmanager)
         uses: actions/setup-java@v3
         with:
-          java-version: 11
-          distribution: 'adopt'
+          java-version: 17
+          distribution: 'temurin' # Use Eclipse Temurin (recommended)
           cache: 'gradle'
 
       - name: Set up Android SDK
