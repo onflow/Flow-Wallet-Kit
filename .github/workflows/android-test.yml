@@ -30,15 +30,31 @@ jobs:
           echo "Listing files in Android/wallet/:"
           ls -la Android/wallet
 
-      # Ensure Gradle wrapper exists
+      - name: Install Latest cmdline-tools
+        run: |
+          sudo mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
+          sudo curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -o cmdline-tools.zip
+          sudo unzip cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools/latest/
+          sudo rm cmdline-tools.zip
+          echo "export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Accept Android SDK Licenses
+        run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      - name: Enable KVM for Hardware Acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: Generate Gradle Wrapper (if missing)
         run: |
-         if [ ! -f "Android/gradlew" ]; then
-           echo "gradlew not found! Generating it..."
-           cd Android
-           gradle wrapper
-         fi
-         
+          if [ ! -f "Android/gradlew" ]; then
+            echo "gradlew not found! Generating it..."
+            cd Android
+            gradle wrapper
+          fi
+
       - name: Grant execute permission for Gradle wrapper
         run: chmod +x Android/gradlew
 
