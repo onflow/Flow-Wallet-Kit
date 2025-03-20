@@ -30,7 +30,7 @@ jobs:
           sudo rm cmdline-tools.zip
           echo "export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
 
-      # Accept SDK licenses (fixes "sdkmanager: command not found" issue)
+      # Accept SDK licenses
       - name: Accept Android SDK Licenses
         run: yes | sdkmanager --licenses
 
@@ -41,10 +41,13 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # Ensure Gradle wrapper exists and is executable
       - name: Generate Gradle Wrapper (if missing)
         run: |
           cd Android
-          gradle wrapper
+          if [ ! -f "gradlew" ]; then
+            gradle wrapper
+          fi
 
       - name: Grant execute permission for Gradle wrapper
         run: chmod +x Android/gradlew
@@ -66,8 +69,8 @@ jobs:
             adb wait-for-device
             adb shell "while [[ -z \$(getprop sys.boot_completed) ]]; do sleep 1; done"
             echo "Device is ready, running tests..."
-            cd Android
-            ./gradlew connectedCheck --stacktrace
+            ls -la Android  # Debugging step to check if gradlew exists
+            ./Android/gradlew connectedCheck --stacktrace
 
       # Upload test reports for debugging
       - name: Upload Test Reports
