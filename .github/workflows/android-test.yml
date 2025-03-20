@@ -5,7 +5,7 @@ on: [push, pull_request]
 jobs:
   connected-tests:
     runs-on: macos-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -16,9 +16,17 @@ jobs:
           java-version: 11
           distribution: 'adopt'
           cache: 'gradle'
-        
+
+      - name: Set up Android SDK
+        run: |
+          echo "ANDROID_HOME=$HOME/Library/Android/sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$HOME/Library/Android/sdk" >> $GITHUB_ENV
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
       - name: Ensure emulator is installed
-        run: sdkmanager --install "system-images;android-30;google_apis;x86_64"
+        run: |
+          yes | sdkmanager --install "system-images;android-30;google_apis;x86_64"
+          sdkmanager --licenses
 
       - name: Grant execute permission for Gradle wrapper
         run: chmod +x ./gradlew
@@ -33,5 +41,4 @@ jobs:
             adb wait-for-device
             adb devices -l
             adb shell "while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done"
-            ./Android/gradlew :wallet:connectedDebugAndroidTest --stacktrace
-
+            ./gradlew :wallet:connectedDebugAndroidTest --stacktrace
