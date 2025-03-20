@@ -21,7 +21,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # Install latest cmdline-tools to fix SDK Manager XML issue
+      # Ensure the latest SDK tools to avoid XML parsing issues
       - name: Install Latest cmdline-tools
         run: |
           sudo mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
@@ -41,7 +41,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # Ensure Gradle wrapper exists and is executable
+      # Ensure Gradle wrapper exists
       - name: Generate Gradle Wrapper (if missing)
         run: |
           cd Android
@@ -69,8 +69,9 @@ jobs:
             adb wait-for-device
             adb shell "while [[ -z \$(getprop sys.boot_completed) ]]; do sleep 1; done"
             echo "Device is ready, running tests..."
-            ls -la Android  # Debugging step to check if gradlew exists
-            ./Android/gradlew connectedCheck --stacktrace
+            ls -la Android/wallet  # Debugging step to check if build.gradle exists
+            cd Android
+            ./gradlew -p wallet connectedCheck --stacktrace  # Run Gradle in the correct module
 
       # Upload test reports for debugging
       - name: Upload Test Reports
@@ -78,4 +79,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-reports
-          path: Android/app/build/reports/
+          path: Android/wallet/build/reports/
