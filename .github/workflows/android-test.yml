@@ -69,9 +69,12 @@ jobs:
             adb wait-for-device
             adb shell "while [[ -z \$(getprop sys.boot_completed) ]]; do sleep 1; done"
             echo "Device is ready, running tests..."
-            ls -la Android/wallet  # Debugging step to check if build.gradle exists
+            echo "Checking gradlew exists in Android directory..."
+            ls -la Android  # Ensure gradlew is here
             cd Android
-            ./gradlew :wallet:connectedDebugAndroidTest --stacktrace  # Correct Gradle command
+            chmod +x gradlew  # Ensure it's executable
+            ./gradlew :wallet:connectedDebugAndroidTest --stacktrace  # Run the correct task
+
 
       # Upload test reports for debugging
       - name: Upload Test Reports
