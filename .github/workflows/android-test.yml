@@ -18,8 +18,11 @@ jobs:
           java-version: 17
           cache: gradle
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Accept Android SDK Licenses
-        run: yes | sdkmanager --licenses
+        run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
 
       - name: Enable KVM for Faster Emulation
         run: |
