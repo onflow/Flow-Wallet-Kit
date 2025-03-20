@@ -21,7 +21,6 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # Debugging: Check directory structure before running tests
       - name: Debug Directory Structure
         run: |
           echo "Listing files in repository root:"
@@ -31,19 +30,9 @@ jobs:
           echo "Listing files in Android/wallet/:"
           ls -la Android/wallet
 
-      # Ensure Gradle wrapper exists
-      - name: Generate Gradle Wrapper (if missing)
-        run: |
-          if [ ! -f "Android/gradlew" ]; then
-            echo "gradlew not found! Generating it..."
-            cd Android
-            gradle wrapper
-          fi
-
       - name: Grant execute permission for Gradle wrapper
         run: chmod +x Android/gradlew
 
-      # Launch emulator and run tests
       - name: Run Android Instrumented Tests
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
@@ -53,21 +42,24 @@ jobs:
           profile: Nexus 6
           disable-animations: true
           emulator-options: > 
-            -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim 
+            -no-window -no-accel -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim 
             -camera-back none -camera-front none
+          emulator-boot-timeout: 800
           script: |
             echo "Waiting for emulator to be online..."
             adb wait-for-device
+            adb devices -l  # Debug: List devices
+            adb logcat -d > adb_logcat.txt  # Capture logs for debugging
             adb shell "while [[ -z \$(getprop sys.boot_completed) ]]; do sleep 1; done"
-            echo "Device is ready, running tests..."
-            ls -la Android  # Ensure gradlew is here
-            chmod +x Android/gradlew  # Fix path issue
-            ./Android/gradlew :wallet:connectedDebugAndroidTest --stacktrace  # Correct path
+            echo "Device is ready, restarting ADB..."
+            adb kill-server
+            adb start-server
+            adb devices -l  # Check again after restart
+            ./Android/gradlew :wallet:connectedDebugAndroidTest --stacktrace
 
-      # Upload test reports for debugging
-      - name: Upload Test Reports
+      - name: Upload ADB Logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
-          path: Android/wallet/build/reports/
+          name: adb-logcat
+          path: adb_logcat.txt
