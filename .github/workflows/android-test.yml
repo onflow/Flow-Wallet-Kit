@@ -21,7 +21,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # Ensure the latest SDK tools to avoid XML parsing issues
+      # Ensure latest SDK tools to fix XML parsing issues
       - name: Install Latest cmdline-tools
         run: |
           sudo mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
@@ -71,7 +71,7 @@ jobs:
             echo "Device is ready, running tests..."
             ls -la Android/wallet  # Debugging step to check if build.gradle exists
             cd Android
-            ./gradlew -p wallet connectedCheck --stacktrace  # Run Gradle in the correct module
+            ./gradlew :wallet:connectedDebugAndroidTest --stacktrace  # Correct Gradle command
 
       # Upload test reports for debugging
       - name: Upload Test Reports
