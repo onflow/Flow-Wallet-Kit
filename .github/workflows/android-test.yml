@@ -1,86 +1,38 @@
-name: Android Tests
+name: Android Instrumentation Tests
 
-on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+on: [push, pull_request]
 
 jobs:
-  test:
+  instrumented-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # ensure enough time for emulator startup and tests
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout source
+        uses: actions/checkout@v3
 
-      - name: Set up JDK 17
+      - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+          java-version: 11
 
-      - name: Generate Gradle Wrapper
-        run: gradle wrapper
-        working-directory: Android
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-        working-directory: Android
-
-      - name: Run Android Unit Tests
-        id: unit_tests
-        continue-on-error: true
-        run: ./gradlew :wallet:test
-        working-directory: Android
-
-      - name: Upload Unit Test Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-reports
-          path: Android/wallet/build/reports/tests/
-
-      - name: Run Android Instrumented Tests
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 26
-          target: google_apis
-          arch: x86_64
-          ram-size: 4096M
-          heap-size: 2048M
-          script: |
-            adb logcat -c
-            adb logcat > logcat.txt &
-            adb wait-for-device
-            adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
-            adb shell input keyevent 82
-            adb shell settings put global window_animation_scale 0
-            adb shell settings put global transition_animation_scale 0
-            adb shell settings put global animator_duration_scale 0
-            echo "Device is ready, running tests..."
-            ./gradlew :wallet:connectedAndroidTest --info --stacktrace
-            echo "Tests completed, checking logcat..."
-            pkill -f "adb logcat"
-            echo "=== LOGCAT OUTPUT ==="
-            cat logcat.txt
-            echo "=== END LOGCAT ==="
-            echo "=== TEST RESULTS ==="
-            find . -name "TEST-*.xml" -exec cat {} \;
-          working-directory: Android
-          emulator-options: -no-snapshot-save -no-window -gpu off -noaudio -no-boot-anim -camera-back none -memory 4096 -partition-size 4096
-
-      - name: Upload Instrumented Test Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: instrumented-test-reports
-          path: Android/wallet/build/reports/androidTests/
-
-      - name: Check Test Results
-        if: always()
+      # Enable KVM for hardware acceleration (Ubuntu runners)
+      - name: Enable KVM group perms
         run: |
-          if [[ "${{ steps.unit_tests.outcome }}" == "failure" || "${{ steps.instrumented_tests.outcome }}" == "failure" ]]; then
-            echo "Tests failed. Please check the test reports in the artifacts."
-            exit 1
-          fi
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
+      # Launch emulator and run tests
+      - name: Run Android instrumented tests
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 30                      # Use Android API 30 (for example)
+          target: google_apis               # Use Google APIs system image&#8203;:contentReference[oaicite:21]{index=21}
+          arch: x86_64                      # Use x86_64 image
+          profile: Nexus 6                  # (Optional) Device profile to use
+          emulator-options: >              # Override default launch options
+            -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim 
+            -camera-back none -camera-front none
+          disable-animations: true         # Disable UI animations on the emulator
+          script: ./gradlew connectedCheck  # Run instrumentation tests (Gradle connected tests)
