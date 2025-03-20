@@ -21,7 +21,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # Manually install latest cmdline-tools to fix SDK Manager XML issue
+      # Install latest cmdline-tools to fix SDK Manager XML issue
       - name: Install Latest cmdline-tools
         run: |
           sudo mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
@@ -42,8 +42,9 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Generate Gradle Wrapper (if missing)
-        run: gradle wrapper
-        working-directory: Android  # Ensure working in correct directory
+        run: |
+          cd Android
+          gradle wrapper
 
       - name: Grant execute permission for Gradle wrapper
         run: chmod +x Android/gradlew
@@ -65,8 +66,8 @@ jobs:
             adb wait-for-device
             adb shell "while [[ -z \$(getprop sys.boot_completed) ]]; do sleep 1; done"
             echo "Device is ready, running tests..."
+            cd Android
             ./gradlew connectedCheck --stacktrace
-        working-directory: Android
 
       # Upload test reports for debugging
       - name: Upload Test Reports
