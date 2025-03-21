@@ -34,8 +34,7 @@ jobs:
           arch: x86_64
           # Optionally specify additional emulator-options if needed (default options are usually fine)
           script: |
-            # If your Gradle project is not at the repository root, change directory accordingly
-            # e.g. cd Android/wrapper
+            cd Android/wallet
             adb wait-for-device
             adb devices -l
             adb shell 'while [ -z "$(/system/bin/getprop sys.boot_completed)" ]; do sleep 1; done'
