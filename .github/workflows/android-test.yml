@@ -26,6 +26,19 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+
+      - name: Install Gradle (for wrapper generation)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gradle
+
+      - name: Generate Gradle wrapper in Android/wallet (if missing)
+        run: |
+          cd Android/wallet
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 8.13
+          fi
+
       - name: Run connected tests
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
