@@ -31,12 +31,9 @@ jobs:
           sdkmanager --install "system-images;android-30;google_apis;x86_64"
           yes | sdkmanager --licenses
 
-      - name: Check if gradlew exists
-        run: ls -l ./gradlew || echo "gradlew not found"
-
-      - name: Generate Gradle wrapper (if missing)
-        run: ./gradlew wrapper || echo "Skipping Gradle wrapper generation"
-
+      - name: Generate Gradle wrapper
+        run: gradle wrapper
+        
       - name: Grant execute permission for Gradle wrapper
         run: chmod +x ./gradlew
 
