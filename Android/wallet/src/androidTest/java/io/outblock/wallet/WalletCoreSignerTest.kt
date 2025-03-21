@@ -66,17 +66,26 @@ class WalletCoreSignerTest {
     }
 
     private fun buildDerSignature(r: ByteArray, s: ByteArray): ByteArray {
-        // Calculate total length
-        val totalLen = 2 + r.size + 2 + s.size // 2 bytes for each integer header
+        // Since WalletCoreSigner takes the last 32 bytes of each value,
+        // we need to ensure our DER encoding matches that behavior
+        val rValue = r.takeLast(32).toByteArray()
+        val sValue = s.takeLast(32).toByteArray()
         
-        return byteArrayOf(0x30) + // Sequence tag
-            byteArrayOf(totalLen.toByte()) + // Sequence length
-            byteArrayOf(0x02) + // Integer tag for r
-            byteArrayOf(r.size.toByte()) + // r length
-            r +
-            byteArrayOf(0x02) + // Integer tag for s
-            byteArrayOf(s.size.toByte()) + // s length
-            s
+        // Calculate lengths
+        val rLen = rValue.size
+        val sLen = sValue.size
+        val totalLen = 2 + rLen + 2 + sLen
+        
+        return byteArrayOf(
+            0x30, // Sequence tag
+            totalLen.toByte(), // Sequence length
+            0x02, // Integer tag for r
+            rLen.toByte(), // r length
+            *rValue, // r value
+            0x02, // Integer tag for s
+            sLen.toByte(), // s length
+            *sValue // s value
+        )
     }
 
     @Test
