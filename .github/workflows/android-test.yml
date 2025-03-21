@@ -33,7 +33,7 @@ jobs:
           export PATH=$PWD/gradle-8.13/gradle-8.13/bin:$PATH
       - name: Generate Gradle wrapper in Android/wallet (if missing)
         run: |
-          cd Android/wallet
+          cd Android
           if [ ! -f gradlew ]; then
             gradle wrapper --gradle-version 8.13
           fi
@@ -46,8 +46,8 @@ jobs:
           arch: x86_64
           # Optionally specify additional emulator-options if needed (default options are usually fine)
           script: |
-            cd Android/wallet
+            cd Android
             adb wait-for-device
             adb devices -l
             adb shell 'while [ -z "$(/system/bin/getprop sys.boot_completed)" ]; do sleep 1; done'
-            ./gradlew connectedDebugAndroidTest --stacktrace
+            ./gradlew wallet:connectedDebugAndroidTest --stacktrace
