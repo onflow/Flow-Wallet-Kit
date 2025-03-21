@@ -17,6 +17,9 @@ jobs:
           distribution: 'temurin'  # Eclipse Temurin (recommended)
           cache: 'gradle'
 
+      - name: Install Gradle via Homebrew
+        run: brew install gradle
+
       - name: Set up Android SDK
         run: |
           echo "ANDROID_HOME=$HOME/Library/Android/sdk" >> $GITHUB_ENV
