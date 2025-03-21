@@ -33,7 +33,8 @@ jobs:
         with:
           api-level: 30
           target: google_apis
-          arch: x86_64
+          arch: arm64-v8a
+          system-image: "system-images;android-30;google_apis;arm64-v8a"
           emulator-options: -accel off
           script: |
             cd Android/wrapper
