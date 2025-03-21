@@ -31,6 +31,9 @@ jobs:
           sdkmanager --install "system-images;android-30;google_apis;x86_64"
           yes | sdkmanager --licenses
 
+      - name: Set environment variable to use system libs for emulator
+        run: echo "ANDROID_EMULATOR_USE_SYSTEM_LIBS=1" >> $GITHUB_ENV
+
       - name: Run connected tests
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
