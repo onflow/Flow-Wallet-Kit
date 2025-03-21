@@ -10,6 +10,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Check architecture
+        run: uname -m
+
       - name: Set up JDK 17 (Required for sdkmanager)
         uses: actions/setup-java@v3
         with:
