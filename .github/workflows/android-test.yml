@@ -26,21 +26,10 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Install Gradle manually
-        run: |
-          wget https://services.gradle.org/distributions/gradle-8.13-bin.zip
-          unzip gradle-8.13-bin.zip -d gradle-8.13
-          echo "$PWD/gradle-8.13/gradle-8.13/bin" >> $GITHUB_PATH
- 
-      - name: Generate Gradle wrapper in Android/wallet (if missing)
-        run: |
-          cd Android/wallet
-          if [ ! -f gradlew ]; then
-            gradle wrapper --gradle-version 8.13
-          fi
-          
-      - name: Make gradlew executable
-        run: chmod +x Android/wallet/gradlew
+      - name: Set up Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: 8.13
         
       - name: Run connected tests
         uses: ReactiveCircus/android-emulator-runner@v2
