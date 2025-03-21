@@ -33,7 +33,7 @@ jobs:
         with:
           api-level: 30
           target: google_apis
-          arch: arm64
+          arch: arm64-v8a
           script: |
             cd Android/wrapper
             adb wait-for-device
