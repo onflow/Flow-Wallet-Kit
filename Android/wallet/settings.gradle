@@ -1,6 +1,3 @@
-rootProject.name = 'Flow-Wallet-Kit-Android'
-include ':wallet'
-
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
@@ -9,3 +6,11 @@ dependencyResolutionManagement {
         maven { url = uri("https://jitpack.io") }
     }
 } 
+
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+    }
+}
