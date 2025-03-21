@@ -38,5 +38,5 @@ jobs:
             # e.g. cd Android/wrapper
             adb wait-for-device
             adb devices -l
-            adb shell "while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done"
+            adb shell "while [ -z "$(getprop sys.boot_completed)" ]; do sleep 1; done"
             ./gradlew connectedDebugAndroidTest --stacktrace
