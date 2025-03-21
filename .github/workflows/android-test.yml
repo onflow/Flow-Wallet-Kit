@@ -47,3 +47,11 @@ jobs:
             adb devices -l
             adb shell 'while [ -z "$(/system/bin/getprop sys.boot_completed)" ]; do sleep 1; done'
              cd Android/wallet && gradle connectedDebugAndroidTest --stacktrace
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-test-report
+          path: Android/wallet/build/reports/androidTests/connected/debug/
+
