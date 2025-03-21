@@ -14,7 +14,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           java-version: 17
-          distribution: 'temurin'  # Eclipse Temurin (recommended)
+          distribution: 'temurin'
           cache: 'gradle'
 
       - name: Set up Android SDK
@@ -25,7 +25,7 @@ jobs:
 
       - name: Install Emulator System Image
         run: |
-          sdkmanager --install "system-images;android-30;google_apis;arm64-v8a"
+          sdkmanager --install "system-images;android-30;google_apis;x86_64"
           yes | sdkmanager --licenses
 
       - name: Run connected tests
@@ -33,7 +33,7 @@ jobs:
         with:
           api-level: 30
           target: google_apis
-          arch: arm64-v8a
+          arch: x86_64
           emulator-options: -accel off
           script: |
             cd Android/wrapper
@@ -41,5 +41,3 @@ jobs:
             adb devices -l
             adb shell "while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done"
             ./gradlew connectedDebugAndroidTest --stacktrace
-
-
