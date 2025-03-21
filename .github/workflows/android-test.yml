@@ -17,9 +17,6 @@ jobs:
           distribution: 'temurin'  # Eclipse Temurin (recommended)
           cache: 'gradle'
 
-      - name: Install Gradle via Homebrew
-        run: brew install gradle
-
       - name: Set up Android SDK
         run: |
           echo "ANDROID_HOME=$HOME/Library/Android/sdk" >> $GITHUB_ENV
@@ -31,12 +28,6 @@ jobs:
           sdkmanager --install "system-images;android-30;google_apis;x86_64"
           yes | sdkmanager --licenses
 
-      - name: Generate Gradle wrapper
-        run: gradle wrapper
-        
-      - name: Grant execute permission for Gradle wrapper
-        run: chmod +x ./gradlew
-
       - name: Run connected tests
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
@@ -44,7 +35,10 @@ jobs:
           target: google_apis
           arch: x86_64
           script: |
+            cd Android/wrapper
             adb wait-for-device
             adb devices -l
             adb shell "while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done"
-            ./gradlew :wallet:connectedDebugAndroidTest --stacktrace
+            ./gradlew connectedDebugAndroidTest --stacktrace
+
+
