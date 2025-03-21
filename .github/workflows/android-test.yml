@@ -42,8 +42,8 @@ jobs:
           arch: x86_64
           # Optionally specify additional emulator-options if needed (default options are usually fine)
           script: |
-            cd Android/wallet
+            ls -la
             adb wait-for-device
             adb devices -l
             adb shell 'while [ -z "$(/system/bin/getprop sys.boot_completed)" ]; do sleep 1; done'
-            gradle connectedDebugAndroidTest --stacktrace
+             cd Android/wallet && gradle connectedDebugAndroidTest --stacktrace
