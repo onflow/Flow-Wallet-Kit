@@ -31,9 +31,6 @@ jobs:
           wget https://services.gradle.org/distributions/gradle-8.13-bin.zip
           unzip gradle-8.13-bin.zip -d gradle-8.13
           echo "$PWD/gradle-8.13/gradle-8.13/bin" >> $GITHUB_PATH
-
-      - name: Make gradlew executable
-        run: chmod +x Android/wallet/gradlew
  
       - name: Generate Gradle wrapper in Android/wallet (if missing)
         run: |
@@ -41,7 +38,10 @@ jobs:
           if [ ! -f gradlew ]; then
             gradle wrapper --gradle-version 8.13
           fi
-
+          
+      - name: Make gradlew executable
+        run: chmod +x Android/wallet/gradlew
+        
       - name: Run connected tests
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
