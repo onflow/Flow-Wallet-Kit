@@ -3,11 +3,6 @@ plugins {
     id("org.jetbrains.kotlin.android") version "${kotlinAndroidVersion}"
 }
 
-task wrapper(type: Wrapper) {
-    gradleVersion = '8.13'
-}
-
-
 android {
     namespace 'io.outblock.wallet'
     compileSdk 33
