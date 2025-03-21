@@ -30,7 +30,8 @@ jobs:
         run: |
           wget https://services.gradle.org/distributions/gradle-8.13-bin.zip
           unzip gradle-8.13-bin.zip -d gradle-8.13
-          export PATH=$PWD/gradle-8.13/gradle-8.13/bin:$PATH
+          echo "$PWD/gradle-8.13/gradle-8.13/bin" >> $GITHUB_PATH
+          
       - name: Generate Gradle wrapper in Android/wallet (if missing)
         run: |
           cd Android/wallet
