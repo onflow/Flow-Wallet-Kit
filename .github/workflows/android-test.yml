@@ -30,6 +30,9 @@ jobs:
         uses: gradle/gradle-build-action@v2
         with:
           gradle-version: 8.13
+
+      - name: Navigate to Project Directory
+        run: cd Android/wallet
         
       - name: Run connected tests
         uses: ReactiveCircus/android-emulator-runner@v2
