@@ -54,4 +54,4 @@ jobs:
             adb wait-for-device
             adb devices -l
             adb shell 'while [ -z "$(/system/bin/getprop sys.boot_completed)" ]; do sleep 1; done'
-            ./gradlew connectedDebugAndroidTest --stacktrace
+            gradle connectedDebugAndroidTest --stacktrace
