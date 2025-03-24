@@ -25,11 +25,11 @@ public protocol KeyProtocol: Identifiable {
 
     var storage: StorageProtocol { set get }
 
-    static func create(_ advance: Advance, storage: StorageProtocol) throws -> Key
-    static func create(storage: StorageProtocol) throws -> Key
-    static func createAndStore(id: String, password: String, storage: StorageProtocol) throws -> Key
-    static func get(id: String, password: String, storage: StorageProtocol) throws -> Key
-    static func restore(secret: Secret, storage: StorageProtocol) throws -> Key
+    func create(_ advance: Advance, storage: StorageProtocol) throws -> Key
+    func create(storage: StorageProtocol) throws -> Key
+    func createAndStore(id: String, password: String, storage: StorageProtocol) throws -> Key
+    func get(id: String, password: String, storage: StorageProtocol) throws -> Key
+    func restore(secret: Secret, storage: StorageProtocol) throws -> Key
 
     func store(id: String, password: String) throws
     func isValidSignature(signature: Data, message: Data, signAlgo: Flow.SignatureAlgorithm) -> Bool
@@ -66,7 +66,7 @@ public extension KeyProtocol {
         storage.allKeys
     }
 
-    static func create(_: Advance, storage _: any StorageProtocol) throws -> Key {
+    func create(_: Advance, storage _: any StorageProtocol) throws -> Key {
         throw WalletError.noImplement
     }
 }

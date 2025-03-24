@@ -33,7 +33,7 @@ public class PrivateKey: KeyProtocol {
         self.storage = storage
     }
 
-    public static func create(storage: any StorageProtocol) throws -> PrivateKey {
+    public func create(storage: any StorageProtocol) throws -> PrivateKey {
         let pk = WalletCore.PrivateKey()
         return PrivateKey(pk: pk, storage: storage)
     }
@@ -49,7 +49,7 @@ public class PrivateKey: KeyProtocol {
         return PrivateKey(pk: pk, storage: storage)
     }
 
-    public static func createAndStore(id: String, password: String, storage: any StorageProtocol) throws -> PrivateKey {
+    public func createAndStore(id: String, password: String, storage: any StorageProtocol) throws -> PrivateKey {
         let pk = WalletCore.PrivateKey()
         guard let cipher = ChaChaPolyCipher(key: password) else {
             throw WalletError.initChaChapolyFailed
@@ -60,7 +60,7 @@ public class PrivateKey: KeyProtocol {
         return PrivateKey(pk: pk, storage: storage)
     }
 
-    public static func get(id: String, password: String, storage: any StorageProtocol) throws -> PrivateKey {
+    public func get(id: String, password: String, storage: any StorageProtocol) throws -> PrivateKey {
         guard let data = try storage.get(id) else {
             throw WalletError.emptyKeychain
         }
@@ -78,14 +78,14 @@ public class PrivateKey: KeyProtocol {
         return PrivateKey(pk: pk, storage: storage)
     }
 
-    public static func restore(secret: Data, storage: any StorageProtocol) throws -> PrivateKey {
+    public func restore(secret: Data, storage: any StorageProtocol) throws -> PrivateKey {
         guard let pk = WalletCore.PrivateKey(data: secret) else {
             throw WalletError.restoreWalletFailed
         }
         return PrivateKey(pk: pk, storage: storage)
     }
 
-    public static func restore(json: String, password: String, storage: any StorageProtocol) throws -> PrivateKey {
+    public func restore(json: String, password: String, storage: any StorageProtocol) throws -> PrivateKey {
         guard let jsonData = json.data(using: .utf8), let passwordData = password.data(using: .utf8) else {
             throw WalletError.restoreWalletFailed
         }

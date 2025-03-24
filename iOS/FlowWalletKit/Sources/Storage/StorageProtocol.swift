@@ -8,9 +8,6 @@
 import Foundation
 
 public protocol StorageProtocol {
-//    associatedtype Key
-//    associatedtype Value
-
     var allKeys: [String] { get }
     func findKey(_ keyword: String) throws -> [String]
     func get(_ key: String) throws -> Data?

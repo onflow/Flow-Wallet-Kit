@@ -23,12 +23,12 @@ public class SecureEnclaveKey: KeyProtocol {
         self.storage = storage
     }
 
-    public static func create(storage: any StorageProtocol) throws -> SecureEnclaveKey {
+    public func create(storage: any StorageProtocol) throws -> SecureEnclaveKey {
         let key = try SecureEnclave.P256.Signing.PrivateKey()
         return SecureEnclaveKey(key: key, storage: storage)
     }
 
-    public static func createAndStore(id: String, password: String, storage: any StorageProtocol) throws -> SecureEnclaveKey {
+    public func createAndStore(id: String, password: String, storage: any StorageProtocol) throws -> SecureEnclaveKey {
         guard let cipher = ChaChaPolyCipher(key: password) else {
             throw WalletError.initChaChapolyFailed
         }
@@ -38,7 +38,7 @@ public class SecureEnclaveKey: KeyProtocol {
         return SecureEnclaveKey(key: key, storage: storage)
     }
 
-    public static func get(id: String, password: String, storage: any StorageProtocol) throws -> SecureEnclaveKey {
+    public func get(id: String, password: String, storage: any StorageProtocol) throws -> SecureEnclaveKey {
         guard let data = try storage.get(id) else {
             throw WalletError.emptyKeychain
         }
@@ -52,7 +52,7 @@ public class SecureEnclaveKey: KeyProtocol {
         return SecureEnclaveKey(key: key, storage: storage)
     }
 
-    public static func restore(secret: Data, storage: any StorageProtocol) throws -> SecureEnclaveKey {
+    public func restore(secret: Data, storage: any StorageProtocol) throws -> SecureEnclaveKey {
         let key = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: secret)
         return SecureEnclaveKey(key: key, storage: storage)
     }

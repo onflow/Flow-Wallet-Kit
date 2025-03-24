@@ -49,7 +49,7 @@ public class SeedPhraseKey: KeyProtocol {
         self.seedPhraseLength = seedPhraseLength
     }
 
-    public static func create(_ advance: AdvanceOption, storage: any StorageProtocol) throws -> SeedPhraseKey {
+    public func create(_ advance: AdvanceOption, storage: any StorageProtocol) throws -> SeedPhraseKey {
         guard let hdWallet = HDWallet(strength: advance.seedPhraseLength.strength, passphrase: advance.passphrase) else {
             throw WalletError.initHDWalletFailed
         }
@@ -63,14 +63,14 @@ public class SeedPhraseKey: KeyProtocol {
         return key
     }
 
-    public static func create(storage: any StorageProtocol) throws -> SeedPhraseKey {
+    public func create(storage: any StorageProtocol) throws -> SeedPhraseKey {
         guard let hdWallet = HDWallet(strength: SeedPhraseKey.defaultSeedPhraseLength.strength, passphrase: "") else {
             throw WalletError.initHDWalletFailed
         }
         return SeedPhraseKey(hdWallet: hdWallet, storage: storage)
     }
 
-    public static func createAndStore(id: String, password: String, storage: any StorageProtocol) throws -> SeedPhraseKey {
+    public func createAndStore(id: String, password: String, storage: any StorageProtocol) throws -> SeedPhraseKey {
         guard let hdWallet = HDWallet(strength: SeedPhraseKey.defaultSeedPhraseLength.strength, passphrase: "") else {
             throw WalletError.initHDWalletFailed
         }
@@ -79,13 +79,12 @@ public class SeedPhraseKey: KeyProtocol {
             throw WalletError.initChaChapolyFailed
         }
 
-        let encrypted = try cipher.encrypt(data: hdWallet.entropy)
         let key = SeedPhraseKey(hdWallet: hdWallet, storage: storage)
         try key.store(id: id, password: password)
         return key
     }
 
-    public static func get(id: String, password: String, storage: any StorageProtocol) throws -> SeedPhraseKey {
+    public func get(id: String, password: String, storage: any StorageProtocol) throws -> SeedPhraseKey {
         guard let data = try storage.get(id) else {
             throw WalletError.emptyKeychain
         }
@@ -121,7 +120,7 @@ public class SeedPhraseKey: KeyProtocol {
         try storage.set(id, value: encrypted)
     }
 
-    public static func restore(secret: KeyData, storage: any StorageProtocol) throws -> SeedPhraseKey {
+    public func restore(secret: KeyData, storage: any StorageProtocol) throws -> SeedPhraseKey {
         guard let wallet = HDWallet(mnemonic: secret.mnemonic, passphrase: secret.passphrase) else {
             throw WalletError.restoreWalletFailed
         }
