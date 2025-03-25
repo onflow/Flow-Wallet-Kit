@@ -2,31 +2,39 @@ import Foundation
 import Testing
 import Flow
 @testable import FlowWalletKit
+import WalletCore
+import Factory
 
 struct SeedPhraseKeyTests {
+    var mockHDWallet: HDWallet!
+    
+    init() {
+        mockHDWallet = HDWallet(strength: defaultSeedPhraseLength.strength, passphrase: "")!
+        Container.shared.keychainStorage.register { MockStorage() }
+    }
     
     @Test
     func testPublicKey() throws {
         // Given
-        let mockSeedPhraseKey = MockSeedPhraseKey()
+        let seedPhraseKey = SeedPhraseKey(hdWallet: mockHDWallet)
         
         // When
-        let publicKey = mockSeedPhraseKey.publicKey(signAlgo: .ECDSA_P256)
+        let publicKey = seedPhraseKey.publicKey(signAlgo: .ECDSA_P256)
         
         // Then
         #expect(publicKey != nil)
         if let key = publicKey {
-            #expect(key.count == 65)
+            #expect(key.count == 64)
         }
     }
     
     @Test
     func testPrivateKey() throws {
         // Given
-        let mockSeedPhraseKey = MockSeedPhraseKey()
+        let seedPhraseKey = SeedPhraseKey(hdWallet: mockHDWallet)
         
         // When
-        let privateKey = mockSeedPhraseKey.privateKey(signAlgo: .ECDSA_P256)
+        let privateKey = seedPhraseKey.privateKey(signAlgo: .ECDSA_P256)
         
         // Then
         #expect(privateKey != nil)
@@ -38,49 +46,36 @@ struct SeedPhraseKeyTests {
     @Test
     func testSigningData() throws {
         // Given
-        let mockSeedPhraseKey = MockSeedPhraseKey()
+        let seedPhraseKey = SeedPhraseKey(hdWallet: mockHDWallet)
         let dataToSign = "test data".data(using: .utf8)!
         
         // When
-        let signature = try mockSeedPhraseKey.sign(data: dataToSign, signAlgo: .ECDSA_P256, hashAlgo: .SHA2_256)
+        let signature = try seedPhraseKey.sign(data: dataToSign, signAlgo: .ECDSA_P256, hashAlgo: .SHA2_256)
         
         // Then
         #expect(signature.count == 64)
     }
-    
-    @Test
-    func testSigningWithError() throws {
-        // Given
-        let mockSeedPhraseKey = MockSeedPhraseKey()
-        mockSeedPhraseKey.shouldThrowOnSign = true
-        let dataToSign = "test data".data(using: .utf8)!
         
-        // Then
-        #expect(throws: WalletError.signError) {
-            try mockSeedPhraseKey.sign(data: dataToSign, signAlgo: .ECDSA_P256, hashAlgo: .SHA2_256)
-        }
-    }
-    
     @Test
     func testValidateSignature() {
         // Given
-        let mockSeedPhraseKey = MockSeedPhraseKey()
+        let seedPhraseKey = SeedPhraseKey(hdWallet: mockHDWallet)
         let message = "test message".data(using: .utf8)!
         let signature = Data(repeating: 3, count: 64)
         
         // When
-        let isValid = mockSeedPhraseKey.isValidSignature(signature: signature, message: message, signAlgo: .ECDSA_P256)
+        let isValid = seedPhraseKey.isValidSignature(signature: signature, message: message, signAlgo: .ECDSA_P256)
         
         // Then
-        #expect(isValid)
+        #expect(isValid == false)
     }
     
     @Test
     func testStoreOperation() throws {
         // Given
-        let mockSeedPhraseKey = MockSeedPhraseKey()
+        let seedPhraseKey = SeedPhraseKey(hdWallet: mockHDWallet)
         
         // When/Then - should not throw
-        try mockSeedPhraseKey.store(id: "test_id", password: "password")
+        try seedPhraseKey.store(id: "test_id", password: "password")
     }
 } 

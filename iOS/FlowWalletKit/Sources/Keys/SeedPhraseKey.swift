@@ -77,7 +77,6 @@ public class SeedPhraseKey: KeyProtocol {
             throw WalletError.initChaChapolyFailed
         }
 
-        @Injected(\.keychainStorage) var storage
         let key = SeedPhraseKey(hdWallet: hdWallet)
         try key.store(id: id, password: password)
         return key

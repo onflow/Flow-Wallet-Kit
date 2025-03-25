@@ -15,7 +15,7 @@ public class KeychainStorage: StorageProtocol {
     let label: String
     let synchronizable: Bool
     let accessGroup: String?
-    var keychain: Keychain
+    let keychain: Keychain
 
     public init(
         service: String,

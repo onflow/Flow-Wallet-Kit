@@ -10,26 +10,31 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class KeyManagerTest {
 
+    @Test
     fun testGenerateKeyWithPrefix() {
         val keyPair = KeyManager.generateKeyWithPrefix("test_prefix")
         assertNotNull(keyPair)
     }
 
+    @Test
     fun testGetPrivateKeyByPrefix() {
         val privateKey = KeyManager.getPrivateKeyByPrefix("test_prefix")
         assertNotNull(privateKey)
     }
 
+    @Test
     fun testGetPublicKeyByPrefix() {
         val publicKey = KeyManager.getPublicKeyByPrefix("test_prefix")
         assertNotNull(publicKey)
     }
 
+    @Test
     fun testContainsAlias() {
         assertTrue(KeyManager.containsAlias("test_prefix"))
         assertFalse(KeyManager.containsAlias("nonexistent"))
     }
 
+    @Test
     fun testDeleteEntry() {
         assertTrue(KeyManager.deleteEntry("test_prefix"))
         assertFalse(KeyManager.deleteEntry("nonexistent"))

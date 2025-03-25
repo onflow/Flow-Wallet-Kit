@@ -5,6 +5,7 @@ import Flow
 
 struct ExtensionTests {
     
+    @Test
     func testHashAlgorithmExtension() throws {
         // Given
         let testData = "test data".data(using: .utf8)!
@@ -19,6 +20,7 @@ struct ExtensionTests {
         #expect(sha2Result != sha3Result) // Different algorithms should produce different results
     }
     
+    @Test
     func testUnsupportedHashAlgorithm() {
         // Given
         let testData = "test data".data(using: .utf8)!
@@ -42,6 +44,7 @@ struct ExtensionTests {
 //        #expect(unknownCurve == nil)
 //    }
     
+    @Test
     func testStringDropPrefix() {
         // Given
         let stringWithPrefix = "0x1234567890abcdef"
@@ -56,6 +59,7 @@ struct ExtensionTests {
         #expect(result2 == "1234567890abcdef")
     }
     
+    @Test
     func testChainIDKeyIndexerURL() {
         // Given
         let publicKey = "1234567890abcdef"
