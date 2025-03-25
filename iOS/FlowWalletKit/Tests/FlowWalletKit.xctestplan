@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "D498CDDB-ECB2-49F1-AB5D-00280B37AB26",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "FlowWalletKitTests",
+        "name" : "FlowWalletKitTests"
+      }
+    }
+  ],
+  "version" : 1
+}

@@ -10,6 +10,9 @@ import Flow
 import Foundation
 import KeychainAccess
 import WalletCore
+import Factory
+
+public let defaultSeedPhraseLength: BIP39.SeedPhraseLength = .twelve
 
 public class SeedPhraseKey: KeyProtocol {
     public struct AdvanceOption {
@@ -25,37 +28,32 @@ public class SeedPhraseKey: KeyProtocol {
         let passphrase: String
     }
 
-    public var storage: any StorageProtocol
-    public var keyType: KeyType = .seedPhrase
-    public var derivationPath = "m/44'/539'/0'/0/0"
-    public var passphrase: String = ""
-    public var seedPhraseLength: BIP39.SeedPhraseLength = SeedPhraseKey.defaultSeedPhraseLength
-
-    public static let defaultSeedPhraseLength: BIP39.SeedPhraseLength = .twelve
+    @Injected(\.keychainStorage) public var storage
+    public let keyType: KeyType = .seedPhrase
+    public let derivationPath: String
+    public let passphrase: String
+    public let seedPhraseLength: BIP39.SeedPhraseLength
 
     public let hdWallet: HDWallet
-
-    public init(hdWallet: HDWallet,
-         storage: any StorageProtocol,
-         derivationPath: String = "m/44'/539'/0'/0/0",
-         passphrase: String = "",
-         seedPhraseLength: BIP39.SeedPhraseLength = SeedPhraseKey.defaultSeedPhraseLength
-    )
-    {
+    
+    public init(
+        hdWallet: HDWallet,
+        derivationPath: String = "m/44'/539'/0'/0/0",
+        passphrase: String = "",
+        seedPhraseLength: BIP39.SeedPhraseLength = defaultSeedPhraseLength
+    ) {
         self.hdWallet = hdWallet
-        self.storage = storage
         self.derivationPath = derivationPath
         self.passphrase = passphrase
         self.seedPhraseLength = seedPhraseLength
     }
 
-    public static func create(_ advance: AdvanceOption, storage: any StorageProtocol) throws -> SeedPhraseKey {
+    static public func create(_ advance: AdvanceOption) throws -> SeedPhraseKey {
         guard let hdWallet = HDWallet(strength: advance.seedPhraseLength.strength, passphrase: advance.passphrase) else {
             throw WalletError.initHDWalletFailed
         }
 
         let key = SeedPhraseKey(hdWallet: hdWallet,
-                                storage: storage,
                                 derivationPath: advance.derivationPath,
                                 passphrase: advance.passphrase,
                                 seedPhraseLength: advance.seedPhraseLength
@@ -63,15 +61,15 @@ public class SeedPhraseKey: KeyProtocol {
         return key
     }
 
-    public static func create(storage: any StorageProtocol) throws -> SeedPhraseKey {
-        guard let hdWallet = HDWallet(strength: SeedPhraseKey.defaultSeedPhraseLength.strength, passphrase: "") else {
+    static public func create() throws -> SeedPhraseKey {
+        guard let hdWallet = HDWallet(strength: defaultSeedPhraseLength.strength, passphrase: "") else {
             throw WalletError.initHDWalletFailed
         }
-        return SeedPhraseKey(hdWallet: hdWallet, storage: storage)
+        return SeedPhraseKey(hdWallet: hdWallet)
     }
 
-    public static func createAndStore(id: String, password: String, storage: any StorageProtocol) throws -> SeedPhraseKey {
-        guard let hdWallet = HDWallet(strength: SeedPhraseKey.defaultSeedPhraseLength.strength, passphrase: "") else {
+    static public func createAndStore(id: String, password: String) throws -> SeedPhraseKey {
+        guard let hdWallet = HDWallet(strength: defaultSeedPhraseLength.strength, passphrase: "") else {
             throw WalletError.initHDWalletFailed
         }
 
@@ -79,13 +77,13 @@ public class SeedPhraseKey: KeyProtocol {
             throw WalletError.initChaChapolyFailed
         }
 
-        let encrypted = try cipher.encrypt(data: hdWallet.entropy)
-        let key = SeedPhraseKey(hdWallet: hdWallet, storage: storage)
+        let key = SeedPhraseKey(hdWallet: hdWallet)
         try key.store(id: id, password: password)
         return key
     }
 
-    public static func get(id: String, password: String, storage: any StorageProtocol) throws -> SeedPhraseKey {
+    static public func get(id: String, password: String) throws -> SeedPhraseKey {
+        @Injected(\.keychainStorage) var storage
         guard let data = try storage.get(id) else {
             throw WalletError.emptyKeychain
         }
@@ -101,7 +99,7 @@ public class SeedPhraseKey: KeyProtocol {
             throw WalletError.initHDWalletFailed
         }
         
-        return SeedPhraseKey(hdWallet: hdWallet, storage: storage, derivationPath: model.derivationPath, passphrase: model.passphrase, seedPhraseLength: model.seedPhraseLength)
+        return SeedPhraseKey(hdWallet: hdWallet, derivationPath: model.derivationPath, passphrase: model.passphrase, seedPhraseLength: model.seedPhraseLength)
     }
 
     public func isValidSignature(signature: Data, message: Data, signAlgo: Flow.SignatureAlgorithm) -> Bool {
@@ -121,13 +119,12 @@ public class SeedPhraseKey: KeyProtocol {
         try storage.set(id, value: encrypted)
     }
 
-    public static func restore(secret: KeyData, storage: any StorageProtocol) throws -> SeedPhraseKey {
+    static public func restore(secret: KeyData) throws -> SeedPhraseKey {
         guard let wallet = HDWallet(mnemonic: secret.mnemonic, passphrase: secret.passphrase) else {
             throw WalletError.restoreWalletFailed
         }
 
-        let key = SeedPhraseKey(hdWallet: wallet, storage: storage,
-                                derivationPath: secret.derivationPath, passphrase: secret.passphrase)
+        let key = SeedPhraseKey(hdWallet: wallet, derivationPath: secret.derivationPath, passphrase: secret.passphrase)
         return key
     }
 

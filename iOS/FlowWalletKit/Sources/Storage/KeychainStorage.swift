@@ -8,12 +8,14 @@
 import Foundation
 import KeychainAccess
 
+//TODO: should this be an actor?
+//TODO: don't make implementations public, have public factories that make them and return protocol.  StorageProtocol prob doesn't need to be public though.
 public class KeychainStorage: StorageProtocol {
     let service: String
     let label: String
     let synchronizable: Bool
     let accessGroup: String?
-    var keychain: Keychain
+    let keychain: Keychain
 
     public init(
         service: String,

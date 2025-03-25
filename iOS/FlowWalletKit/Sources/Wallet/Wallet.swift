@@ -5,7 +5,8 @@
 //  Created by Hao Fu on 12/9/2024.
 //
 
-import Flow
+//TODO: REMOVE @preconcurrency
+@preconcurrency import Flow
 import Foundation
 
 public enum WalletType {
@@ -59,18 +60,22 @@ public class Wallet: ObservableObject {
     public init(type: WalletType, networks: Set<Flow.ChainID> = [.mainnet, .testnet]) {
         self.type = type
         self.networks = networks
-        fetchAccount()
+        Task {
+            await fetchAccount()
+        }
     }
 
-    public func fetchAccount() {
-        Task {
+    public func fetchAccount() async {
+        do {
+            try loadCahe()
             do {
-                try loadCahe()
-                try await _ = fetchAllNetworkAccounts()
+                _ = try await fetchAllNetworkAccounts()
                 try cache()
             } catch {
                 // TODO: Handle Error
             }
+        } catch {
+            // TODO: Handle Error
         }
     }
 
@@ -97,20 +102,20 @@ public class Wallet: ObservableObject {
     public func account(chainID: Flow.ChainID) async throws -> [Flow.Account] {
         guard case let .key(key) = type else {
             if case let .watch(address) = type {
-                return [try await flow.getAccountAtLatestBlock(address: address)]
+                return [try await Flow.shared.accessAPI.getAccountAtLatestBlock(address: address)]
             }
             throw WalletError.invaildWalletType
         }
 
         var accounts: [Flow.Account] = []
         if let p256Key = try key.publicKey(signAlgo: .ECDSA_P256)?.hexString {
-            async let p256KeyRequest = Network.findFlowAccountByKey(publicKey: p256Key, chainID: chainID)
-            try await accounts += p256KeyRequest
+            let p256KeyRequest = try await Network.findFlowAccountByKey(publicKey: p256Key, chainID: chainID)
+            accounts.append(contentsOf: p256KeyRequest)
         }
 
         if let secp256k1Key = try key.publicKey(signAlgo: .ECDSA_SECP256k1)?.hexString {
-            async let secp256k1KeyRequest = Network.findFlowAccountByKey(publicKey: secp256k1Key, chainID: chainID)
-            try await accounts += secp256k1KeyRequest
+            let secp256k1KeyRequest = try await Network.findFlowAccountByKey(publicKey: secp256k1Key, chainID: chainID)
+            accounts.append(contentsOf: secp256k1KeyRequest)
         }
 
         return accounts
@@ -119,20 +124,20 @@ public class Wallet: ObservableObject {
     public func fullAccount(chainID: Flow.ChainID) async throws -> [Flow.Account] {
         guard case let .key(key) = type else {
             if case let .watch(address) = type {
-                return [try await flow.getAccountAtLatestBlock(address: address)]
+                return [try await Flow.shared.accessAPI.getAccountAtLatestBlock(address: address)]
             }
             throw WalletError.invaildWalletType
         }
 
         var accounts: [KeyIndexerResponse.Account] = []
         if let p256Key = try key.publicKey(signAlgo: .ECDSA_P256)?.hexString {
-            async let p256KeyRequest = Network.findAccountByKey(publicKey: p256Key, chainID: chainID)
-            try await accounts += p256KeyRequest
+            let p256KeyRequest = try await Network.findAccountByKey(publicKey: p256Key, chainID: chainID)
+            accounts.append(contentsOf: p256KeyRequest)
         }
 
         if let secp256k1Key = try key.publicKey(signAlgo: .ECDSA_SECP256k1)?.hexString {
-            async let secp256k1KeyRequest = Network.findAccountByKey(publicKey: secp256k1Key, chainID: chainID)
-            try await accounts += secp256k1KeyRequest
+            let secp256k1KeyRequest = try await Network.findAccountByKey(publicKey: secp256k1Key, chainID: chainID)
+            accounts.append(contentsOf: secp256k1KeyRequest)
         }
 
         let addresses = Set(accounts).compactMap { Flow.Address(hex: $0.address) }
@@ -159,20 +164,25 @@ public class Wallet: ObservableObject {
     // MARK: - Cache
 
     public func cache() throws {
-        // TODO: Handle other type
-        guard let flowAccounts, case let .key(key) = type else {
+        guard let flowAccounts else {
             return
         }
 
         let data = try JSONEncoder().encode(flowAccounts)
-        try key.storage.set(cacheId, value: data)
+        if case let .key(key) = type {
+            try key.storage.set(cacheId, value: data)
+        }
     }
 
     public func loadCahe() throws {
-        // TODO: Handle other type
-        guard case let .key(key) = type, let data = try key.storage.get(cacheId) else {
-            throw WalletError.loadCacheFailed
+        guard case let .key(key) = type else {
+            return
         }
+        
+        guard let data = try key.storage.get(cacheId) else {
+            return
+        }
+        
         let model = try JSONDecoder().decode([Flow.ChainID: [Flow.Account]].self, from: data)
         flowAccounts = model
 

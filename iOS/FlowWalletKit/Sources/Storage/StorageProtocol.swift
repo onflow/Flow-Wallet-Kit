@@ -7,14 +7,20 @@
 
 import Foundation
 
+//TODO: these should be async.  might want to add a cache if we fetch from keychain often.  should be internal?
 public protocol StorageProtocol {
-//    associatedtype Key
-//    associatedtype Value
-
     var allKeys: [String] { get }
     func findKey(_ keyword: String) throws -> [String]
     func get(_ key: String) throws -> Data?
     func set(_ key: String, value: Data) throws
     func remove(_ key: String) throws
     func removeAll() throws
+}
+
+extension StorageProtocol {
+    public func findKey(_ keyword: String) throws -> [String] {
+        allKeys.filter { key in
+            key.contains(keyword)
+        }
+    }
 }
