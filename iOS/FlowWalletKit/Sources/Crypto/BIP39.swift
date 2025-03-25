@@ -9,7 +9,7 @@ import Foundation
 import WalletCore
 
 public enum BIP39 {
-    public enum SeedPhraseLength: Int,Codable {
+    public enum SeedPhraseLength: Int, Codable, Sendable {
         case twelve = 12
         case fifteen = 15
         case twentyFour = 24

@@ -7,6 +7,7 @@
 
 import Foundation
 
+//TODO: these should be async.  might want to add a cache if we fetch from keychain often.  should be internal
 public protocol StorageProtocol {
     var allKeys: [String] { get }
     func findKey(_ keyword: String) throws -> [String]

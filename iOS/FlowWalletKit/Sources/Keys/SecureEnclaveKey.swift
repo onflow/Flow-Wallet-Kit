@@ -10,35 +10,37 @@ import Flow
 import Foundation
 import KeychainAccess
 import WalletCore
+import Factory
 
 public class SecureEnclaveKey: KeyProtocol {
     public typealias Advance = String
 
     public var keyType: KeyType = .secureEnclave
     public let key: SecureEnclave.P256.Signing.PrivateKey
-    public var storage: any StorageProtocol
+    @Injected(\.keychainStorage) public var storage
 
-    public init(key: SecureEnclave.P256.Signing.PrivateKey, storage: any StorageProtocol) {
+    public init(key: SecureEnclave.P256.Signing.PrivateKey) {
         self.key = key
-        self.storage = storage
     }
 
-    public func create(storage: any StorageProtocol) throws -> SecureEnclaveKey {
+    public static func create() throws -> SecureEnclaveKey {
         let key = try SecureEnclave.P256.Signing.PrivateKey()
-        return SecureEnclaveKey(key: key, storage: storage)
+        return SecureEnclaveKey(key: key)
     }
 
-    public func createAndStore(id: String, password: String, storage: any StorageProtocol) throws -> SecureEnclaveKey {
+    public static func createAndStore(id: String, password: String) throws -> SecureEnclaveKey {
         guard let cipher = ChaChaPolyCipher(key: password) else {
             throw WalletError.initChaChapolyFailed
         }
         let key = try SecureEnclave.P256.Signing.PrivateKey()
         let encrypted = try cipher.encrypt(data: key.dataRepresentation)
+        @Injected(\.keychainStorage) var storage
         try storage.set(id, value: encrypted)
-        return SecureEnclaveKey(key: key, storage: storage)
+        return SecureEnclaveKey(key: key)
     }
 
-    public func get(id: String, password: String, storage: any StorageProtocol) throws -> SecureEnclaveKey {
+    public static func get(id: String, password: String) throws -> SecureEnclaveKey {
+        @Injected(\.keychainStorage) var storage
         guard let data = try storage.get(id) else {
             throw WalletError.emptyKeychain
         }
@@ -49,12 +51,12 @@ public class SecureEnclaveKey: KeyProtocol {
 
         let pk = try cipher.decrypt(combinedData: data)
         let key = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: pk)
-        return SecureEnclaveKey(key: key, storage: storage)
+        return SecureEnclaveKey(key: key)
     }
 
-    public func restore(secret: Data, storage: any StorageProtocol) throws -> SecureEnclaveKey {
+    public static func restore(secret: Data) throws -> SecureEnclaveKey {
         let key = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: secret)
-        return SecureEnclaveKey(key: key, storage: storage)
+        return SecureEnclaveKey(key: key)
     }
 
     public func store(id: String, password: String) throws {
@@ -90,7 +92,7 @@ public class SecureEnclaveKey: KeyProtocol {
                      signAlgo _: Flow.SignatureAlgorithm = .ECDSA_P256,
                      hashAlgo: Flow.HashAlgorithm) throws -> Data
     {
-        let hashed = SHA256.hash(data: data) 
+        let hashed = SHA256.hash(data: data)
         return try key.signature(for: hashed).rawRepresentation
     }
 

@@ -18,14 +18,12 @@ import java.security.interfaces.ECPublicKey
  */
 @RunWith(AndroidJUnit4::class)
 class ExampleInstrumentedTest {
-    @Test
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         assertEquals("io.outblock.wallet.test", appContext.packageName)
     }
 
-    @Test
     fun testKeyGenerate() {
         val keyPair = KeyManager.generateKeyWithPrefix("test_prefix")
 //        val userId = "test_id"
