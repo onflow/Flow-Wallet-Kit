@@ -1,8 +1,8 @@
 package io.outblock.wallet
 
-import com.nftco.flow.sdk.HashAlgorithm
-import com.nftco.flow.sdk.SignatureAlgorithm
-import com.nftco.flow.sdk.Signer
+import org.onflow.flow.sdk.HashAlgorithm
+import org.onflow.flow.sdk.SignatureAlgorithm
+import org.onflow.flow.sdk.Signer
 
 
 interface CryptoProvider {
