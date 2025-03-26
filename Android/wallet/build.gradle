@@ -46,9 +46,7 @@ android {
 
 dependencies {
 
-    implementation ("com.github.Outblock:flow-jvm-sdk:v0.5.7") {
-        exclude group: 'org.bouncycastle', module: 'bcprov-jdk15on'
-    }
+    implementation 'org.onflow:flow-jvm-sdk:2.1.1'
     implementation 'org.bouncycastle:bcprov-jdk18on:1.77'
     implementation 'androidx.core:core-ktx:1.7.0'
     implementation 'androidx.appcompat:appcompat:1.4.0'
