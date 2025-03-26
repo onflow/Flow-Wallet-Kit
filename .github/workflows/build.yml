@@ -24,9 +24,6 @@ jobs:
         uses: gradle/gradle-build-action@v2
         with:
           gradle-version: 8.13
-
-      - name: Make gradlew executable
-        run: chmod +x gradlew
         
       - name: Navigate to Project Directory
         run: cd Android/wallet
