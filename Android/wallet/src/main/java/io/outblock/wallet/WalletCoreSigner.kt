@@ -4,6 +4,7 @@ import android.util.Log
 import org.onflow.flow.sdk.HashAlgorithm
 import org.onflow.flow.sdk.Hasher
 import org.onflow.flow.sdk.Signer
+import org.onflow.flow.sdk.SignatureAlgorithm
 import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.ASN1Sequence
 import java.security.MessageDigest
