@@ -32,4 +32,4 @@ jobs:
         run: cd Android/wallet
         
       - name: Build Debug
-        run: ./gradlew assembleDebug --stacktrace 
+        run: .cd Android/wallet && gradle assembleDebug --stacktrace 
