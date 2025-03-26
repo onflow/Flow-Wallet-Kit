@@ -1,6 +1,6 @@
 plugins {
-    id("com.android.library") version "${androidLibraryPluginVersion}"
-    id("org.jetbrains.kotlin.android") version "${kotlinAndroidVersion}"
+    id("com.android.library")
+    id("org.jetbrains.kotlin.android")
 }
 
 android {
