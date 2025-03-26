@@ -20,7 +20,7 @@ class WalletCoreSigner(
             if (privateKey == null) {
                 throw WalletCoreException("Error getting private key", null)
             }
-            val signature = Signature.getInstance(hashAlgo.algorithm)
+            val signature = Signature.getInstance("${hashAlgo.algorithm.replace("-", "")}withECDSA")
             signature.initSign(privateKey)
             signature.update(bytes)
             val asn1Signature = signature.sign()
