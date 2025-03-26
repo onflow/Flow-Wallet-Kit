@@ -45,7 +45,6 @@ android {
 }
 
 dependencies {
-
     implementation 'org.onflow:flow-jvm-sdk:2.1.1'
     implementation 'org.bouncycastle:bcprov-jdk18on:1.77'
     implementation 'androidx.core:core-ktx:1.7.0'
