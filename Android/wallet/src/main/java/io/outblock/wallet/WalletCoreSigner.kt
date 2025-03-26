@@ -13,8 +13,7 @@ import java.security.Signature
 
 class WalletCoreSigner(
     private val privateKey: PrivateKey?,
-    private val hashAlgo: HashAlgorithm = HashAlgorithm.SHA2_256,
-    val hasher: Hasher = HasherImpl(hashAlgo)
+    private val hashAlgo: HashAlgorithm = HashAlgorithm.SHA2_256
 ) : Signer {
     override fun sign(bytes: ByteArray): ByteArray {
         try {
