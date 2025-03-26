@@ -25,8 +25,5 @@ jobs:
         with:
           gradle-version: 8.13
         
-      - name: Navigate to Project Directory
-        run: cd Android/wallet
-        
       - name: Build Debug
-        run: .cd Android/wallet && gradle assembleDebug --stacktrace 
+        run: cd Android/wallet && gradle assembleDebug --stacktrace 
