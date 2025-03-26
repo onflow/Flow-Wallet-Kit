@@ -45,7 +45,7 @@ android {
 }
 
 dependencies {
-    implementation 'org.onflow:flow-jvm-sdk:2.1.1' {
+    implementation('org.onflow:flow-jvm-sdk:2.1.1') {
         exclude group: 'org.bouncycastle', module: 'bcprov-jdk15on'
     }
     implementation 'org.bouncycastle:bcprov-jdk18on:1.77'
