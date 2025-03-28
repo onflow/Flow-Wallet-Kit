@@ -131,7 +131,11 @@ public class Wallet: ObservableObject {
     /// 2. Fetches fresh account data from networks
     /// 3. Updates the cache with new data
     public func fetchAccount() async throws {
-        try loadCahe()
+        do {
+            try loadCahe()
+        } catch {
+            //TODO: Handle no cache log
+        }
         try await _ = fetchAllNetworkAccounts()
         try cache()
     }
