@@ -46,7 +46,7 @@ public class SeedPhraseKey: KeyProtocol {
     /// Type identifier for this key implementation
     public var keyType: KeyType = .seedPhrase
     /// BIP44 derivation path (default: Flow path m/44'/539'/0'/0/0)
-    public var derivationPath = "m/44'/539'/0'/0/0"
+    static public var derivationPath = "m/44'/539'/0'/0/0"
     /// Optional passphrase for additional security
     public var passphrase: String = ""
     /// Length of the seed phrase
@@ -75,7 +75,7 @@ public class SeedPhraseKey: KeyProtocol {
     ) {
         self.hdWallet = hdWallet
         self.storage = storage
-        self.derivationPath = derivationPath
+        SeedPhraseKey.derivationPath = derivationPath
         self.passphrase = passphrase
         self.seedPhraseLength = seedPhraseLength
     }
@@ -181,7 +181,7 @@ public class SeedPhraseKey: KeyProtocol {
         guard let cipher = ChaChaPolyCipher(key: password) else {
             throw WalletError.initChaChapolyFailed
         }
-        let model = KeyData(mnemonic: hdWallet.mnemonic, derivationPath: derivationPath, seedPhraseLength: seedPhraseLength, passphrase: passphrase)
+        let model = KeyData(mnemonic: hdWallet.mnemonic, derivationPath: SeedPhraseKey.derivationPath, seedPhraseLength: seedPhraseLength, passphrase: passphrase)
         let data = try JSONEncoder().encode(model)
         let encrypted = try cipher.encrypt(data: data)
         try storage.set(id, value: encrypted)
@@ -220,7 +220,7 @@ public class SeedPhraseKey: KeyProtocol {
         guard let curve = signAlgo.WCCurve else {
             return nil
         }
-        var pk = hdWallet.getKeyByCurve(curve: curve, derivationPath: derivationPath)
+        var pk = hdWallet.getKeyByCurve(curve: curve, derivationPath: SeedPhraseKey.derivationPath)
         defer { pk = WalletCore.PrivateKey() }
         return pk.data
     }
@@ -239,7 +239,7 @@ public class SeedPhraseKey: KeyProtocol {
             throw WalletError.unsupportSignatureAlgorithm
         }
 
-        var pk = hdWallet.getKeyByCurve(curve: curve, derivationPath: derivationPath)
+        var pk = hdWallet.getKeyByCurve(curve: curve, derivationPath: SeedPhraseKey.derivationPath)
         defer { pk = WalletCore.PrivateKey() }
         guard let signature = pk.sign(digest: hashed, curve: curve) else {
             throw WalletError.signError
@@ -254,17 +254,9 @@ public class SeedPhraseKey: KeyProtocol {
     /// - Returns: Public key implementation
     /// - Throws: WalletError if algorithm is not supported
     private func getPublicKey(signAlgo: Flow.SignatureAlgorithm) throws -> PublicKey {
-        switch signAlgo {
-        case .ECDSA_P256:
-            var pk = hdWallet.getKeyByCurve(curve: .nist256p1, derivationPath: derivationPath)
-            defer { pk = WalletCore.PrivateKey() }
-            return pk.getPublicKeyNist256p1()
-        case .ECDSA_SECP256k1:
-            var pk = hdWallet.getKeyByCurve(curve: .secp256k1, derivationPath: derivationPath)
-            defer { pk = WalletCore.PrivateKey() }
-            return pk.getPublicKeySecp256k1(compressed: false)
-        case .unknown:
+        guard let pubKey = hdWallet.getPublicKey(signAlgo: signAlgo) else {
             throw WalletError.unsupportSignatureAlgorithm
         }
+        return pubKey
     }
 }
