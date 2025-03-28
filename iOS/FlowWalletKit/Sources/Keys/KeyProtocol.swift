@@ -118,11 +118,6 @@ public protocol KeyProtocol: Identifiable {
 // MARK: - Default Implementations
 
 public extension KeyProtocol {
-    /// Default storage implementation from FWKManager
-    var storage: StorageProtocol {
-        FWKManager.shared.storage
-    }
-
     /// Default ID implementation using public key or UUID
     var id: String {
         if let data = publicKey(signAlgo: .ECDSA_P256) {

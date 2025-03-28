@@ -30,12 +30,6 @@ public class PrivateKey: KeyProtocol {
 
     // MARK: - Initialization
 
-    /// Initialize with default storage
-    init() {
-        pk = WalletCore.PrivateKey()
-        storage = FWKManager.shared.storage
-    }
-
     /// Initialize with custom storage
     /// - Parameter storage: Storage implementation
     init(storage: any StorageProtocol) {

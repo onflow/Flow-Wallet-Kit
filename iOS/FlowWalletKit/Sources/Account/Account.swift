@@ -65,11 +65,6 @@ public class Account {
     /// The underlying Flow account
     public let account: Flow.Account
     
-    /// Account address in hex format
-    public var address: String {
-        account.address.hex
-    }
-    
     /// First available full weight key
     public var fullWeightKey: Flow.AccountKey? {
         fullWeightKeys.first
