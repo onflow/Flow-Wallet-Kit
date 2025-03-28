@@ -50,28 +50,26 @@ public class Wallet: ObservableObject {
     @Published
     public var accounts: [Flow.ChainID: [Account]]? = nil
 
-    public var flowAccounts: [Flow.ChainID: [Flow.Account]]?
+    public var fullWeightAccounts: [Flow.ChainID: [Account]]? {
+        guard let accounts else { return nil }
+        return accounts.mapValues { $0.filter { $0.hasFullWeightKey } }
+    }
 
-    var cacheId: String {
+    var flowAccounts: [Flow.ChainID: [Flow.Account]]?
+
+    private var cacheId: String {
         [Wallet.cachePrefix, type.id].joined(separator: "/")
     }
 
     public init(type: WalletType, networks: Set<Flow.ChainID> = [.mainnet, .testnet]) {
         self.type = type
         self.networks = networks
-        fetchAccount()
     }
 
-    public func fetchAccount() {
-        Task {
-            do {
-                try loadCahe()
-                try await _ = fetchAllNetworkAccounts()
-                try cache()
-            } catch {
-                // TODO: Handle Error
-            }
-        }
+    public func fetchAccount() async throws {
+        try loadCahe()
+        try await _ = fetchAllNetworkAccounts()
+        try cache()
     }
 
     public func addNetwork(_ network: Flow.ChainID) {
@@ -81,20 +79,31 @@ public class Wallet: ObservableObject {
     public func fetchAllNetworkAccounts() async throws -> [Flow.ChainID: [Account]] {
         var flowAccounts = [Flow.ChainID: [Flow.Account]]()
         var networkAccounts = [Flow.ChainID: [Account]]()
-        // TODO: Improve this to parallel fetch
-        for network in networks {
-            guard let accounts = try? await account(chainID: network) else {
-                continue
+        
+        try await withThrowingTaskGroup(of: (Flow.ChainID, [Flow.Account]).self) { group in
+            for network in networks {
+                group.addTask {
+                    if let accounts = try? await self.account(chainID: network) {
+                        return (network, accounts)
+                    }
+                    return (network, [])
+                }
             }
-            flowAccounts[network] = accounts
-            networkAccounts[network] = accounts.compactMap { Account(account: $0, key: type.key) }
+            
+            for try await (network, accounts) in group {
+                if !accounts.isEmpty {
+                    flowAccounts[network] = accounts
+                    networkAccounts[network] = accounts.compactMap { Account(account: $0, key: type.key) }
+                }
+            }
         }
+        
         accounts = networkAccounts
         self.flowAccounts = flowAccounts
         return networkAccounts
     }
 
-    public func account(chainID: Flow.ChainID) async throws -> [Flow.Account] {
+    public func account(chainID: Flow.ChainID, onlyFullWeight: Bool = true) async throws -> [Flow.Account] {
         guard case let .key(key) = type else {
             if case let .watch(address) = type {
                 return [try await flow.getAccountAtLatestBlock(address: address)]
@@ -102,58 +111,21 @@ public class Wallet: ObservableObject {
             throw WalletError.invaildWalletType
         }
 
-        var accounts: [Flow.Account] = []
-        if let p256Key = try key.publicKey(signAlgo: .ECDSA_P256)?.hexString {
-            async let p256KeyRequest = Network.findFlowAccountByKey(publicKey: p256Key, chainID: chainID)
-            try await accounts += p256KeyRequest
-        }
-
-        if let secp256k1Key = try key.publicKey(signAlgo: .ECDSA_SECP256k1)?.hexString {
-            async let secp256k1KeyRequest = Network.findFlowAccountByKey(publicKey: secp256k1Key, chainID: chainID)
-            try await accounts += secp256k1KeyRequest
-        }
-
-        return accounts
-    }
-
-    public func fullAccount(chainID: Flow.ChainID) async throws -> [Flow.Account] {
-        guard case let .key(key) = type else {
-            if case let .watch(address) = type {
-                return [try await flow.getAccountAtLatestBlock(address: address)]
+        async let p256KeyAccounts: [Flow.Account] = {
+            if let p256Key = key.publicKey(signAlgo: .ECDSA_P256)?.hexString {
+                return try await Network.findFlowAccountByKey(publicKey: p256Key, chainID: chainID)
             }
-            throw WalletError.invaildWalletType
-        }
+            return []
+        }()
 
-        var accounts: [KeyIndexerResponse.Account] = []
-        if let p256Key = try key.publicKey(signAlgo: .ECDSA_P256)?.hexString {
-            async let p256KeyRequest = Network.findAccountByKey(publicKey: p256Key, chainID: chainID)
-            try await accounts += p256KeyRequest
-        }
-
-        if let secp256k1Key = try key.publicKey(signAlgo: .ECDSA_SECP256k1)?.hexString {
-            async let secp256k1KeyRequest = Network.findAccountByKey(publicKey: secp256k1Key, chainID: chainID)
-            try await accounts += secp256k1KeyRequest
-        }
-
-        let addresses = Set(accounts).compactMap { Flow.Address(hex: $0.address) }
-        return try await fetchAccounts(addresses: addresses)
-    }
-
-    public func fetchAccounts(addresses: [Flow.Address]) async throws -> [Flow.Account] {
-        try await withThrowingTaskGroup(of: Flow.Account.self) { group in
-
-            addresses.forEach { address in
-                group.addTask { try await Flow.shared.accessAPI.getAccountAtLatestBlock(address: address) }
+        async let secp256k1KeyAccounts: [Flow.Account] = {
+            if let secp256k1Key = key.publicKey(signAlgo: .ECDSA_SECP256k1)?.hexString {
+                return try await Network.findFlowAccountByKey(publicKey: secp256k1Key, chainID: chainID)
             }
+            return []
+        }()
 
-            var result = [Flow.Account]()
-
-            for try await image in group {
-                result.append(image)
-            }
-
-            return result
-        }
+        return try await p256KeyAccounts + secp256k1KeyAccounts
     }
 
     // MARK: - Cache

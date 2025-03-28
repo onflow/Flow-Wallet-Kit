@@ -17,59 +17,62 @@ public protocol ProxyProtocol {
 
 
 public class Account {
-    var childs: [Account]?
+    public var childs: [Account]?
 
-    var hasChild: Bool {
+    public var hasChild: Bool {
         !(childs?.isEmpty ?? true)
     }
+    
+    public var hasFullWeightKey: Bool {
+        fullWeightKeys.count > 0
+    }
 
-    var vm: [Account]?
+    public var fullWeightKeys: [Flow.AccountKey] {
+        account.keys.filter { !$0.revoked && $0.weight >= 1000 }
+    }
 
-    var hasVM: Bool {
+    public var vm: [Account]?
+
+    public var hasVM: Bool {
         !(vm?.isEmpty ?? true)
     }
 
-    var canSign: Bool {
+    public var canSign: Bool {
         !(key == nil)
     }
 
-    let account: Flow.Account
-    let key: (any KeyProtocol)?
+    public let account: Flow.Account
+
+    public let key: (any KeyProtocol)?
 
     init(account: Flow.Account, key: (any KeyProtocol)?) {
         self.account = account
         self.key = key
     }
 
-    func findKeyInAccount() -> [Flow.AccountKey]? {
+    public func findKeyInAccount() -> [Flow.AccountKey]? {
         guard let key else {
             return nil
         }
 
-        do {
-            var keys: [Flow.AccountKey] = []
-            if let p256 = try key.publicKey(signAlgo: .ECDSA_P256) {
-                let p256Keys = account.keys.filter { $0.weight >= 1000 && $0.publicKey.data == p256 }
-                keys += p256Keys
-            }
-            if let secpKey = try key.publicKey(signAlgo: .ECDSA_SECP256k1) {
-                let secpKeys = account.keys.filter { $0.weight >= 1000 && $0.publicKey.data == secpKey }
-                keys += secpKeys
-            }
-
-            return keys
-
-        } catch {
-            // TODO: Add error handling
-            return nil
+        var keys: [Flow.AccountKey] = []
+        if let p256 = key.publicKey(signAlgo: .ECDSA_P256) {
+            let p256Keys = account.keys.filter { !$0.revoked && $0.weight >= 1000 && $0.publicKey.data == p256 }
+            keys += p256Keys
         }
+        if let secpKey = key.publicKey(signAlgo: .ECDSA_SECP256k1) {
+            let secpKeys = account.keys.filter { !$0.revoked && $0.weight >= 1000 && $0.publicKey.data == secpKey }
+            keys += secpKeys
+        }
+
+        return keys
     }
 
-    func fetchChild() {
+    public func fetchChild() {
         // TODO:
     }
 
-    func fetchVM() {
+    public func fetchVM() {
         // TODO:
     }
 }

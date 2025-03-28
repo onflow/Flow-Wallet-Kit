@@ -74,12 +74,6 @@ public class SeedPhraseKey: KeyProtocol {
         guard let hdWallet = HDWallet(strength: SeedPhraseKey.defaultSeedPhraseLength.strength, passphrase: "") else {
             throw WalletError.initHDWalletFailed
         }
-
-        guard let cipher = ChaChaPolyCipher(key: password) else {
-            throw WalletError.initChaChapolyFailed
-        }
-
-        let encrypted = try cipher.encrypt(data: hdWallet.entropy)
         let key = SeedPhraseKey(hdWallet: hdWallet, storage: storage)
         try key.store(id: id, password: password)
         return key
