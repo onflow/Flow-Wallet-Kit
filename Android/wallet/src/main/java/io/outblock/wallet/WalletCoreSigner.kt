@@ -1,11 +1,11 @@
 package io.outblock.wallet
 
 import android.util.Log
-import com.nftco.flow.sdk.HashAlgorithm
 import com.nftco.flow.sdk.Hasher
 import com.nftco.flow.sdk.Signer
 import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.ASN1Sequence
+import org.onflow.flow.models.HashingAlgorithm
 import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.Signature
@@ -13,7 +13,7 @@ import java.security.Signature
 
 class WalletCoreSigner(
     private val privateKey: PrivateKey?,
-    private val hashAlgo: HashAlgorithm = HashAlgorithm.SHA2_256,
+    private val hashAlgo: HashingAlgorithm = HashingAlgorithm.SHA2_256,
     override val hasher: Hasher = HasherImpl(hashAlgo)
 ) : Signer {
     override fun sign(bytes: ByteArray): ByteArray {
@@ -21,7 +21,7 @@ class WalletCoreSigner(
             if (privateKey == null) {
                 throw WalletCoreException("Error getting private key", null)
             }
-            val signature = Signature.getInstance(hashAlgo.id)
+            val signature = Signature.getInstance(hashAlgo.value)
             signature.initSign(privateKey)
             signature.update(bytes)
             val asn1Signature = signature.sign()
@@ -37,11 +37,11 @@ class WalletCoreSigner(
 }
 
 internal class HasherImpl(
-    private val hashAlgo: HashAlgorithm
+    private val hashAlgo: HashingAlgorithm
 ) : Hasher {
 
     override fun hash(bytes: ByteArray): ByteArray {
-        val digest = MessageDigest.getInstance(hashAlgo.algorithm)
+        val digest = MessageDigest.getInstance(hashAlgo.value)
         return digest.digest(bytes)
     }
 }
