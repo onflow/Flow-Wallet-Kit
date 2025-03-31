@@ -14,7 +14,7 @@ import Foundation
 import CryptoKit
 
 /// Protocol defining symmetric encryption operations
-protocol SymmetricEncryption {
+public protocol SymmetricEncryption {
     /// Symmetric key used for encryption/decryption
     var key: SymmetricKey { get }
     /// Size of the symmetric key
@@ -34,7 +34,7 @@ protocol SymmetricEncryption {
 }
 
 /// Errors that can occur during encryption operations
-enum EncryptionError: Error {
+public enum EncryptionError: Error {
     /// Encryption operation failed
     case encryptFailed
     /// Initialization of encryption components failed
@@ -47,17 +47,17 @@ enum EncryptionError: Error {
 /// - High performance on mobile devices
 /// - Strong security guarantees
 /// - Protection against tampering
-class ChaChaPolyCipher: SymmetricEncryption {
+public class ChaChaPolyCipher: SymmetricEncryption {
     /// Symmetric key derived from password
-    var key: SymmetricKey
+    public var key: SymmetricKey
     /// Key size (256 bits for ChaCha20-Poly1305)
-    var keySize: SymmetricKeySize = .bits256
+    public var keySize: SymmetricKeySize = .bits256
 
     /// Encrypt data using ChaCha20-Poly1305
     /// - Parameter data: Data to encrypt
     /// - Returns: Encrypted data with Poly1305 authentication tag
     /// - Throws: CryptoKit encryption errors
-    func encrypt(data: Data) throws -> Data {
+    public func encrypt(data: Data) throws -> Data {
         let sealedBox = try ChaChaPoly.seal(data, using: key)
         return sealedBox.combined
     }
@@ -66,7 +66,7 @@ class ChaChaPolyCipher: SymmetricEncryption {
     /// - Parameter combinedData: Encrypted data with authentication tag
     /// - Returns: Original decrypted data
     /// - Throws: CryptoKit decryption or authentication errors
-    func decrypt(combinedData: Data) throws -> Data {
+    public func decrypt(combinedData: Data) throws -> Data {
         let sealedBox = try ChaChaPoly.SealedBox(combined: combinedData)
         let decryptedData = try ChaChaPoly.open(sealedBox, using: key)
         return decryptedData
@@ -75,7 +75,7 @@ class ChaChaPolyCipher: SymmetricEncryption {
     /// Initialize cipher with a password
     /// - Parameter key: Password to derive key from
     /// - Returns: nil if key derivation fails
-    init?(key: String) {
+    public init?(key: String) {
         guard let keyData = key.data(using: .utf8) else {
             return nil
         }
@@ -91,17 +91,17 @@ class ChaChaPolyCipher: SymmetricEncryption {
 /// - Industry standard encryption
 /// - Hardware acceleration on modern devices
 /// - Protection against tampering
-class AESGCMCipher: SymmetricEncryption {
+public class AESGCMCipher: SymmetricEncryption {
     /// Symmetric key derived from password
-    var key: SymmetricKey
+    public var key: SymmetricKey
     /// Key size (256 bits for AES-256-GCM)
-    var keySize: SymmetricKeySize = .bits256
+    public var keySize: SymmetricKeySize = .bits256
 
     /// Encrypt data using AES-GCM
     /// - Parameter data: Data to encrypt
     /// - Returns: Encrypted data with authentication tag
     /// - Throws: CryptoKit encryption errors or EncryptionError
-    func encrypt(data: Data) throws -> Data {
+    public func encrypt(data: Data) throws -> Data {
         let sealedBox = try AES.GCM.seal(data, using: key)
         guard let encryptedData = sealedBox.combined else {
             throw EncryptionError.encryptFailed
@@ -113,7 +113,7 @@ class AESGCMCipher: SymmetricEncryption {
     /// - Parameter combinedData: Encrypted data with authentication tag
     /// - Returns: Original decrypted data
     /// - Throws: CryptoKit decryption or authentication errors
-    func decrypt(combinedData: Data) throws -> Data {
+    public func decrypt(combinedData: Data) throws -> Data {
         let sealedBox = try AES.GCM.SealedBox(combined: combinedData)
         let decryptedData = try AES.GCM.open(sealedBox, using: key)
         return decryptedData
@@ -122,7 +122,7 @@ class AESGCMCipher: SymmetricEncryption {
     /// Initialize cipher with a password
     /// - Parameter key: Password to derive key from
     /// - Returns: nil if key derivation fails
-    init?(key: String) {
+    public init?(key: String) {
         guard let keyData = key.data(using: .utf8) else {
             return nil
         }
