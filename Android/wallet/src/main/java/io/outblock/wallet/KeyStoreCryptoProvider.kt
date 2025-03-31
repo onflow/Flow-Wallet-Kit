@@ -1,9 +1,9 @@
 package io.outblock.wallet
 
-import com.nftco.flow.sdk.Signer
 import com.nftco.flow.sdk.bytesToHex
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.onflow.flow.models.HashingAlgorithm
+import org.onflow.flow.models.Signer
 import org.onflow.flow.models.SigningAlgorithm
 import java.security.Security
 
@@ -14,13 +14,13 @@ class KeyStoreCryptoProvider(private val prefix: String): CryptoProvider {
         return KeyManager.getPublicKeyByPrefix(prefix).toFormatString()
     }
 
-    override fun getUserSignature(jwt: String): String {
+    override suspend fun getUserSignature(jwt: String): String {
         return getSigner().signAsUser(
             jwt.encodeToByteArray()
         ).bytesToHex()
     }
 
-    override fun signData(data: ByteArray): String {
+    override suspend fun signData(data: ByteArray): String {
         return getSigner().sign(data).bytesToHex()
     }
 

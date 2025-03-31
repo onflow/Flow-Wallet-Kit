@@ -1,22 +1,23 @@
 package io.outblock.wallet
 
 import android.util.Log
-import com.nftco.flow.sdk.Hasher
-import com.nftco.flow.sdk.Signer
 import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.ASN1Sequence
+import org.onflow.flow.models.Hasher
 import org.onflow.flow.models.HashingAlgorithm
+import org.onflow.flow.models.Signer
+import org.onflow.flow.models.Transaction
 import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.Signature
 
-
 class WalletCoreSigner(
     private val privateKey: PrivateKey?,
     private val hashAlgo: HashingAlgorithm = HashingAlgorithm.SHA2_256,
-    override val hasher: Hasher = HasherImpl(hashAlgo)
+    override var address: String = "",
+    override var keyIndex: Int = 0
 ) : Signer {
-    override fun sign(bytes: ByteArray): ByteArray {
+    override suspend fun sign(bytes: ByteArray): ByteArray {
         try {
             if (privateKey == null) {
                 throw WalletCoreException("Error getting private key", null)
@@ -33,6 +34,10 @@ class WalletCoreSigner(
             Log.e(WALLET_TAG, "Error while signing data: $e")
             throw WalletCoreException("Error signing data", e)
         }
+    }
+
+    override suspend fun sign(transaction: Transaction, bytes: ByteArray): ByteArray {
+        return sign(bytes)
     }
 }
 
