@@ -1,55 +1,101 @@
-//
-//  File.swift
-//
-//
-//  Created by Hao Fu on 18/7/2024.
-//
+/// FlowWalletKit - Account Management
+///
+/// This module provides account management functionality for Flow blockchain accounts.
+/// It handles account operations, key management, and transaction signing.
 
 import Flow
 import Foundation
 
+/// Protocol for proxy wallet implementations
 public protocol ProxyProtocol {
+    /// The type of wallet this proxy represents
     associatedtype Wallet
 
+    /// Retrieve a wallet instance by ID
+    /// - Parameter id: Unique identifier for the wallet
+    /// - Returns: Wallet instance
+    /// - Throws: Error if wallet cannot be retrieved
     static func get(id: String) throws -> Wallet
+    
+    /// Sign data using specified algorithms
+    /// - Parameters:
+    ///   - data: Data to sign
+    ///   - signAlgo: Signature algorithm to use
+    ///   - hashAlgo: Hash algorithm to use
+    /// - Returns: Signed data
+    /// - Throws: Error if signing fails
     func sign(data: Data, signAlgo: Flow.SignatureAlgorithm, hashAlgo: Flow.HashAlgorithm) throws -> Data
 }
 
-
+/// Represents a Flow blockchain account with signing capabilities
 public class Account {
-    public var childs: [Account]?
+    // MARK: - Properties
+    
+    /// Child accounts associated with this account
+    @Published
+    public var childs: [ChildAccount]?
 
+    /// Whether this account has child accounts
     public var hasChild: Bool {
         !(childs?.isEmpty ?? true)
     }
-    
-    public var hasFullWeightKey: Bool {
-        fullWeightKeys.count > 0
+
+    /// Virtual machine accounts associated with this account
+//    public var vm: [any FlowVMProtocol]?
+    @Published
+    public var coa: COA?
+
+    /// Whether this account has VM accounts
+    public var hasCOA: Bool {
+        !(coa == nil)
     }
 
-    public var fullWeightKeys: [Flow.AccountKey] {
-        account.keys.filter { !$0.revoked && $0.weight >= 1000 }
-    }
-
-    public var vm: [Account]?
-
-    public var hasVM: Bool {
-        !(vm?.isEmpty ?? true)
-    }
-
+    /// Whether this account can sign transactions
     public var canSign: Bool {
         !(key == nil)
     }
 
+    /// The underlying Flow account
     public let account: Flow.Account
-
-    public let key: (any KeyProtocol)?
-
-    init(account: Flow.Account, key: (any KeyProtocol)?) {
-        self.account = account
-        self.key = key
+    
+    // MARK: - Full Weight Key
+    
+    /// First available full weight key
+    public var fullWeightKey: Flow.AccountKey? {
+        fullWeightKeys.first
+    }
+    
+    /// Whether this account has any full weight keys
+    public var hasFullWeightKey: Bool {
+        fullWeightKeys.count > 0
     }
 
+    /// List of non-revoked keys with full signing weight (1000+)
+    public var fullWeightKeys: [Flow.AccountKey] {
+        account.keys.filter { !$0.revoked && $0.weight >= 1000 }
+    }
+
+    /// Cryptographic key for signing
+    public let key: (any KeyProtocol)?
+    
+    public let chainID: Flow.ChainID
+
+    // MARK: - Initialization
+    
+    /// Initialize an account
+    /// - Parameters:
+    ///   - account: Flow account data
+    ///   - key: Optional signing key
+    init(account: Flow.Account, chainID: Flow.ChainID,  key: (any KeyProtocol)?) {
+        self.account = account
+        self.key = key
+        self.chainID = chainID
+    }
+
+    // MARK: - Key Management
+    
+    /// Find all keys in the account that match the provided key
+    /// - Returns: Array of matching account keys, or nil if no key is available
     public func findKeyInAccount() -> [Flow.AccountKey]? {
         guard let key else {
             return nil
@@ -68,24 +114,71 @@ public class Account {
         return keys
     }
 
-    public func fetchChild() {
-        // TODO:
+    // MARK: - Account Relationships
+    
+    /// Load all linked accounts (VM and child accounts) in parallel
+    public func loadLinkedAccounts() async throws {
+        // Execute both fetch operations concurrently
+        async let vmFetch: COA? = fetchVM()
+        async let childFetch: [ChildAccount] = fetchChild()
+        
+        // Wait for both operations to complete
+        try await (_, _) = (vmFetch, childFetch)
+    }
+    
+    /// Fetch child accounts
+    /// - Note: Implementation pending
+    @discardableResult
+    public func fetchChild() async throws -> [ChildAccount] {
+        let childs = try await flow.getChildMetadata(address: account.address)
+        let childAccounts = childs.compactMap { (addr, metadata) in
+            ChildAccount(address: .init(addr),
+                         network: chainID,
+                         name: metadata.name,
+                         description: metadata.description,
+                         icon: metadata.thumbnail?.url)
+        }
+        self.childs = childAccounts
+        return childAccounts
     }
 
-    public func fetchVM() {
-        // TODO:
+    /// Fetch virtual machine accounts
+    /// - Note: Implementation pending
+    @discardableResult
+    public func fetchVM() async throws -> COA? {
+        guard let address = try await flow.getEVMAddress(address: account.address) else {
+            // No COA
+            return nil
+        }
+
+        guard let coa = COA(address, network: chainID) else {
+            throw WalletError.invaildEVMAddress
+        }
+        
+        self.coa = coa
+        return coa
     }
 }
 
+// MARK: - Flow Signer Implementation
+
 extension Account: FlowSigner {
+    /// Account address for signing
     public var address: Flow.Address {
         account.address
     }
 
+    /// Key index for signing
     public var keyIndex: Int {
         findKeyInAccount()?.first?.index ?? 0
     }
 
+    /// Sign a Flow transaction
+    /// - Parameters:
+    ///   - transaction: Transaction to sign (unused)
+    ///   - signableData: Data to sign
+    /// - Returns: Signed data
+    /// - Throws: WalletError if signing key is not available
     public func sign(transaction _: Flow.Transaction, signableData: Data) async throws -> Data {
         guard let key, let signKey = findKeyInAccount()?.first else {
             throw WalletError.emptySignKey
