@@ -33,6 +33,8 @@ public enum WalletType {
     case key(any KeyProtocol)
     /// A watch-only wallet that can only observe an address without signing capability
     case watch(Flow.Address)
+    
+//    case proxy()
 
     /// Prefix used for wallet identification in storage
     var idPrefix: String {
@@ -176,7 +178,7 @@ public class Wallet: ObservableObject {
             for try await (network, accounts) in group {
                 if !accounts.isEmpty {
                     flowAccounts[network] = accounts
-                    networkAccounts[network] = accounts.compactMap { Account(account: $0, key: type.key) }
+                    networkAccounts[network] = accounts.compactMap { Account(account: $0, chainID: network, key: type.key) }
                 }
             }
         }
@@ -257,7 +259,7 @@ public class Wallet: ObservableObject {
         accounts = [Flow.ChainID: [Account]]()
         for network in model.keys {
             if let acc = model[network] {
-                accounts?[network] = acc.compactMap { Account(account: $0, key: type.key) }
+                accounts?[network] = acc.compactMap { Account(account: $0, chainID: network, key: type.key) }
             }
         }
     }

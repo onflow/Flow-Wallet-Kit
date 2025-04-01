@@ -6,7 +6,16 @@
 //
 
 import Foundation
+import Flow
 
-enum FlowVM {
-    case EVM(address: String)
+public enum FlowVM {
+    case EVM
+}
+
+public protocol FlowVMProtocol {
+    associatedtype VMAddress
+    
+    var vm: FlowVM { get }
+    var address: VMAddress { get }
+    var chainID: Flow.ChainID { get }
 }

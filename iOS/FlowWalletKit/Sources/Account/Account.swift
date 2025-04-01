@@ -32,11 +32,37 @@ public class Account {
     // MARK: - Properties
     
     /// Child accounts associated with this account
-    public var childs: [Account]?
+    @Published
+    public var childs: [ChildAccount]?
 
     /// Whether this account has child accounts
     public var hasChild: Bool {
         !(childs?.isEmpty ?? true)
+    }
+
+    /// Virtual machine accounts associated with this account
+//    public var vm: [any FlowVMProtocol]?
+    @Published
+    public var coa: COA?
+
+    /// Whether this account has VM accounts
+    public var hasCOA: Bool {
+        !(coa == nil)
+    }
+
+    /// Whether this account can sign transactions
+    public var canSign: Bool {
+        !(key == nil)
+    }
+
+    /// The underlying Flow account
+    public let account: Flow.Account
+    
+    // MARK: - Full Weight Key
+    
+    /// First available full weight key
+    public var fullWeightKey: Flow.AccountKey? {
+        fullWeightKeys.first
     }
     
     /// Whether this account has any full weight keys
@@ -49,29 +75,10 @@ public class Account {
         account.keys.filter { !$0.revoked && $0.weight >= 1000 }
     }
 
-    /// Virtual machine accounts associated with this account
-    public var vm: [Account]?
-
-    /// Whether this account has VM accounts
-    public var hasVM: Bool {
-        !(vm?.isEmpty ?? true)
-    }
-
-    /// Whether this account can sign transactions
-    public var canSign: Bool {
-        !(key == nil)
-    }
-
-    /// The underlying Flow account
-    public let account: Flow.Account
-    
-    /// First available full weight key
-    public var fullWeightKey: Flow.AccountKey? {
-        fullWeightKeys.first
-    }
-
     /// Cryptographic key for signing
     public let key: (any KeyProtocol)?
+    
+    public let chainID: Flow.ChainID
 
     // MARK: - Initialization
     
@@ -79,9 +86,10 @@ public class Account {
     /// - Parameters:
     ///   - account: Flow account data
     ///   - key: Optional signing key
-    init(account: Flow.Account, key: (any KeyProtocol)?) {
+    init(account: Flow.Account, chainID: Flow.ChainID,  key: (any KeyProtocol)?) {
         self.account = account
         self.key = key
+        self.chainID = chainID
     }
 
     // MARK: - Key Management
@@ -108,16 +116,47 @@ public class Account {
 
     // MARK: - Account Relationships
     
+    /// Load all linked accounts (VM and child accounts) in parallel
+    public func loadLinkedAccounts() async throws {
+        // Execute both fetch operations concurrently
+        async let vmFetch: COA? = fetchVM()
+        async let childFetch: [ChildAccount] = fetchChild()
+        
+        // Wait for both operations to complete
+        try await (_, _) = (vmFetch, childFetch)
+    }
+    
     /// Fetch child accounts
     /// - Note: Implementation pending
-    public func fetchChild() {
-        // TODO:
+    @discardableResult
+    public func fetchChild() async throws -> [ChildAccount] {
+        let childs = try await flow.getChildMetadata(address: account.address)
+        let childAccounts = childs.compactMap { (addr, metadata) in
+            ChildAccount(address: .init(addr),
+                         network: chainID,
+                         name: metadata.name,
+                         description: metadata.description,
+                         icon: metadata.thumbnail?.url)
+        }
+        self.childs = childAccounts
+        return childAccounts
     }
 
     /// Fetch virtual machine accounts
     /// - Note: Implementation pending
-    public func fetchVM() {
-        // TODO:
+    @discardableResult
+    public func fetchVM() async throws -> COA? {
+        guard let address = try await flow.getEVMAddress(address: account.address) else {
+            // No COA
+            return nil
+        }
+
+        guard let coa = COA(address, network: chainID) else {
+            throw WalletError.invaildEVMAddress
+        }
+        
+        self.coa = coa
+        return coa
     }
 }
 

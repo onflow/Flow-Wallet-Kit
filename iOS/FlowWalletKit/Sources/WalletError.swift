@@ -76,6 +76,9 @@ public enum WalletError: String, Error, CaseIterable, CustomStringConvertible {
     /// Invalid signature algorithm specified
     /// Thrown when an unknown or invalid signature algorithm is provided
     case invaildSignatureAlgorithm
+    /// Invalid EVM address
+    /// Thrown when an unknown or invalid EVM address is provided
+    case invaildEVMAddress
     
     // MARK: - Authentication Errors
     
