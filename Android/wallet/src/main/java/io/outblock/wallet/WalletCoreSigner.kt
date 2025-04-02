@@ -37,7 +37,7 @@ class WalletCoreSigner(
     }
 
     override suspend fun sign(transaction: Transaction, bytes: ByteArray): ByteArray {
-        return sign(bytes)
+        return sign(bytes) //to-do: implement API-based signing with Firebase payment service
     }
 }
 
