@@ -28,7 +28,7 @@ public protocol ProxyProtocol {
 }
 
 /// Represents a Flow blockchain account with signing capabilities
-public class Account {
+public class Account: ObservableObject, Cacheable {
     // MARK: - Properties
     
     /// Child accounts associated with this account
@@ -57,6 +57,43 @@ public class Account {
 
     /// The underlying Flow account
     public let account: Flow.Account
+    
+    // MARK: - Cacheable Protocol Implementation
+    
+    /// The type of data being cached for the account
+    public typealias CachedData = AccountCache
+    
+    /// Storage mechanism used for caching
+    public var storage: StorageProtocol {
+        guard let key = key else {
+            fatalError("Storage only available for accounts with keys")
+        }
+        return key.storage
+    }
+    
+    /// Data to be cached
+    public var cachedData: CachedData? {
+        AccountCache(
+            childs: childs,
+            coa: coa,
+            account: account
+        )
+    }
+    
+    /// Unique identifier for caching account data
+    public var cacheId: String {
+        ["Account", account.address.hex, chainID.name].joined(separator: "/")
+    }
+    
+    // MARK: - Cache Data Structure
+    
+    /// Structure representing cacheable account data
+    public struct AccountCache: Codable {
+        let childs: [ChildAccount]?
+        let coa: COA?
+        let account: Flow.Account
+    }
+    
     
     // MARK: - Full Weight Key
     
@@ -90,6 +127,23 @@ public class Account {
         self.account = account
         self.key = key
         self.chainID = chainID
+        
+        Task {
+            try await fetchAccount()
+        }
+    }
+    
+    public func fetchAccount() async throws {
+        do {
+            let cached = try loadCache()
+            self.childs = cached.childs
+            self.coa = cached.coa
+        } catch {
+            //TODO: Handle no cache log
+            print("AAAAAA ====> \(error.localizedDescription)")
+        }
+        try await _ = loadLinkedAccounts()
+        try cache()
     }
 
     // MARK: - Key Management
@@ -117,13 +171,14 @@ public class Account {
     // MARK: - Account Relationships
     
     /// Load all linked accounts (VM and child accounts) in parallel
-    public func loadLinkedAccounts() async throws {
+    @discardableResult
+    public func loadLinkedAccounts() async throws -> (vms: COA?, childs: [ChildAccount]) {
         // Execute both fetch operations concurrently
         async let vmFetch: COA? = fetchVM()
         async let childFetch: [ChildAccount] = fetchChild()
         
         // Wait for both operations to complete
-        try await (_, _) = (vmFetch, childFetch)
+        return try await (vmFetch, childFetch)
     }
     
     /// Fetch child accounts
