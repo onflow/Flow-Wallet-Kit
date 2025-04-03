@@ -28,7 +28,7 @@ public protocol ProxyProtocol {
 }
 
 /// Represents a Flow blockchain account with signing capabilities
-public class Account {
+public class Account: ObservableObject {
     // MARK: - Properties
     
     /// Child accounts associated with this account
