@@ -77,7 +77,7 @@ public enum WalletType {
 /// - Fetching account data from networks
 /// - Caching account information
 /// - Supporting both key-based and watch-only wallets
-public class Wallet: ObservableObject {
+public class Wallet: ObservableObject, Cacheable {
     // MARK: - Constants
     
     /// Prefix used for caching wallet data in storage
@@ -102,10 +102,28 @@ public class Wallet: ObservableObject {
     /// Raw Flow accounts data, used for caching
     /// This property stores the underlying Flow.Account objects
     public var flowAccounts: [Flow.ChainID: [Flow.Account]]?
+    
+    // MARK: - Cacheable Protocol Implementation
+    
+    /// The type of data being cached for the wallet
+    public typealias CachedData = [Flow.ChainID: [Flow.Account]]
+    
+    /// Storage mechanism used for caching
+    public var storage: StorageProtocol {
+        cacheStorage
+    }
+    
+    /// Storage mechanism used for caching
+    private(set) var cacheStorage: StorageProtocol
+    
+    /// Data to be cached
+    public var cachedData: CachedData? {
+        flowAccounts
+    }
 
     /// Unique identifier for caching wallet data
     /// Combines the cache prefix with the wallet's type-specific ID
-    private var cacheId: String {
+    public var cacheId: String {
         [Wallet.cachePrefix, type.id].joined(separator: "/")
     }
 
@@ -120,9 +138,12 @@ public class Wallet: ObservableObject {
     /// // Create a key-based wallet for mainnet only
     /// let wallet = Wallet(type: .key(myKey), networks: [.mainnet])
     /// ```
-    public init(type: WalletType, networks: Set<Flow.ChainID> = [.mainnet, .testnet]) {
+    public init(type: WalletType,
+                networks: Set<Flow.ChainID> = [.mainnet, .testnet],
+                cacheStorage: StorageProtocol = FileSystemStorage.shared) {
         self.type = type
         self.networks = networks
+        self.cacheStorage = cacheStorage
     }
 
     // MARK: - Public Methods
@@ -134,9 +155,17 @@ public class Wallet: ObservableObject {
     /// 3. Updates the cache with new data
     public func fetchAccount() async throws {
         do {
-            try loadCahe()
+            let model = try loadCache()
+            flowAccounts = model
+            accounts = [Flow.ChainID: [Account]]()
+            for network in model.keys {
+                if let acc = model[network] {
+                    accounts?[network] = acc.compactMap { Account(account: $0, chainID: network, key: type.key) }
+                }
+            }
         } catch {
             //TODO: Handle no cache log
+            print(error.localizedDescription)
         }
         try await _ = fetchAllNetworkAccounts()
         try cache()
@@ -191,7 +220,6 @@ public class Wallet: ObservableObject {
     /// Fetch accounts for a specific network
     /// - Parameters:
     ///   - chainID: The network to fetch accounts from
-    ///   - onlyFullWeight: Whether to only return accounts with full weight keys
     /// - Returns: Array of Flow accounts
     /// - Throws: WalletError.invaildWalletType if wallet type is invalid
     ///
@@ -200,7 +228,7 @@ public class Wallet: ObservableObject {
     /// - Performs fetches in parallel for better performance
     /// For watch-only wallets:
     /// - Retrieves the account at the watched address
-    public func account(chainID: Flow.ChainID, onlyFullWeight: Bool = true) async throws -> [Flow.Account] {
+    public func account(chainID: Flow.ChainID) async throws -> [Flow.Account] {
         // Handle watch-only wallets
         guard case let .key(key) = type else {
             if case let .watch(address) = type {
@@ -229,38 +257,4 @@ public class Wallet: ObservableObject {
         return try await p256KeyAccounts + secp256k1KeyAccounts
     }
 
-    // MARK: - Cache Management
-
-    /// Cache the current state of accounts
-    /// This method stores the raw Flow.Account data in the wallet's storage
-    /// Only available for key-based wallets
-    public func cache() throws {
-        guard let flowAccounts, case let .key(key) = type else {
-            return
-        }
-
-        let data = try JSONEncoder().encode(flowAccounts)
-        try key.storage.set(cacheId, value: data)
-    }
-
-    /// Load accounts from cache
-    /// This method:
-    /// 1. Retrieves cached Flow.Account data
-    /// 2. Decodes it into the appropriate format
-    /// 3. Updates both raw and processed account data
-    /// - Throws: WalletError.loadCacheFailed if loading fails
-    public func loadCahe() throws {
-        guard case let .key(key) = type, let data = try key.storage.get(cacheId) else {
-            throw WalletError.loadCacheFailed
-        }
-        let model = try JSONDecoder().decode([Flow.ChainID: [Flow.Account]].self, from: data)
-        flowAccounts = model
-
-        accounts = [Flow.ChainID: [Account]]()
-        for network in model.keys {
-            if let acc = model[network] {
-                accounts?[network] = acc.compactMap { Account(account: $0, chainID: network, key: type.key) }
-            }
-        }
-    }
 }

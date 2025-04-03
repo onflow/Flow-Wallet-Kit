@@ -8,7 +8,11 @@
 import Foundation
 import Flow
 
-public struct ChildAccount: Codable {
+public struct ChildAccount: Codable, Identifiable {
+    public var id: Flow.Address {
+        address
+    }
+    
     public let address: Flow.Address
     public let network: Flow.ChainID
     public let name: String?

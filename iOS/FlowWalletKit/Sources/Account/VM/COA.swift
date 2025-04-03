@@ -10,7 +10,11 @@ import WalletCore
 import Flow
 
 // CadenceOwnedAccount
-public class COA: FlowVMProtocol {
+public class COA: FlowVMProtocol, Identifiable, Codable {
+    
+    public var id: String {
+        address
+    }
     
     public var chainID: Flow.ChainID {
         network
