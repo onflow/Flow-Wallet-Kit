@@ -121,17 +121,6 @@ object KeyManager {
         }
     }
 
-    fun clearAllEntries() {
-        try {
-            val aliases = getAllAliases()
-            for (alias in aliases) {
-                keyStore.deleteEntry(alias)
-            }
-        } catch (e: KeyStoreException) {
-            Log.e(WALLET_TAG, "Error clearing all entries: $e")
-            throw WalletCoreException("Error clearing all entries", e)
-        }
-    }
 }
 
 fun PublicKey?.toFormatString(): String {
