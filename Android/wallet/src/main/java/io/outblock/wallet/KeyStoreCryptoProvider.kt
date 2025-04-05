@@ -1,6 +1,5 @@
 package io.outblock.wallet
 
-import com.nftco.flow.sdk.bytesToHex
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.Signer
