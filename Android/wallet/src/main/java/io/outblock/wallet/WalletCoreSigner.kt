@@ -22,7 +22,7 @@ class WalletCoreSigner(
             if (privateKey == null) {
                 throw WalletCoreException("Error getting private key", null)
             }
-            val signature = Signature.getInstance(hashAlgo.value)
+            val signature = Signature.getInstance("SHA256withECDSA") //to-do: needs to be dynamic
             signature.initSign(privateKey)
             signature.update(bytes)
             val asn1Signature = signature.sign()

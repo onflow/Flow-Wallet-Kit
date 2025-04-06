@@ -1,12 +1,12 @@
 package io.outblock.wallet
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.nftco.flow.sdk.HashAlgorithm
-import com.nftco.flow.sdk.Hasher
 import junit.framework.TestCase.*
+import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.onflow.flow.models.HashingAlgorithm
 import java.security.KeyPair
 import java.security.MessageDigest
 import java.security.Signature
@@ -30,14 +30,13 @@ class WalletCoreSignerTest {
         // Test that signer can be created with custom hasher
         val customSigner = WalletCoreSigner(
             keyPair.private,
-            HashAlgorithm.SHA2_256,
-            HasherImpl(HashAlgorithm.SHA2_256)
+            HashingAlgorithm.SHA2_256,
         )
         assertNotNull("Custom signer should be created successfully", customSigner)
     }
 
     @Test
-    fun testSignDataFormat() {
+    fun testSignDataFormat() = runBlocking {
         val testData = "Test message".encodeToByteArray()
         val signature = signer.sign(testData)
 
@@ -46,7 +45,7 @@ class WalletCoreSignerTest {
     }
 
     @Test
-    fun testSignatureVerification() {
+    fun testSignatureVerification() = runBlocking {
         val testData = "Test message".encodeToByteArray()
         val signature = signer.sign(testData)
 
@@ -89,7 +88,7 @@ class WalletCoreSignerTest {
     }
 
     @Test
-    fun testSignWithNullPrivateKey() {
+    fun testSignWithNullPrivateKey() = runBlocking {
         val nullSigner = WalletCoreSigner(null)
         val testData = "Test message".encodeToByteArray()
         
@@ -105,7 +104,7 @@ class WalletCoreSignerTest {
     }
 
     @Test
-    fun testSignMultipleMessages() {
+    fun testSignMultipleMessages() = runBlocking {
         val message1 = "First message".encodeToByteArray()
         val message2 = "Second message".encodeToByteArray()
         
@@ -123,7 +122,7 @@ class WalletCoreSignerTest {
 
     @Test
     fun testHasherImplementation() {
-        val hasher = signer.hasher
+        val hasher = HasherImpl(HashingAlgorithm.SHA2_256)
         val testData = "Test data".encodeToByteArray()
         
         // Compare with Java's MessageDigest implementation

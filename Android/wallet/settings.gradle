@@ -13,5 +13,16 @@ dependencyResolutionManagement {
         mavenCentral()
         maven { url = uri("https://jitpack.io") }
     }
-} 
+} pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+    }
+    plugins {
+        id("com.android.library") version "8.1.1"
+        id("org.jetbrains.kotlin.android") version "YOUR_KOTLIN_ANDROID_VERSION"
+    }
+}
+
 
