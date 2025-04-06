@@ -4,6 +4,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.Signer
 import org.onflow.flow.models.SigningAlgorithm
+import org.onflow.flow.models.bytesToHex
 import java.security.Security
 
 
