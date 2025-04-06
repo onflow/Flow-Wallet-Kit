@@ -46,7 +46,11 @@ internal class HasherImpl(
 ) : Hasher {
 
     override fun hash(bytes: ByteArray): ByteArray {
-        val digest = MessageDigest.getInstance(hashAlgo.value)
-        return digest.digest(bytes)
+        val digestAlgorithm = when (hashAlgo) {
+            HashingAlgorithm.SHA2_256 -> "SHA-256"
+            else -> hashAlgo.toString()
+        }
+        val messageDigest = MessageDigest.getInstance(digestAlgorithm)
+        return messageDigest.digest(bytes)
     }
 }

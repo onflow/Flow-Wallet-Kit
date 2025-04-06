@@ -125,7 +125,6 @@ class WalletCoreSignerTest {
         val hasher = HasherImpl(HashingAlgorithm.SHA2_256)
         val testData = "Test data".encodeToByteArray()
         
-        // Compare with Java's MessageDigest implementation
         val messageDigest = MessageDigest.getInstance("SHA-256")
         val expectedHash = messageDigest.digest(testData)
         val actualHash = hasher.hash(testData)
