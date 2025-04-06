@@ -8,10 +8,8 @@ import org.onflow.flow.ChainId
 import org.onflow.flow.models.Account
 import org.onflow.flow.models.AccountPublicKey
 import org.onflow.flow.models.FlowAddress
-import org.onflow.flow.models.Signer
 import org.onflow.flow.models.SigningAlgorithm
 import org.onflow.flow.models.Transaction
-import org.onflow.flow.models.FlowID
 
 /**
  * Represents a Flow blockchain account with signing capabilities
@@ -19,8 +17,8 @@ import org.onflow.flow.models.FlowID
 class Account(
     val account: Account,
     val chainID: ChainId,
-    val key: KeyProtocol?
-) : Signer {
+    val key: AccountPublicKey?
+) {
 
     // Properties
 
@@ -36,27 +34,26 @@ class Account(
     val canSign: Boolean
         get() = key != null
 
-    // MARK: - Key Management
+    // Key Management
 
-    val fullWeightKey: AccountKey?
+    val fullWeightKey: AccountPublicKey?
         get() = fullWeightKeys.firstOrNull()
 
     val hasFullWeightKey: Boolean
         get() = fullWeightKeys.isNotEmpty()
 
-    val fullWeightKeys: List<AccountPublicKey>
+    private val fullWeightKeys: List<AccountPublicKey>
         get() = account.keys?.filter { !it.revoked && it.weight >= 1000.toString() } ?: emptyList()
 
-    fun findKeyInAccount(): List<AccountPublicKey>? {
-        key ?: return null
-
+    private fun findKeyInAccount(): List<AccountPublicKey> {
+        val keyInstance = key ?: return emptyList()
         val keys = mutableListOf<AccountPublicKey>()
         key.publicKey(SigningAlgorithm.ECDSA_P256)?.let { p256 ->
-            val p256Keys = account.keys.filter { !it.revoked && it.weight >= 1000 && it.publicKey.contentEquals(p256) }
+            val p256Keys = account.keys?.filter { !it.revoked && it.weight.toInt() >= 1000 && it.publicKey.contentEquals(p256) }
             keys.addAll(p256Keys)
         }
         key.publicKey(SigningAlgorithm.ECDSA_secp256k1)?.let { secpKey ->
-            val secpKeys = account.keys.filter { !it.revoked && it.weight >= 1000 && it.publicKey.contentEquals(secpKey) }
+            val secpKeys = account.keys?.filter { !it.revoked && it.weight.toInt() >= 1000 && it.publicKey.contentEquals(secpKey) }
             keys.addAll(secpKeys)
         }
 
@@ -91,17 +88,17 @@ class Account(
         return COA.create(address, network = chainID) ?: throw WalletError.InvalidEVMAddress
     }
 
-    // MARK: - FlowSigner Implementation
+    // FlowSigner Implementation
 
-    override val address: FlowAddress
-        get() = FlowAddress.of(account.address.toByteArray())
+    override val address: String
+        get() = account.address
 
     override val keyIndex: Int
-        get() = findKeyInAccount()?.firstOrNull()?.index ?: 0
+        get() = findKeyInAccount().firstOrNull()?.index?.toInt() ?: 0
 
-    override suspend fun sign(transaction: Transaction, signableData: ByteArray): ByteArray {
+    override suspend fun sign(transaction: Transaction, bytes: ByteArray): ByteArray {
         val key = key ?: throw WalletError.EmptySignKey
-        val signKey = findKeyInAccount()?.firstOrNull() ?: throw WalletError.EmptySignKey
+        val signKey = findKeyInAccount().firstOrNull() ?: throw WalletError.EmptySignKey
 
         return key.sign(
             data = signableData,

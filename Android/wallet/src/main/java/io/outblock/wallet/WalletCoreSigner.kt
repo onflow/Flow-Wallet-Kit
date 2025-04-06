@@ -1,6 +1,7 @@
 package io.outblock.wallet
 
 import android.util.Log
+import io.outblock.wallet.errors.WalletError
 import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.ASN1Sequence
 import org.onflow.flow.models.Hasher
@@ -20,7 +21,7 @@ class WalletCoreSigner(
     override suspend fun sign(bytes: ByteArray): ByteArray {
         try {
             if (privateKey == null) {
-                throw WalletCoreException("Error getting private key", null)
+                throw WalletError.EmptyKey
             }
             val signature = Signature.getInstance("SHA256withECDSA") //to-do: needs to be dynamic
             signature.initSign(privateKey)
@@ -32,7 +33,7 @@ class WalletCoreSigner(
             return (r.takeLast(32) + s.takeLast(32)).toByteArray()
         } catch (e: Exception) {
             Log.e(WALLET_TAG, "Error while signing data: $e")
-            throw WalletCoreException("Error signing data", e)
+            throw WalletError.SignError
         }
     }
 
