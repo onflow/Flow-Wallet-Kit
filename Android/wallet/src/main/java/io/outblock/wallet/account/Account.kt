@@ -48,14 +48,20 @@ class Account(
     private fun findKeyInAccount(): List<AccountPublicKey> {
         val keyInstance = key ?: return emptyList()
         val keys = mutableListOf<AccountPublicKey>()
-        key.publicKey(SigningAlgorithm.ECDSA_P256)?.let { p256 ->
-            val p256Keys = account.keys?.filter { !it.revoked && it.weight.toInt() >= 1000 && it.publicKey.contentEquals(p256) }
-            keys.addAll(p256Keys)
+
+        // Retrieve the public key from the provider (hex string)
+        val providerPublicKey = keyInstance.getPublicKey()
+
+        // Filter account keys where:
+        // - The key is not revoked
+        // - The key's weight is >= 1000
+        // - The stored public key (hex) matches the provider's public key (ignoring case)
+        val matchingKeys = account.keys.filter {
+            !it.revoked &&
+                    it.weight.toInt() >= 1000 &&
+                    it.publicKey.equals(providerPublicKey, ignoreCase = true)
         }
-        key.publicKey(SigningAlgorithm.ECDSA_secp256k1)?.let { secpKey ->
-            val secpKeys = account.keys?.filter { !it.revoked && it.weight.toInt() >= 1000 && it.publicKey.contentEquals(secpKey) }
-            keys.addAll(secpKeys)
-        }
+        keys.addAll(matchingKeys)
 
         return keys
     }
