@@ -64,27 +64,27 @@ class WalletCoreSignerTest {
         assertTrue("Signature should be valid", verifySignature.verify(derSignature))
     }
 
+    private fun encodeIntegerToDer(value: ByteArray): ByteArray {
+        // Remove leading zeros if any
+        var valueBytes = value.dropWhile { it == 0.toByte() }.toByteArray()
+        // Ensure the value is positive: if the first byte is >= 0x80, prepend a 0x00.
+        if (valueBytes.isNotEmpty() && valueBytes[0].toInt() and 0x80 != 0) {
+            valueBytes = byteArrayOf(0x00) + valueBytes
+        }
+        val length = valueBytes.size
+        return byteArrayOf(0x02, length.toByte()) + valueBytes
+    }
+
     private fun buildDerSignature(r: ByteArray, s: ByteArray): ByteArray {
-        // Since WalletCoreSigner takes the last 32 bytes of each value,
-        // we need to ensure our DER encoding matches that behavior
+        // Use the last 32 bytes for each value, then DER-encode them
         val rValue = r.takeLast(32).toByteArray()
         val sValue = s.takeLast(32).toByteArray()
-        
-        // Calculate lengths
-        val rLen = rValue.size
-        val sLen = sValue.size
-        val totalLen = 2 + rLen + 2 + sLen
-        
-        return byteArrayOf(
-            0x30, // Sequence tag
-            totalLen.toByte(), // Sequence length
-            0x02, // Integer tag for r
-            rLen.toByte(), // r length
-            *rValue, // r value
-            0x02, // Integer tag for s
-            sLen.toByte(), // s length
-            *sValue // s value
-        )
+
+        val rDer = encodeIntegerToDer(rValue)
+        val sDer = encodeIntegerToDer(sValue)
+
+        val totalLength = rDer.size + sDer.size
+        return byteArrayOf(0x30, totalLength.toByte()) + rDer + sDer
     }
 
     @Test
