@@ -121,6 +121,9 @@ public enum WalletError: String, Error, CaseIterable, CustomStringConvertible {
     /// Invalid wallet type for operation
     /// Thrown when attempting an operation not supported by the wallet type
     case invaildWalletType
+    
+    
+    case cacheDecodeFailed
 
     /// Returns the numeric error code for the error case
     /// This can be used for error tracking and analytics

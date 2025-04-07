@@ -6,27 +6,6 @@
 import Flow
 import Foundation
 
-/// Protocol for proxy wallet implementations
-public protocol ProxyProtocol {
-    /// The type of wallet this proxy represents
-    associatedtype Wallet
-
-    /// Retrieve a wallet instance by ID
-    /// - Parameter id: Unique identifier for the wallet
-    /// - Returns: Wallet instance
-    /// - Throws: Error if wallet cannot be retrieved
-    static func get(id: String) throws -> Wallet
-    
-    /// Sign data using specified algorithms
-    /// - Parameters:
-    ///   - data: Data to sign
-    ///   - signAlgo: Signature algorithm to use
-    ///   - hashAlgo: Hash algorithm to use
-    /// - Returns: Signed data
-    /// - Throws: Error if signing fails
-    func sign(data: Data, signAlgo: Flow.SignatureAlgorithm, hashAlgo: Flow.HashAlgorithm) throws -> Data
-}
-
 /// Represents a Flow blockchain account with signing capabilities
 public class Account: ObservableObject, Cacheable {
     // MARK: - Properties
@@ -75,14 +54,13 @@ public class Account: ObservableObject, Cacheable {
     public var cachedData: CachedData? {
         AccountCache(
             childs: childs,
-            coa: coa,
-            account: account
+            coa: coa
         )
     }
     
     /// Unique identifier for caching account data
     public var cacheId: String {
-        ["Account", account.address.hex, chainID.name].joined(separator: "/")
+        ["Account", chainID.name, account.address.hex].joined(separator: "-")
     }
     
     // MARK: - Cache Data Structure
@@ -91,7 +69,6 @@ public class Account: ObservableObject, Cacheable {
     public struct AccountCache: Codable {
         let childs: [ChildAccount]?
         let coa: COA?
-        let account: Flow.Account
     }
     
     
@@ -135,14 +112,17 @@ public class Account: ObservableObject, Cacheable {
     
     public func fetchAccount() async throws {
         do {
-            let cached = try loadCache()
-            self.childs = cached.childs
-            self.coa = cached.coa
+            if let cached = try loadCache() {
+                self.childs = cached.childs
+                self.coa = cached.coa
+            }
         } catch {
             //TODO: Handle no cache log
-            print("AAAAAA ====> \(error.localizedDescription)")
+            print("AAAAAA ====> \(address.hex) - \(error.localizedDescription)")
         }
         try await _ = loadLinkedAccounts()
+        
+    
         try cache()
     }
 
@@ -212,6 +192,12 @@ public class Account: ObservableObject, Cacheable {
         
         self.coa = coa
         return coa
+    }
+}
+
+extension Account: Equatable {
+    public static func == (lhs: Account, rhs: Account) -> Bool {
+        lhs.address == rhs.address
     }
 }
 
