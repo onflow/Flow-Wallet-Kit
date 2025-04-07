@@ -4,15 +4,18 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * Regular storage implementation using SharedPreferences
- * Provides unencrypted storage for non-sensitive data like cache
+ * Standard storage implementation using SharedPreferences
+ * Provides medium-security storage for non-sensitive data
+ * Uses Android's standard secure storage with MODE_PRIVATE
  */
-class RegularStorage(
+class StandardStorage(
     private val context: Context,
-    private val fileName: String = "regular_storage"
+    private val fileName: String = "standard_storage"
 ) : StorageProtocol {
 
-    private val prefs: SharedPreferences = context.getSharedPreferences(fileName, Context.MODE_PRIVATE) as SharedPreferences
+    private val prefs: SharedPreferences = context.getSharedPreferences(fileName, Context.MODE_PRIVATE)
+
+    override val securityLevel: SecurityLevel = SecurityLevel.STANDARD
 
     override val allKeys: List<String>
         get() = prefs.all.keys.toList()
@@ -45,5 +48,9 @@ class RegularStorage(
         prefs.edit()
             .clear()
             .apply()
+    }
+
+    override fun exists(key: String): Boolean {
+        return prefs.contains(key)
     }
 } 

@@ -33,6 +33,8 @@ class SecureStorage(
         throw RuntimeException("Failed to create secure storage", e)
     }
 
+    override val securityLevel: SecurityLevel = SecurityLevel.ENCRYPTED
+
     override val allKeys: List<String>
         get() = encryptedPrefs.all.keys.toList()
 
@@ -64,5 +66,9 @@ class SecureStorage(
         encryptedPrefs.edit()
             .clear()
             .apply()
+    }
+
+    override fun exists(key: String): Boolean {
+        return encryptedPrefs.contains(key)
     }
 } 

@@ -42,4 +42,46 @@ interface StorageProtocol {
      * Remove all stored data
      */
     fun removeAll()
+
+    /**
+     * Check if a key exists in storage
+     * @param key Key to check
+     * @return Whether the key exists
+     */
+    fun exists(key: String): Boolean
+
+    /**
+     * Get the security level of this storage backend
+     * @return SecurityLevel indicating the security guarantees
+     */
+    val securityLevel: SecurityLevel
+}
+
+/**
+ * Enum representing different security levels for storage backends
+ */
+enum class SecurityLevel {
+    /**
+     * Highest security level - uses hardware-backed encryption
+     * (e.g., Android Keystore, Secure Enclave)
+     */
+    HARDWARE_BACKED,
+
+    /**
+     * High security level - uses software encryption
+     * (e.g., EncryptedSharedPreferences)
+     */
+    ENCRYPTED,
+
+    /**
+     * Medium security level - uses standard secure storage
+     * (e.g., SharedPreferences with MODE_PRIVATE)
+     */
+    STANDARD,
+
+    /**
+     * Lowest security level - uses in-memory storage
+     * Data is lost when app is closed
+     */
+    IN_MEMORY
 } 
