@@ -101,6 +101,8 @@ public enum WalletError: String, Error, CaseIterable, CustomStringConvertible {
     /// Thrown when public key derivation or loading fails
     case initPublicKeyFailed
     
+    case failedPassSecurityCheck
+    
     // MARK: - Network Errors
     
     /// Invalid key indexer URL

@@ -37,6 +37,8 @@ public class Account: ObservableObject, Cacheable {
     /// The underlying Flow account
     public let account: Flow.Account
     
+    public var securityDelegate: SecurityCheckDelegate?
+    
     // MARK: - Cacheable Protocol Implementation
     
     /// The type of data being cached for the account
@@ -100,11 +102,17 @@ public class Account: ObservableObject, Cacheable {
     /// - Parameters:
     ///   - account: Flow account data
     ///   - key: Optional signing key
-    init(account: Flow.Account, chainID: Flow.ChainID,  key: (any KeyProtocol)?) {
+    init(account: Flow.Account,
+         chainID: Flow.ChainID,
+         key: (any KeyProtocol)? = nil,
+         securityDelegate: SecurityCheckDelegate? = nil) {
         self.account = account
         self.key = key
         self.chainID = chainID
+        self.securityDelegate = securityDelegate
         
+        
+        // TODO: Revisit this
         Task {
             try await fetchAccount()
         }
@@ -223,6 +231,14 @@ extension Account: FlowSigner {
     public func sign(transaction _: Flow.Transaction, signableData: Data) async throws -> Data {
         guard let key, let signKey = findKeyInAccount()?.first else {
             throw WalletError.emptySignKey
+        }
+        
+        /// If there is securityDelegate, check if it's passed the security check
+        if let delegate = securityDelegate {
+            let result = try await delegate.verify()
+            if !result {
+                throw WalletError.failedPassSecurityCheck
+            }
         }
 
         return try key.sign(data: signableData, signAlgo: signKey.signAlgo, hashAlgo: signKey.hashAlgo)

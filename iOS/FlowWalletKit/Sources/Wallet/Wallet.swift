@@ -82,6 +82,8 @@ public class Wallet: ObservableObject, Cacheable {
     public var cacheId: String {
         [Wallet.cachePrefix, type.id].joined(separator: "-")
     }
+    
+    public var securityDelegate: SecurityCheckDelegate?
 
     // MARK: - Initialization
 
@@ -120,7 +122,7 @@ public class Wallet: ObservableObject, Cacheable {
                 accounts = [Flow.ChainID: [Account]]()
                 for network in model.keys {
                     if let acc = model[network] {
-                        accounts?[network] = acc.compactMap { Account(account: $0, chainID: network, key: type.key) }
+                        accounts?[network] = acc.compactMap { Account(account: $0, chainID: network, key: type.key, securityDelegate: securityDelegate) }
                     }
                 }
             }

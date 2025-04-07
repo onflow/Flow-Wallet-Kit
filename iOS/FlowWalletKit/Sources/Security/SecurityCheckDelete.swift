@@ -7,6 +7,6 @@
 
 import Foundation
 
-public protocol SecurityCheckDelete {
-    func verify() -> Bool
+public protocol SecurityCheckDelegate {
+    func verify() async throws -> Bool
 }
