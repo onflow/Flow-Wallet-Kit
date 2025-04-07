@@ -50,7 +50,7 @@ internal class HasherImpl(
         val digestAlgorithm = when (hashAlgo) {
             HashingAlgorithm.SHA2_256 -> "SHA-256"
             else -> hashAlgo.toString()
-        }
+        } // WIP - this can be removed once algorithm field is released on flow-kmm side
         val messageDigest = MessageDigest.getInstance(digestAlgorithm)
         return messageDigest.digest(bytes)
     }
