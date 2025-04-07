@@ -25,50 +25,6 @@
 import Flow
 import Foundation
 
-// MARK: - Wallet Types
-
-/// Represents different types of Flow wallets
-public enum WalletType {
-    /// A wallet backed by a cryptographic key (e.g., Secure Enclave, Seed Phrase, Private Key)
-    case key(any KeyProtocol)
-    /// A watch-only wallet that can only observe an address without signing capability
-    case watch(Flow.Address)
-    
-//    case proxy()
-
-    /// Prefix used for wallet identification in storage
-    var idPrefix: String {
-        switch self {
-        case .key:
-            return "Key"
-        case .watch:
-            return "Watch"
-        }
-    }
-
-    /// Unique identifier for the wallet type, combining prefix and specific identifier
-    /// For key-based wallets: "Key/{key.id}"
-    /// For watch wallets: "Watch/{address.hex}"
-    var id: String {
-        switch self {
-        case let .key(key):
-            return [idPrefix, key.id].joined(separator: "/")
-        case let .watch(address):
-            return [idPrefix, address.hex].joined(separator: "/")
-        }
-    }
-
-    /// Returns the associated key if the wallet is key-based, nil for watch-only wallets
-    var key: (any KeyProtocol)? {
-        switch self {
-        case let .key(key):
-            return key
-        default:
-            return nil
-        }
-    }
-}
-
 // MARK: - Wallet Implementation
 
 /// Main wallet class that manages Flow accounts across different networks
@@ -81,7 +37,7 @@ public class Wallet: ObservableObject, Cacheable {
     // MARK: - Constants
     
     /// Prefix used for caching wallet data in storage
-    static let cachePrefix: String = "Accounts"
+    static let cachePrefix: String = "Wallets"
 
     // MARK: - Properties
     
@@ -114,7 +70,7 @@ public class Wallet: ObservableObject, Cacheable {
     }
     
     /// Storage mechanism used for caching
-    private(set) var cacheStorage: StorageProtocol
+    private(set) var cacheStorage: StorageProtocol = FileSystemStorage()
     
     /// Data to be cached
     public var cachedData: CachedData? {
@@ -124,8 +80,10 @@ public class Wallet: ObservableObject, Cacheable {
     /// Unique identifier for caching wallet data
     /// Combines the cache prefix with the wallet's type-specific ID
     public var cacheId: String {
-        [Wallet.cachePrefix, type.id].joined(separator: "/")
+        [Wallet.cachePrefix, type.id].joined(separator: "-")
     }
+    
+    public var securityDelegate: SecurityCheckDelegate?
 
     // MARK: - Initialization
 
@@ -140,10 +98,12 @@ public class Wallet: ObservableObject, Cacheable {
     /// ```
     public init(type: WalletType,
                 networks: Set<Flow.ChainID> = [.mainnet, .testnet],
-                cacheStorage: StorageProtocol = FileSystemStorage.shared) {
+                cacheStorage: StorageProtocol? = nil) {
         self.type = type
         self.networks = networks
-        self.cacheStorage = cacheStorage
+        if let cacheStorage {
+            self.cacheStorage = cacheStorage
+        }
     }
 
     // MARK: - Public Methods
@@ -154,21 +114,36 @@ public class Wallet: ObservableObject, Cacheable {
     /// 2. Fetches fresh account data from networks
     /// 3. Updates the cache with new data
     public func fetchAccount() async throws {
+        print("DDDDDDDDDDDD ====> \(type.id)")
         do {
-            let model = try loadCache()
-            flowAccounts = model
-            accounts = [Flow.ChainID: [Account]]()
-            for network in model.keys {
-                if let acc = model[network] {
-                    accounts?[network] = acc.compactMap { Account(account: $0, chainID: network, key: type.key) }
+            if let model = try loadCache() {
+                print("FFFFFFFFFFFF ====> \(type.id)")
+                flowAccounts = model
+                accounts = [Flow.ChainID: [Account]]()
+                for network in model.keys {
+                    if let acc = model[network] {
+                        accounts?[network] = acc.compactMap { Account(account: $0, chainID: network, key: type.key, securityDelegate: securityDelegate) }
+                    }
                 }
             }
+        } catch WalletError.cacheDecodeFailed{
+            //TODO: Handle no cache log
+//            print("BBBBBB ====> \(type.id) - \(#error.localizedDescription)")
+        }
+        
+        print("DDDDDDDDDDDD 1111 ====> \(type.id)")
+        
+        try await _ = fetchAllNetworkAccounts()
+        
+        print("DDDDDDDDDDDD 2222 ====> \(type.id)")
+        
+        do {
+            try cache()
+            print("CCCCCCCCCCC ====> \(type.id) - Cache saved")
         } catch {
             //TODO: Handle no cache log
-            print(error.localizedDescription)
+            print("BBBBBBAAAAAA ====> \(type.id) - \(error.localizedDescription)")
         }
-        try await _ = fetchAllNetworkAccounts()
-        try cache()
     }
 
     /// Add a new network to manage

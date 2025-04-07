@@ -45,6 +45,18 @@ public class PrivateKey: KeyProtocol {
         self.pk = pk
         self.storage = storage
     }
+    
+    /// Initialize with existing private key and storage
+    /// - Parameters:
+    ///   - pk: Private Key raw data
+    ///   - storage: Storage implementation
+    init?(pk: Data, storage: any StorageProtocol) {
+        guard let pk = WalletCore.PrivateKey(data: pk) else {
+            return nil
+        }
+        self.pk = pk
+        self.storage = storage
+    }
 
     // MARK: - Key Creation
 
