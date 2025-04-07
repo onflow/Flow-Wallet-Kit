@@ -2,14 +2,13 @@ package io.outblock.wallet.account
 
 import io.outblock.wallet.account.vm.COA
 import io.outblock.wallet.keys.KeyProtocol
-import io.outblock.wallet.flow.AccountKey
 import io.outblock.wallet.errors.WalletError
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.Account
 import org.onflow.flow.models.AccountPublicKey
 import org.onflow.flow.models.FlowAddress
-import org.onflow.flow.models.SigningAlgorithm
 import org.onflow.flow.models.Transaction
+import org.onflow.flow.models.SigningAlgorithm
 
 /**
  * Represents a Flow blockchain account with signing capabilities
@@ -17,11 +16,10 @@ import org.onflow.flow.models.Transaction
 class Account(
     val account: Account,
     val chainID: ChainId,
-    val key: AccountPublicKey?
+    val key: KeyProtocol?
 ) {
 
     // Properties
-
     var childs: List<ChildAccount>? = null
     var coa: COA? = null
 
@@ -49,19 +47,22 @@ class Account(
         val keyInstance = key ?: return emptyList()
         val keys = mutableListOf<AccountPublicKey>()
 
-        // Retrieve the public key from the provider (hex string)
-        val providerPublicKey = keyInstance.getPublicKey()
+        // Get public keys for both supported signature algorithms
+        val p256PublicKey = keyInstance.publicKey(SigningAlgorithm.ECDSA_P256)
+        val secpPublicKey = keyInstance.publicKey(SigningAlgorithm.ECDSA_secp256k1)
 
         // Filter account keys where:
         // - The key is not revoked
         // - The key's weight is >= 1000
-        // - The stored public key (hex) matches the provider's public key (ignoring case)
-        val matchingKeys = account.keys.filter {
+        // - The stored public key matches either of the provider's public keys
+        val matchingKeys = account.keys?.filter {
             !it.revoked &&
-                    it.weight.toInt() >= 1000 &&
-                    it.publicKey.equals(providerPublicKey, ignoreCase = true)
+                    it.weight.toInt() >= 1000 && (
+                    (p256PublicKey != null && it.publicKey.equals(p256PublicKey.toString(Charsets.ISO_8859_1), ignoreCase = true)) ||
+                    (secpPublicKey != null && it.publicKey.equals(secpPublicKey.toString(Charsets.ISO_8859_1), ignoreCase = true))
+            )
         }
-        keys.addAll(matchingKeys)
+        keys.addAll(matchingKeys ?: emptyList())
 
         return keys
     }
