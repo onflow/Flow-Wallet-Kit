@@ -1,13 +1,14 @@
 package io.outblock.wallet
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.nftco.flow.sdk.HashAlgorithm
-import com.nftco.flow.sdk.SignatureAlgorithm
 import junit.framework.TestCase.*
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertNotEquals
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.onflow.flow.models.HashingAlgorithm
+import org.onflow.flow.models.SigningAlgorithm
 
 @RunWith(AndroidJUnit4::class)
 class KeyStoreCryptoProviderTest {
@@ -30,7 +31,7 @@ class KeyStoreCryptoProviderTest {
     }
 
     @Test
-    fun testGetUserSignature() {
+    fun testGetUserSignature() = runBlocking {
         val testJwt = "test.jwt.token"
         val signature = cryptoProvider.getUserSignature(testJwt)
         assertNotNull("Signature should not be null", signature)
@@ -38,7 +39,7 @@ class KeyStoreCryptoProviderTest {
     }
 
     @Test
-    fun testSignData() {
+    fun testSignData() = runBlocking {
         val testData = "Hello, Flow!".encodeToByteArray()
         val signature1 = cryptoProvider.signData(testData)
         val signature2 = cryptoProvider.signData(testData)
@@ -70,14 +71,14 @@ class KeyStoreCryptoProviderTest {
     @Test
     fun testGetHashAlgorithm() {
         assertEquals("Hash algorithm should be SHA2_256", 
-            HashAlgorithm.SHA2_256, 
+            HashingAlgorithm.SHA2_256,
             cryptoProvider.getHashAlgorithm())
     }
 
     @Test
     fun testGetSignatureAlgorithm() {
         assertEquals("Signature algorithm should be ECDSA_P256", 
-            SignatureAlgorithm.ECDSA_P256, 
+            SigningAlgorithm.ECDSA_P256,
             cryptoProvider.getSignatureAlgorithm())
     }
 
@@ -89,7 +90,7 @@ class KeyStoreCryptoProviderTest {
     }
 
     @Test
-    fun testSignerWithDifferentData() {
+    fun testSignerWithDifferentData() = runBlocking {
         val data1 = "Test data 1".encodeToByteArray()
         val data2 = "Test data 2".encodeToByteArray()
         

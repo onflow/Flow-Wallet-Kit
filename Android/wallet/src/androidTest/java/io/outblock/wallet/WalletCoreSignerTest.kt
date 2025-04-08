@@ -1,12 +1,12 @@
 package io.outblock.wallet
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.nftco.flow.sdk.HashAlgorithm
-import com.nftco.flow.sdk.Hasher
 import junit.framework.TestCase.*
+import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.onflow.flow.models.HashingAlgorithm
 import java.security.KeyPair
 import java.security.MessageDigest
 import java.security.Signature
@@ -30,14 +30,13 @@ class WalletCoreSignerTest {
         // Test that signer can be created with custom hasher
         val customSigner = WalletCoreSigner(
             keyPair.private,
-            HashAlgorithm.SHA2_256,
-            HasherImpl(HashAlgorithm.SHA2_256)
+            HashingAlgorithm.SHA2_256,
         )
         assertNotNull("Custom signer should be created successfully", customSigner)
     }
 
     @Test
-    fun testSignDataFormat() {
+    fun testSignDataFormat() = runBlocking {
         val testData = "Test message".encodeToByteArray()
         val signature = signer.sign(testData)
 
@@ -46,7 +45,7 @@ class WalletCoreSignerTest {
     }
 
     @Test
-    fun testSignatureVerification() {
+    fun testSignatureVerification() = runBlocking {
         val testData = "Test message".encodeToByteArray()
         val signature = signer.sign(testData)
 
@@ -65,31 +64,31 @@ class WalletCoreSignerTest {
         assertTrue("Signature should be valid", verifySignature.verify(derSignature))
     }
 
+    private fun encodeIntegerToDer(value: ByteArray): ByteArray {
+        // Remove leading zeros if any
+        var valueBytes = value.dropWhile { it == 0.toByte() }.toByteArray()
+        // Ensure the value is positive: if the first byte is >= 0x80, prepend a 0x00.
+        if (valueBytes.isNotEmpty() && valueBytes[0].toInt() and 0x80 != 0) {
+            valueBytes = byteArrayOf(0x00) + valueBytes
+        }
+        val length = valueBytes.size
+        return byteArrayOf(0x02, length.toByte()) + valueBytes
+    }
+
     private fun buildDerSignature(r: ByteArray, s: ByteArray): ByteArray {
-        // Since WalletCoreSigner takes the last 32 bytes of each value,
-        // we need to ensure our DER encoding matches that behavior
+        // Use the last 32 bytes for each value, then DER-encode them
         val rValue = r.takeLast(32).toByteArray()
         val sValue = s.takeLast(32).toByteArray()
-        
-        // Calculate lengths
-        val rLen = rValue.size
-        val sLen = sValue.size
-        val totalLen = 2 + rLen + 2 + sLen
-        
-        return byteArrayOf(
-            0x30, // Sequence tag
-            totalLen.toByte(), // Sequence length
-            0x02, // Integer tag for r
-            rLen.toByte(), // r length
-            *rValue, // r value
-            0x02, // Integer tag for s
-            sLen.toByte(), // s length
-            *sValue // s value
-        )
+
+        val rDer = encodeIntegerToDer(rValue)
+        val sDer = encodeIntegerToDer(sValue)
+
+        val totalLength = rDer.size + sDer.size
+        return byteArrayOf(0x30, totalLength.toByte()) + rDer + sDer
     }
 
     @Test
-    fun testSignWithNullPrivateKey() {
+    fun testSignWithNullPrivateKey() = runBlocking {
         val nullSigner = WalletCoreSigner(null)
         val testData = "Test message".encodeToByteArray()
         
@@ -105,7 +104,7 @@ class WalletCoreSignerTest {
     }
 
     @Test
-    fun testSignMultipleMessages() {
+    fun testSignMultipleMessages() = runBlocking {
         val message1 = "First message".encodeToByteArray()
         val message2 = "Second message".encodeToByteArray()
         
@@ -123,10 +122,9 @@ class WalletCoreSignerTest {
 
     @Test
     fun testHasherImplementation() {
-        val hasher = signer.hasher
+        val hasher = HasherImpl(HashingAlgorithm.SHA2_256)
         val testData = "Test data".encodeToByteArray()
         
-        // Compare with Java's MessageDigest implementation
         val messageDigest = MessageDigest.getInstance("SHA-256")
         val expectedHash = messageDigest.digest(testData)
         val actualHash = hasher.hash(testData)

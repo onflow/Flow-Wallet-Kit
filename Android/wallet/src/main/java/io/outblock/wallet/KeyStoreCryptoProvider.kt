@@ -1,10 +1,10 @@
 package io.outblock.wallet
 
-import com.nftco.flow.sdk.HashAlgorithm
-import com.nftco.flow.sdk.SignatureAlgorithm
-import com.nftco.flow.sdk.Signer
-import com.nftco.flow.sdk.bytesToHex
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.onflow.flow.models.HashingAlgorithm
+import org.onflow.flow.models.Signer
+import org.onflow.flow.models.SigningAlgorithm
+import org.onflow.flow.models.bytesToHex
 import java.security.Security
 
 
@@ -14,13 +14,13 @@ class KeyStoreCryptoProvider(private val prefix: String): CryptoProvider {
         return KeyManager.getPublicKeyByPrefix(prefix).toFormatString()
     }
 
-    override fun getUserSignature(jwt: String): String {
+    override suspend fun getUserSignature(jwt: String): String {
         return getSigner().signAsUser(
             jwt.encodeToByteArray()
         ).bytesToHex()
     }
 
-    override fun signData(data: ByteArray): String {
+    override suspend fun signData(data: ByteArray): String {
         return getSigner().sign(data).bytesToHex()
     }
 
@@ -31,12 +31,12 @@ class KeyStoreCryptoProvider(private val prefix: String): CryptoProvider {
         return WalletCoreSigner(privateKey)
     }
 
-    override fun getHashAlgorithm(): HashAlgorithm {
-        return HashAlgorithm.SHA2_256
+    override fun getHashAlgorithm(): HashingAlgorithm {
+        return HashingAlgorithm.SHA2_256
     }
 
-    override fun getSignatureAlgorithm(): SignatureAlgorithm {
-        return SignatureAlgorithm.ECDSA_P256
+    override fun getSignatureAlgorithm(): SigningAlgorithm {
+        return SigningAlgorithm.ECDSA_P256
     }
 
     override fun getKeyWeight(): Int {
