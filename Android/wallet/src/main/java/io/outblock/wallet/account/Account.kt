@@ -19,6 +19,41 @@ class Account(
     val key: KeyProtocol?
 ) {
 
+    companion object {
+        // Dummy flow implementation
+        private val flow = object {
+            fun getChildMetadata(address: String): Map<String, ChildMetadata> {
+                // Return dummy child metadata
+                return mapOf(
+                    "0x1234" to ChildMetadata(
+                        name = "Test Child Account",
+                        description = "A test child account",
+                        thumbnail = Thumbnail("https://example.com/icon.png")
+                    ),
+                    "0x5678" to ChildMetadata(
+                        name = "Another Child Account",
+                        description = "Another test child account",
+                        thumbnail = null
+                    )
+                )
+            }
+
+            fun getEVMAddress(address: String): String? {
+                // Return a dummy EVM address
+                return "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+            }
+        }
+
+        // Data classes for child metadata
+        data class ChildMetadata(
+            val name: String,
+            val description: String,
+            val thumbnail: Thumbnail?
+        )
+
+        data class Thumbnail(val url: String)
+    }
+
     // Properties
     var childs: List<ChildAccount>? = null
     var coa: COA? = null
@@ -76,7 +111,7 @@ class Account(
     }
 
     suspend fun fetchChild(): List<ChildAccount> {
-        val childs = flow.getChildMetadata(address = account.address)
+        val childs = flow.getChildMetadata(address = account.address) // not yet implemented
         val childAccounts = childs.mapNotNull { (addr, metadata) ->
             ChildAccount(
                 address = FlowAddress(addr),
@@ -91,7 +126,7 @@ class Account(
     }
 
     suspend fun fetchVM(): COA? {
-        val address = flow.getEVMAddress(address = account.address) ?: return null
+        val address = flow.getEVMAddress(address = account.address) ?: return null // not yet implemented
         return COA.create(address, network = chainID) ?: throw WalletError.InvalidEVMAddress
     }
 
