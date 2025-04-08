@@ -33,11 +33,7 @@ import Foundation
 /// - Fetching account data from networks
 /// - Caching account information
 /// - Supporting both key-based and watch-only wallets
-public class Wallet: ObservableObject, Cacheable {
-    // MARK: - Constants
-    
-    /// Prefix used for caching wallet data in storage
-    static let cachePrefix: String = "Wallets"
+public class Wallet: ObservableObject {
 
     // MARK: - Properties
     
@@ -61,29 +57,13 @@ public class Wallet: ObservableObject, Cacheable {
     
     // MARK: - Cacheable Protocol Implementation
     
-    /// The type of data being cached for the wallet
-    public typealias CachedData = [Flow.ChainID: [Flow.Account]]
-    
-    /// Storage mechanism used for caching
-    public var storage: StorageProtocol {
-        cacheStorage
-    }
-    
     /// Storage mechanism used for caching
     private(set) var cacheStorage: StorageProtocol = FileSystemStorage()
     
-    /// Data to be cached
-    public var cachedData: CachedData? {
-        flowAccounts
-    }
-
-    /// Unique identifier for caching wallet data
-    /// Combines the cache prefix with the wallet's type-specific ID
-    public var cacheId: String {
-        [Wallet.cachePrefix, type.id].joined(separator: "-")
-    }
-    
     public var securityDelegate: SecurityCheckDelegate?
+    
+    @Published
+    public var isLoading: Bool = false
 
     // MARK: - Initialization
 
@@ -114,10 +94,8 @@ public class Wallet: ObservableObject, Cacheable {
     /// 2. Fetches fresh account data from networks
     /// 3. Updates the cache with new data
     public func fetchAccount() async throws {
-        print("DDDDDDDDDDDD ====> \(type.id)")
         do {
             if let model = try loadCache() {
-                print("FFFFFFFFFFFF ====> \(type.id)")
                 flowAccounts = model
                 accounts = [Flow.ChainID: [Account]]()
                 for network in model.keys {
@@ -128,22 +106,10 @@ public class Wallet: ObservableObject, Cacheable {
             }
         } catch WalletError.cacheDecodeFailed{
             //TODO: Handle no cache log
-//            print("BBBBBB ====> \(type.id) - \(#error.localizedDescription)")
+            try? deleteCache()
         }
-        
-        print("DDDDDDDDDDDD 1111 ====> \(type.id)")
-        
         try await _ = fetchAllNetworkAccounts()
-        
-        print("DDDDDDDDDDDD 2222 ====> \(type.id)")
-        
-        do {
-            try cache()
-            print("CCCCCCCCCCC ====> \(type.id) - Cache saved")
-        } catch {
-            //TODO: Handle no cache log
-            print("BBBBBBAAAAAA ====> \(type.id) - \(error.localizedDescription)")
-        }
+        try cache()
     }
 
     /// Add a new network to manage
@@ -165,6 +131,11 @@ public class Wallet: ObservableObject, Cacheable {
     public func fetchAllNetworkAccounts() async throws -> [Flow.ChainID: [Account]] {
         var flowAccounts = [Flow.ChainID: [Flow.Account]]()
         var networkAccounts = [Flow.ChainID: [Account]]()
+        
+        isLoading = true
+        defer {
+            isLoading = false
+        }
         
         // Fetch accounts from all networks in parallel using task groups
         try await withThrowingTaskGroup(of: (Flow.ChainID, [Flow.Account]).self) { group in
