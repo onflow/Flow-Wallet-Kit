@@ -12,6 +12,7 @@ import io.outblock.wallet.errors.WalletError
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.onflow.flow.ChainId
+import org.onflow.flow.models.AccountExpandable
 import org.onflow.flow.models.Account as FlowAccount
 import org.onflow.flow.models.AccountPublicKey
 import org.onflow.flow.models.FlowAddress
@@ -75,31 +76,39 @@ object Network {
                     if (existingAccount != null) {
                         // Add key to existing account
                         val index = response.indexOf(existingAccount)
-                        response[index] = existingAccount.copy(
-                            keys = existingAccount.keys + AccountPublicKey(
-                                index = account.keyId,
-                                publicKey = account.publicKey,
+                        val existingKeys = existingAccount.keys?.toMutableSet() ?: mutableSetOf()
+                        existingKeys.add(
+                            AccountPublicKey(
+                                index = account.keyId.toString(),
+                                publicKey = publicKey,
                                 signingAlgorithm = account.signing,
                                 hashingAlgorithm = account.hashing,
-                                weight = account.weight,
-                                revoked = account.isRevoked
+                                weight = account.weight.toString(),
+                                revoked = account.isRevoked,
+                                sequenceNumber = "0" // ??
                             )
                         )
+                        response[index] = existingAccount.copy(keys = existingKeys)
                     } else {
                         // Create new account with first key
                         response.add(
                             FlowAccount(
-                                address = FlowAddress(account.address),
-                                keys = listOf(
+                                address = account.address,
+                                keys = setOf(
                                     AccountPublicKey(
-                                        index = account.keyId,
-                                        publicKey = account.publicKey,
+                                        index = account.keyId.toString(),
+                                        publicKey = publicKey,
                                         signingAlgorithm = account.signing,
                                         hashingAlgorithm = account.hashing,
-                                        weight = account.weight,
-                                        revoked = account.isRevoked
+                                        weight = account.weight.toString(),
+                                        revoked = account.isRevoked,
+                                        sequenceNumber = "0" // Default sequence number
                                     )
-                                )
+                                ),
+                                balance = "0", // ??
+                                expandable = AccountExpandable(), // ??
+                                contracts = emptyMap(), //?
+                                links = null // ??
                             )
                         )
                     }
