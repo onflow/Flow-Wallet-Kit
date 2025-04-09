@@ -10,9 +10,12 @@ import org.onflow.flow.models.AccountPublicKey
 import org.onflow.flow.models.FlowAddress
 import org.onflow.flow.models.Transaction
 import org.onflow.flow.models.SigningAlgorithm
-import org.onflow.flow.models.Signer
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * Represents a Flow blockchain account with signing capabilities
@@ -22,6 +25,20 @@ class Account(
     val chainID: ChainId,
     val key: KeyProtocol?
 ) {
+
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    init {
+        // Initialize account by fetching linked accounts
+        scope.launch {
+            try {
+                loadLinkedAccounts()
+            } catch (e: Exception) {
+                println("Error initializing account: ${e.message}")
+                // TODO: Handle initialization error (e.g., notify user, retry logic)
+            }
+        }
+    }
 
     companion object {
         // Dummy flow implementation
