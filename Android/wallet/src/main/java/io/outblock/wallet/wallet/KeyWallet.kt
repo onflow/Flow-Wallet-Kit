@@ -8,11 +8,9 @@ import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.storage.StorageProtocol
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.Account as FlowAccount
 import org.onflow.flow.models.SigningAlgorithm
-import java.nio.charset.StandardCharsets
 
 /**
  * Key Wallet implementation
@@ -39,6 +37,14 @@ class KeyWallet(
         }
     }
 
+    /// Fetch accounts for a specific network
+    /// - Parameters:
+    ///   - chainID: The network to fetch accounts from
+    /// - Returns: Array of Flow accounts
+    ///
+    /// For key-based wallets, this method:
+    /// - Fetches accounts associated with both P256 and SECP256k1 public keys
+    /// - Performs fetches in parallel for better performance
     override suspend fun fetchAccountsForNetwork(network: ChainId): List<FlowAccount> = coroutineScope {
         val accounts = mutableListOf<FlowAccount>()
 
