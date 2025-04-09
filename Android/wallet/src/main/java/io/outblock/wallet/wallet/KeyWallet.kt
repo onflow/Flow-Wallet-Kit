@@ -1,5 +1,6 @@
 package io.outblock.wallet.wallet
 
+import io.outblock.wallet.Network
 import io.outblock.wallet.account.Account
 import io.outblock.wallet.errors.WalletError
 import io.outblock.wallet.keys.KeyProtocol
