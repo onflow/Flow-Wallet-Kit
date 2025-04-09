@@ -1,6 +1,7 @@
 package io.outblock.wallet.account
 
 import io.outblock.wallet.account.vm.COA
+import io.outblock.wallet.account.vm.COA.Companion.createCOA
 import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.errors.WalletError
 import org.onflow.flow.ChainId
@@ -9,6 +10,7 @@ import org.onflow.flow.models.AccountPublicKey
 import org.onflow.flow.models.FlowAddress
 import org.onflow.flow.models.Transaction
 import org.onflow.flow.models.SigningAlgorithm
+import org.onflow.flow.models.Signer
 
 /**
  * Represents a Flow blockchain account with signing capabilities
@@ -41,6 +43,21 @@ class Account(
             fun getEVMAddress(address: String): String? {
                 // Return a dummy EVM address
                 return "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+            }
+
+            suspend fun createCOA(
+                chainID: ChainId,
+                proposer: String,
+                payer: FlowAddress,
+                signers: List<Signer>
+            ): ByteArray {
+                // Return a dummy transaction ID as bytes
+                return "dummy-transaction-id-${System.currentTimeMillis()}".toByteArray()
+            }
+
+            suspend fun waitForSeal(id: ByteArray) {
+                // Simulate network delay
+                kotlinx.coroutines.delay(1000)
             }
         }
 
@@ -126,19 +143,19 @@ class Account(
     }
 
     suspend fun fetchVM(): COA? {
-        val address = flow.getEVMAddress(address = account.address) ?: return null // not yet implemented
-        return COA.create(address, network = chainID) ?: throw WalletError.InvalidEVMAddress
+        val address = flow.getEVMAddress(address = account.address) ?: return null
+        return createCOA(address, network = chainID)
     }
 
     // FlowSigner Implementation
 
-    override val address: String
+    val address: String
         get() = account.address
 
-    override val keyIndex: Int
+    val keyIndex: Int
         get() = findKeyInAccount().firstOrNull()?.index?.toInt() ?: 0
 
-    override suspend fun sign(transaction: Transaction, bytes: ByteArray): ByteArray {
+    suspend fun sign(transaction: Transaction, bytes: ByteArray): ByteArray {
         val key = key ?: throw WalletError.EmptySignKey
         val signKey = findKeyInAccount().firstOrNull() ?: throw WalletError.EmptySignKey
 
