@@ -11,6 +11,8 @@ import org.onflow.flow.models.FlowAddress
 import org.onflow.flow.models.Transaction
 import org.onflow.flow.models.SigningAlgorithm
 import org.onflow.flow.models.Signer
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
 /**
  * Represents a Flow blockchain account with signing capabilities
@@ -43,21 +45,6 @@ class Account(
             fun getEVMAddress(address: String): String? {
                 // Return a dummy EVM address
                 return "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
-            }
-
-            suspend fun createCOA(
-                chainID: ChainId,
-                proposer: String,
-                payer: FlowAddress,
-                signers: List<Signer>
-            ): ByteArray {
-                // Return a dummy transaction ID as bytes
-                return "dummy-transaction-id-${System.currentTimeMillis()}".toByteArray()
-            }
-
-            suspend fun waitForSeal(id: ByteArray) {
-                // Simulate network delay
-                kotlinx.coroutines.delay(1000)
             }
         }
 
@@ -121,10 +108,17 @@ class Account(
 
     // Account Relationships
 
-    suspend fun loadLinkedAccounts(): Pair<COA?, List<ChildAccount>> {
-        val vmFetch = fetchVM()
-        val childFetch = fetchChild()
-        return Pair(vmFetch, childFetch)
+    /**
+     * Load all linked accounts (VM and child accounts) concurrently
+     * @return Pair containing COA (if exists) and list of child accounts
+     */
+    suspend fun loadLinkedAccounts(): Pair<COA?, List<ChildAccount>> = coroutineScope {
+        // Execute both fetch operations concurrently
+        val vmFetch = async { fetchVM() }
+        val childFetch = async { fetchChild() }
+        
+        // Wait for both operations to complete
+        Pair(vmFetch.await(), childFetch.await())
     }
 
     suspend fun fetchChild(): List<ChildAccount> {
@@ -142,9 +136,18 @@ class Account(
         return childAccounts
     }
 
+    /**
+     * Fetch virtual machine accounts
+     * @return COA instance if found, null if no COA exists
+     * @throws WalletError.InvalidEVMAddress if the EVM address is invalid
+     */
     suspend fun fetchVM(): COA? {
-        val address = flow.getEVMAddress(address = account.address) ?: return null
-        return createCOA(address, network = chainID)
+        val address = flow.getEVMAddress(account.address) ?: return null
+
+        val coa = createCOA(address, network = chainID) ?: throw WalletError.InvalidEVMAddress
+        
+        this.coa = coa
+        return coa
     }
 
     // FlowSigner Implementation
@@ -160,9 +163,9 @@ class Account(
         val signKey = findKeyInAccount().firstOrNull() ?: throw WalletError.EmptySignKey
 
         return key.sign(
-            data = signableData,
-            signAlgo = signKey.signAlgo,
-            hashAlgo = signKey.hashAlgo
+            data = bytes,
+            signAlgo = signKey.signingAlgorithm,
+            hashAlgo = signKey.hashingAlgorithm
         )
     }
 }
