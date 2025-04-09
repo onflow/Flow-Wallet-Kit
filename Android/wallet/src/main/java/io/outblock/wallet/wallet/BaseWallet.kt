@@ -1,6 +1,7 @@
 package io.outblock.wallet.wallet
 
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import io.outblock.wallet.account.Account
 import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.storage.Cacheable
@@ -50,11 +51,13 @@ abstract class BaseWallet(
 
     companion object {
         private const val CACHE_PREFIX = "Accounts"
+        private val gson = Gson()
+        private val typeToken = object : TypeToken<Map<ChainId, List<FlowAccount>>>() {}.type
     }
 
     // Cacheable implementation
     override val cachedData: Any?
-        get() = flowAccounts?.let { Gson().toJson(it) }
+        get() = flowAccounts?.let { gson.toJson(it) }
 
     override val cacheId: String
         get() = "$CACHE_PREFIX/${type.name}"
@@ -86,11 +89,11 @@ abstract class BaseWallet(
             // Try to load from cache first
             val cachedData = loadCache()
             if (cachedData != null) {
-                val cachedAccounts = Gson().fromJson<Map<ChainId, List<FlowAccount>>>(cachedData.toString())
+                val cachedAccounts = gson.fromJson<Map<ChainId, List<FlowAccount>>>(cachedData.toString(), typeToken)
                 flowAccounts = cachedAccounts
                 accounts.clear()
                 for ((network, acc) in cachedAccounts) {
-                    accounts[network] = acc.mapNotNull { 
+                    accounts[network] = acc.map {
                         Account(it, network, getKeyForAccount())
                     }.toMutableList()
                 }
