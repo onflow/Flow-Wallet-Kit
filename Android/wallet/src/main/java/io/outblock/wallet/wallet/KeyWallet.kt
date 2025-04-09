@@ -1,5 +1,6 @@
 package io.outblock.wallet.wallet
 
+import com.google.common.io.BaseEncoding
 import io.outblock.wallet.Network
 import io.outblock.wallet.account.Account
 import io.outblock.wallet.errors.WalletError
@@ -16,8 +17,6 @@ import java.nio.charset.StandardCharsets
 /**
  * Key Wallet implementation
  * A wallet backed by a cryptographic key
- * 
- * TODO: Implement proper account fetching
  */
 class KeyWallet(
     private val key: KeyProtocol,
@@ -46,13 +45,13 @@ class KeyWallet(
         // Fetch accounts for both signature algorithms in parallel
         val p256Accounts = async {
             key.publicKey(SigningAlgorithm.ECDSA_P256)?.let { publicKey ->
-                Network.findFlowAccountByKey(publicKey.toString(StandardCharsets.ISO_8859_1), network)
+                Network.findFlowAccountByKey(BaseEncoding.base16().lowerCase().encode(publicKey), network)
             } ?: emptyList()
         }
 
         val secp256k1Accounts = async {
             key.publicKey(SigningAlgorithm.ECDSA_secp256k1)?.let { publicKey ->
-                Network.findFlowAccountByKey(publicKey.toString(StandardCharsets.ISO_8859_1), network)
+                Network.findFlowAccountByKey(BaseEncoding.base16().lowerCase().encode(publicKey), network)
             } ?: emptyList()
         }
 
