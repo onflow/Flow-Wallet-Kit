@@ -6,29 +6,8 @@
 import Flow
 import Foundation
 
-/// Protocol for proxy wallet implementations
-public protocol ProxyProtocol {
-    /// The type of wallet this proxy represents
-    associatedtype Wallet
-
-    /// Retrieve a wallet instance by ID
-    /// - Parameter id: Unique identifier for the wallet
-    /// - Returns: Wallet instance
-    /// - Throws: Error if wallet cannot be retrieved
-    static func get(id: String) throws -> Wallet
-    
-    /// Sign data using specified algorithms
-    /// - Parameters:
-    ///   - data: Data to sign
-    ///   - signAlgo: Signature algorithm to use
-    ///   - hashAlgo: Hash algorithm to use
-    /// - Returns: Signed data
-    /// - Throws: Error if signing fails
-    func sign(data: Data, signAlgo: Flow.SignatureAlgorithm, hashAlgo: Flow.HashAlgorithm) throws -> Data
-}
-
 /// Represents a Flow blockchain account with signing capabilities
-public class Account: ObservableObject, Cacheable {
+public class Account: ObservableObject {
     // MARK: - Properties
     
     /// Child accounts associated with this account
@@ -38,6 +17,10 @@ public class Account: ObservableObject, Cacheable {
     /// Whether this account has child accounts
     public var hasChild: Bool {
         !(childs?.isEmpty ?? true)
+    }
+    
+    public var hasLinkedAccounts: Bool {
+        hasChild || hasCOA
     }
 
     /// Virtual machine accounts associated with this account
@@ -58,31 +41,16 @@ public class Account: ObservableObject, Cacheable {
     /// The underlying Flow account
     public let account: Flow.Account
     
-    // MARK: - Cacheable Protocol Implementation
+    public var securityDelegate: SecurityCheckDelegate?
     
-    /// The type of data being cached for the account
-    public typealias CachedData = AccountCache
+    @Published
+    public var isLoading: Bool = false
     
     /// Storage mechanism used for caching
-    public var storage: StorageProtocol {
-        guard let key = key else {
-            fatalError("Storage only available for accounts with keys")
-        }
-        return key.storage
-    }
+    private(set) var cacheStorage: StorageProtocol = FileSystemStorage()
     
-    /// Data to be cached
-    public var cachedData: CachedData? {
-        AccountCache(
-            childs: childs,
-            coa: coa,
-            account: account
-        )
-    }
-    
-    /// Unique identifier for caching account data
-    public var cacheId: String {
-        ["Account", account.address.hex, chainID.name].joined(separator: "/")
+    public var hexAddr: String {
+        address.hex
     }
     
     // MARK: - Cache Data Structure
@@ -91,7 +59,6 @@ public class Account: ObservableObject, Cacheable {
     public struct AccountCache: Codable {
         let childs: [ChildAccount]?
         let coa: COA?
-        let account: Flow.Account
     }
     
     
@@ -123,24 +90,25 @@ public class Account: ObservableObject, Cacheable {
     /// - Parameters:
     ///   - account: Flow account data
     ///   - key: Optional signing key
-    init(account: Flow.Account, chainID: Flow.ChainID,  key: (any KeyProtocol)?) {
+    init(account: Flow.Account,
+         chainID: Flow.ChainID,
+         key: (any KeyProtocol)? = nil,
+         securityDelegate: SecurityCheckDelegate? = nil) {
         self.account = account
         self.key = key
         self.chainID = chainID
-        
-        Task {
-            try await fetchAccount()
-        }
+        self.securityDelegate = securityDelegate
     }
     
     public func fetchAccount() async throws {
         do {
-            let cached = try loadCache()
-            self.childs = cached.childs
-            self.coa = cached.coa
+            if let cached = try loadCache() {
+                self.childs = cached.childs
+                self.coa = cached.coa
+            }
         } catch {
             //TODO: Handle no cache log
-            print("AAAAAA ====> \(error.localizedDescription)")
+            print("\(error.localizedDescription)")
         }
         try await _ = loadLinkedAccounts()
         try cache()
@@ -173,6 +141,8 @@ public class Account: ObservableObject, Cacheable {
     /// Load all linked accounts (VM and child accounts) in parallel
     @discardableResult
     public func loadLinkedAccounts() async throws -> (vms: COA?, childs: [ChildAccount]) {
+        isLoading = true
+        defer { isLoading = false }
         // Execute both fetch operations concurrently
         async let vmFetch: COA? = fetchVM()
         async let childFetch: [ChildAccount] = fetchChild()
@@ -215,6 +185,12 @@ public class Account: ObservableObject, Cacheable {
     }
 }
 
+extension Account: Equatable {
+    public static func == (lhs: Account, rhs: Account) -> Bool {
+        lhs.address == rhs.address
+    }
+}
+
 // MARK: - Flow Signer Implementation
 
 extension Account: FlowSigner {
@@ -237,6 +213,14 @@ extension Account: FlowSigner {
     public func sign(transaction _: Flow.Transaction, signableData: Data) async throws -> Data {
         guard let key, let signKey = findKeyInAccount()?.first else {
             throw WalletError.emptySignKey
+        }
+        
+        /// If there is securityDelegate, check if it's passed the security check
+        if let delegate = securityDelegate {
+            let result = try await delegate.verify()
+            if !result {
+                throw WalletError.failedPassSecurityCheck
+            }
         }
 
         return try key.sign(data: signableData, signAlgo: signKey.signAlgo, hashAlgo: signKey.hashAlgo)

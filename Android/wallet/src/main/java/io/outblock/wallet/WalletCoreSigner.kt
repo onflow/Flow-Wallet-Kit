@@ -1,7 +1,6 @@
 package io.outblock.wallet
 
 import android.util.Log
-import io.outblock.wallet.errors.WalletError
 import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.ASN1Sequence
 import org.onflow.flow.models.Hasher
@@ -21,7 +20,7 @@ class WalletCoreSigner(
     override suspend fun sign(bytes: ByteArray): ByteArray {
         try {
             if (privateKey == null) {
-                throw WalletError.EmptyKey
+                throw WalletCoreException("Error getting private key", null)
             }
             val signature = Signature.getInstance("SHA256withECDSA") //to-do: needs to be dynamic
             signature.initSign(privateKey)
@@ -33,7 +32,7 @@ class WalletCoreSigner(
             return (r.takeLast(32) + s.takeLast(32)).toByteArray()
         } catch (e: Exception) {
             Log.e(WALLET_TAG, "Error while signing data: $e")
-            throw WalletError.SignError
+            throw WalletCoreException("Error signing data", e)
         }
     }
 
@@ -50,7 +49,7 @@ internal class HasherImpl(
         val digestAlgorithm = when (hashAlgo) {
             HashingAlgorithm.SHA2_256 -> "SHA-256"
             else -> hashAlgo.toString()
-        } // WIP - this can be removed once algorithm field is released on flow-kmm side
+        }
         val messageDigest = MessageDigest.getInstance(digestAlgorithm)
         return messageDigest.digest(bytes)
     }

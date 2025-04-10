@@ -20,7 +20,6 @@ public class COA: FlowVMProtocol, Identifiable, Codable {
         network
     }
     
-    
     public var vm: FlowVM {
         .EVM
     }

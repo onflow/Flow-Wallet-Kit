@@ -25,50 +25,6 @@
 import Flow
 import Foundation
 
-// MARK: - Wallet Types
-
-/// Represents different types of Flow wallets
-public enum WalletType {
-    /// A wallet backed by a cryptographic key (e.g., Secure Enclave, Seed Phrase, Private Key)
-    case key(any KeyProtocol)
-    /// A watch-only wallet that can only observe an address without signing capability
-    case watch(Flow.Address)
-    
-//    case proxy()
-
-    /// Prefix used for wallet identification in storage
-    var idPrefix: String {
-        switch self {
-        case .key:
-            return "Key"
-        case .watch:
-            return "Watch"
-        }
-    }
-
-    /// Unique identifier for the wallet type, combining prefix and specific identifier
-    /// For key-based wallets: "Key/{key.id}"
-    /// For watch wallets: "Watch/{address.hex}"
-    var id: String {
-        switch self {
-        case let .key(key):
-            return [idPrefix, key.id].joined(separator: "/")
-        case let .watch(address):
-            return [idPrefix, address.hex].joined(separator: "/")
-        }
-    }
-
-    /// Returns the associated key if the wallet is key-based, nil for watch-only wallets
-    var key: (any KeyProtocol)? {
-        switch self {
-        case let .key(key):
-            return key
-        default:
-            return nil
-        }
-    }
-}
-
 // MARK: - Wallet Implementation
 
 /// Main wallet class that manages Flow accounts across different networks
@@ -77,11 +33,7 @@ public enum WalletType {
 /// - Fetching account data from networks
 /// - Caching account information
 /// - Supporting both key-based and watch-only wallets
-public class Wallet: ObservableObject, Cacheable {
-    // MARK: - Constants
-    
-    /// Prefix used for caching wallet data in storage
-    static let cachePrefix: String = "Accounts"
+public class Wallet: ObservableObject {
 
     // MARK: - Properties
     
@@ -105,27 +57,13 @@ public class Wallet: ObservableObject, Cacheable {
     
     // MARK: - Cacheable Protocol Implementation
     
-    /// The type of data being cached for the wallet
-    public typealias CachedData = [Flow.ChainID: [Flow.Account]]
-    
     /// Storage mechanism used for caching
-    public var storage: StorageProtocol {
-        cacheStorage
-    }
+    private(set) var cacheStorage: StorageProtocol = FileSystemStorage()
     
-    /// Storage mechanism used for caching
-    private(set) var cacheStorage: StorageProtocol
+    public var securityDelegate: SecurityCheckDelegate?
     
-    /// Data to be cached
-    public var cachedData: CachedData? {
-        flowAccounts
-    }
-
-    /// Unique identifier for caching wallet data
-    /// Combines the cache prefix with the wallet's type-specific ID
-    public var cacheId: String {
-        [Wallet.cachePrefix, type.id].joined(separator: "/")
-    }
+    @Published
+    public var isLoading: Bool = false
 
     // MARK: - Initialization
 
@@ -140,10 +78,12 @@ public class Wallet: ObservableObject, Cacheable {
     /// ```
     public init(type: WalletType,
                 networks: Set<Flow.ChainID> = [.mainnet, .testnet],
-                cacheStorage: StorageProtocol = FileSystemStorage.shared) {
+                cacheStorage: StorageProtocol? = nil) {
         self.type = type
         self.networks = networks
-        self.cacheStorage = cacheStorage
+        if let cacheStorage {
+            self.cacheStorage = cacheStorage
+        }
     }
 
     // MARK: - Public Methods
@@ -155,17 +95,18 @@ public class Wallet: ObservableObject, Cacheable {
     /// 3. Updates the cache with new data
     public func fetchAccount() async throws {
         do {
-            let model = try loadCache()
-            flowAccounts = model
-            accounts = [Flow.ChainID: [Account]]()
-            for network in model.keys {
-                if let acc = model[network] {
-                    accounts?[network] = acc.compactMap { Account(account: $0, chainID: network, key: type.key) }
+            if let model = try loadCache() {
+                flowAccounts = model
+                accounts = [Flow.ChainID: [Account]]()
+                for network in model.keys {
+                    if let acc = model[network] {
+                        accounts?[network] = acc.compactMap { Account(account: $0, chainID: network, key: type.key, securityDelegate: securityDelegate) }
+                    }
                 }
             }
-        } catch {
+        } catch WalletError.cacheDecodeFailed{
             //TODO: Handle no cache log
-            print(error.localizedDescription)
+            try? deleteCache()
         }
         try await _ = fetchAllNetworkAccounts()
         try cache()
@@ -190,6 +131,11 @@ public class Wallet: ObservableObject, Cacheable {
     public func fetchAllNetworkAccounts() async throws -> [Flow.ChainID: [Account]] {
         var flowAccounts = [Flow.ChainID: [Flow.Account]]()
         var networkAccounts = [Flow.ChainID: [Account]]()
+        
+        isLoading = true
+        defer {
+            isLoading = false
+        }
         
         // Fetch accounts from all networks in parallel using task groups
         try await withThrowingTaskGroup(of: (Flow.ChainID, [Flow.Account]).self) { group in
