@@ -9,9 +9,6 @@ import Foundation
 public class FileSystemStorage: StorageProtocol {
     // MARK: - Properties
     
-    /// Shared instance for convenient access
-    public static let shared = FileSystemStorage()
-    
     /// Base directory for storing cache files
     private let cacheDirectory: URL
     
