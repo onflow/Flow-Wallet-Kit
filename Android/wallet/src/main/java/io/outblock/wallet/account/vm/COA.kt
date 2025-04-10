@@ -29,7 +29,7 @@ class COA(
          * @return ByteArray of the creation transaction
          */
         suspend fun createCOA(account: Account): ByteArray {
-            return FlowApi.createCOA( // implement in kmm
+            return FlowApi.createCOA( // implemented
                 chainID = account.chainID,
                 proposer = account.address,
                 payer = account.address,
@@ -55,7 +55,7 @@ class COA(
          * @return ByteArray of the creation transaction
          */
         suspend fun createCOA(account: Account, payer: FlowAddress, signers: List<Signer>): ByteArray {
-            return FlowApi.createCOA( // implement in kmm
+            return FlowApi.createCOA( // implemented
                 chainID = account.chainID,
                 proposer = account.address,
                 payer = payer,
@@ -71,14 +71,14 @@ class COA(
          * @return The created COA instance, or null if creation failed
          */
         suspend fun createCOAAndWait(account: Account, payer: FlowAddress, signers: List<Signer>): COA? {
-            val id = FlowApi.createCOA( // implement in kmm
+            val id = FlowApi.createCOA( // implemented
                 chainID = account.chainID,
                 proposer = account.address,
                 payer = payer,
                 signers = signers
             )
 
-            FlowApi(account.chainID).waitForSeal(id) //implemented
+            FlowApi(account.chainID).waitForSeal(id) // implemented
             return account.fetchVM()
         }
     }

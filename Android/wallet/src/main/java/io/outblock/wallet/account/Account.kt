@@ -158,7 +158,7 @@ class Account(
      * @return COA instance if found, null if no COA exists
      * @throws WalletError.InvalidEVMAddress if the EVM address is invalid
      */
-    suspend fun fetchVM(): COA? {
+    fun fetchVM(): COA? {
         val address = flow.getEVMAddress(account.address) ?: return null
 
         val coa = createCOA(address, network = chainID) ?: throw WalletError.InvalidEVMAddress
