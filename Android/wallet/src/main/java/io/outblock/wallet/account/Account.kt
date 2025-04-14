@@ -36,6 +36,9 @@ class Account(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _tokenBalances = MutableStateFlow<List<TokenBalance>>(emptyList())
+    val tokenBalances: StateFlow<List<TokenBalance>> = _tokenBalances.asStateFlow()
+
     init {
         // Initialize account by fetching linked accounts
         scope.launch {
@@ -202,5 +205,58 @@ class Account(
             signAlgo = signKey.signingAlgorithm,
             hashAlgo = signKey.hashingAlgorithm
         )
+    }
+
+    /**
+     * Fetches all token balances for the account
+     */
+    suspend fun fetchTokenBalances() {
+        _isLoading.value = true
+        try {
+            val balances = mutableListOf<TokenBalance>()
+            
+            // Fetch Flow token balances
+            val flowBalances = fetchFlowTokenBalances()
+            balances.addAll(flowBalances)
+
+            // If account has COA, fetch EVM token balances
+            coa?.let { coa ->
+                val evmBalances = coa.fetchEVMTokenBalances()
+                balances.addAll(evmBalances)
+            }
+
+            _tokenBalances.value = balances
+        } finally {
+            _isLoading.value = false
+        }
+    }
+
+    /**
+     * Fetches Flow token balances (FT and NFT)
+     */
+    private suspend fun fetchFlowTokenBalances(): List<TokenBalance> {
+        val balances = mutableListOf<TokenBalance>()
+        
+        // Fetch Flow token balance
+        val flowBalance = FlowApi.getFlowBalance(chainID, account.address)
+        balances.add(
+            TokenBalance(
+                tokenType = TokenBalance.TokenType.FLOW_FT,
+                balance = flowBalance,
+                symbol = "FLOW",
+                name = "Flow Token",
+                decimals = 8
+            )
+        )
+
+        // Fetch other Flow FT balances
+        val ftBalances = FlowApi.getFungibleTokenBalances(chainID, account.address)
+        balances.addAll(ftBalances)
+
+        // Fetch NFT balances
+        val nftBalances = FlowApi.getNFTBalances(chainID, account.address)
+        balances.addAll(nftBalances)
+
+        return balances
     }
 }

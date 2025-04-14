@@ -22,6 +22,35 @@ class COA(
     override val vm: FlowVM
         get() = FlowVM.EVM
 
+    /**
+     * Fetches EVM token balances (ERC20 and ERC721)
+     */
+    suspend fun fetchEVMTokenBalances(): List<TokenBalance> {
+        val balances = mutableListOf<TokenBalance>()
+        
+        // Fetch native token balance (e.g., ETH on Ethereum)
+        val nativeBalance = FlowApi.getEVMNativeBalance(network, hexAddr)
+        balances.add(
+            TokenBalance(
+                tokenType = TokenBalance.TokenType.EVM_ERC20,
+                balance = nativeBalance,
+                symbol = "ETH", // This should be configurable based on network
+                name = "Ethereum",
+                decimals = 18
+            )
+        )
+
+        // Fetch ERC20 token balances
+        val erc20Balances = FlowApi.getERC20Balances(network, hexAddr)
+        balances.addAll(erc20Balances)
+
+        // Fetch ERC721 token balances
+        val erc721Balances = FlowApi.getERC721Balances(network, hexAddr)
+        balances.addAll(erc721Balances)
+
+        return balances
+    }
+
     companion object {
         /**
          * Creates a new COA with the current account as both proposer and payer
