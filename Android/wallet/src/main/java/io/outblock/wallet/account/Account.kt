@@ -4,6 +4,11 @@ import io.outblock.wallet.account.vm.COA
 import io.outblock.wallet.account.vm.COA.Companion.createCOA
 import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.errors.WalletError
+import io.outblock.wallet.storage.StorageProtocol
+import io.outblock.wallet.storage.StandardStorage
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.Account
 import org.onflow.flow.models.AccountPublicKey
@@ -23,10 +28,13 @@ import kotlinx.coroutines.launch
 class Account(
     val account: Account,
     val chainID: ChainId,
-    val key: KeyProtocol?
+    val key: KeyProtocol?,
+    private val securityDelegate: SecurityCheckDelegate? = null,
+    private val storage: StorageProtocol = StandardStorage()
 ) {
-
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     init {
         // Initialize account by fetching linked accounts
@@ -35,7 +43,6 @@ class Account(
                 loadLinkedAccounts()
             } catch (e: Exception) {
                 println("Error initializing account: ${e.message}")
-                // TODO: Handle initialization error (e.g., notify user, retry logic)
             }
         }
     }
@@ -85,11 +92,16 @@ class Account(
     val hasCOA: Boolean
         get() = coa != null
 
+    val hasLinkedAccounts: Boolean
+        get() = hasChild || hasCOA
+
     val canSign: Boolean
         get() = key != null
 
-    // Key Management
+    val hexAddr: String
+        get() = account.address
 
+    // Key Management
     val fullWeightKey: AccountPublicKey?
         get() = fullWeightKeys.firstOrNull()
 
@@ -103,14 +115,9 @@ class Account(
         val keyInstance = key ?: return emptyList()
         val keys = mutableListOf<AccountPublicKey>()
 
-        // Get public keys for both supported signature algorithms
         val p256PublicKey = keyInstance.publicKey(SigningAlgorithm.ECDSA_P256)
         val secpPublicKey = keyInstance.publicKey(SigningAlgorithm.ECDSA_secp256k1)
 
-        // Filter account keys where:
-        // - The key is not revoked
-        // - The key's weight is >= 1000
-        // - The stored public key matches either of the provider's public keys
         val matchingKeys = account.keys?.filter {
             !it.revoked &&
                     it.weight.toInt() >= 1000 && (
@@ -124,22 +131,19 @@ class Account(
     }
 
     // Account Relationships
-
-    /**
-     * Load all linked accounts (VM and child accounts) concurrently
-     * @return Pair containing COA (if exists) and list of child accounts
-     */
     suspend fun loadLinkedAccounts(): Pair<COA?, List<ChildAccount>> = coroutineScope {
-        // Execute both fetch operations concurrently
-        val vmFetch = async { fetchVM() }
-        val childFetch = async { fetchChild() }
-        
-        // Wait for both operations to complete
-        Pair(vmFetch.await(), childFetch.await())
+        _isLoading.value = true
+        try {
+            val vmFetch = async { fetchVM() }
+            val childFetch = async { fetchChild() }
+            Pair(vmFetch.await(), childFetch.await())
+        } finally {
+            _isLoading.value = false
+        }
     }
 
     suspend fun fetchChild(): List<ChildAccount> {
-        val childs = flow.getChildMetadata(address = account.address) // not yet implemented
+        val childs = flow.getChildMetadata(address = account.address)
         val childAccounts = childs.mapNotNull { (addr, metadata) ->
             ChildAccount(
                 address = FlowAddress(addr),
@@ -153,22 +157,29 @@ class Account(
         return childAccounts
     }
 
-    /**
-     * Fetch virtual machine accounts
-     * @return COA instance if found, null if no COA exists
-     * @throws WalletError.InvalidEVMAddress if the EVM address is invalid
-     */
     fun fetchVM(): COA? {
         val address = flow.getEVMAddress(account.address) ?: return null
-
         val coa = createCOA(address, network = chainID) ?: throw WalletError.InvalidEVMAddress
-        
         this.coa = coa
         return coa
     }
 
-    // FlowSigner Implementation
+    suspend fun fetchAccount() {
+        try {
+            val cache = AccountCache(childs, coa)
+            val cached = cache.loadCache()
+            if (cached != null) {
+                childs = cached.childs
+                coa = cached.coa
+            }
+        } catch (e: Exception) {
+            println("Error loading cache: ${e.message}")
+        }
+        loadLinkedAccounts()
+        AccountCache(childs, coa).cache()
+    }
 
+    // FlowSigner Implementation
     val address: String
         get() = account.address
 
@@ -178,6 +189,13 @@ class Account(
     suspend fun sign(transaction: Transaction, bytes: ByteArray): ByteArray {
         val key = key ?: throw WalletError.EmptySignKey
         val signKey = findKeyInAccount().firstOrNull() ?: throw WalletError.EmptySignKey
+
+        if (securityDelegate != null) {
+            val result = securityDelegate.verify()
+            if (!result.value) {
+                throw WalletError.FailedPassSecurityCheck
+            }
+        }
 
         return key.sign(
             data = bytes,
