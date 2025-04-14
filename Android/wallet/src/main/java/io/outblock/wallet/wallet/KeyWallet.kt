@@ -31,13 +31,47 @@ class KeyWallet(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     init {
+        println("Initializing KeyWallet with networks: ${networks.joinToString()}")
         // Initialize wallet by fetching accounts
         scope.launch {
             try {
+                println("Starting initial account fetch")
+                // Try to load from cache first
+                try {
+                    println("Attempting to load accounts from cache")
+                    val cachedAccounts = storage.loadAccounts()
+                    if (cachedAccounts != null) {
+                        println("Successfully loaded ${cachedAccounts.size} accounts from cache")
+                        accounts.putAll(cachedAccounts)
+                    } else {
+                        println("No cached accounts found")
+                    }
+                } catch (e: Exception) {
+                    println("Failed to load accounts from cache: ${e.message}")
+                    e.printStackTrace()
+                    // Clear cache on failure
+                    try {
+                        println("Clearing invalid cache")
+                        storage.clearAccounts()
+                    } catch (e: Exception) {
+                        println("Failed to clear cache: ${e.message}")
+                    }
+                }
+                
                 fetchAccounts()
+                println("Initial account fetch completed successfully")
+                
+                // Cache the results
+                try {
+                    println("Caching fetched accounts")
+                    storage.saveAccounts(accounts)
+                    println("Successfully cached accounts")
+                } catch (e: Exception) {
+                    println("Failed to cache accounts: ${e.message}")
+                }
             } catch (e: Exception) {
                 println("Error initializing wallet: ${e.message}")
-                // TODO: Handle initialization error (e.g., notify user, retry logic)
+                e.printStackTrace()
             }
         }
     }
@@ -45,16 +79,28 @@ class KeyWallet(
     override fun getKeyForAccount(): KeyProtocol = key
 
     override suspend fun addAccount(account: Account) {
+        println("Attempting to add account: ${account.address}")
         if (account.key != key) {
+            println("Account key mismatch - rejecting account addition")
             throw WalletError.InvalidWalletType
         }
         val networkAccounts = accounts.getOrPut(account.chainID) { mutableListOf() }
         networkAccounts.add(account)
+        println("Successfully added account ${account.address} to network ${account.chainID}")
     }
 
     override suspend fun removeAccount(address: String) {
+        println("Attempting to remove account: $address")
+        var removed = false
         accounts.values.forEach { accountList ->
-            accountList.removeIf { it.address == address }
+            if (accountList.removeIf { it.address == address }) {
+                removed = true
+            }
+        }
+        if (removed) {
+            println("Successfully removed account: $address")
+        } else {
+            println("Account not found for removal: $address")
         }
     }
 
@@ -67,40 +113,100 @@ class KeyWallet(
     /// - Fetches accounts associated with both P256 and SECP256k1 public keys
     /// - Performs fetches in parallel for better performance
     /// - Implements retry logic for failed requests
+    /// - Uses key indexer API to find all related on-chain accounts
     override suspend fun fetchAccountsForNetwork(network: ChainId): List<FlowAccount> = coroutineScope {
+        println("Starting account fetch for network: $network")
         val accounts = mutableListOf<FlowAccount>()
         var retryCount = 0
         val maxRetries = 3
 
         while (retryCount < maxRetries) {
             try {
+                println("Fetch attempt ${retryCount + 1} of $maxRetries for network $network")
+                
+                // Get public keys for both supported signature algorithms
+                val p256PublicKey = key.publicKey(SigningAlgorithm.ECDSA_P256)
+                val secp256k1PublicKey = key.publicKey(SigningAlgorithm.ECDSA_secp256k1)
+
+                if (p256PublicKey == null && secp256k1PublicKey == null) {
+                    println("No valid public keys found for key indexer lookup on network $network")
+                    break
+                }
+
+                println("Found ${if (p256PublicKey != null) "P256" else "no"} and ${if (secp256k1PublicKey != null) "SECP256k1" else "no"} keys for lookup")
+
                 // Fetch accounts for both signature algorithms in parallel
+                println("Starting parallel account fetch for both key types")
                 val p256Accounts = async {
-                    key.publicKey(SigningAlgorithm.ECDSA_P256)?.let { publicKey ->
-                        Network.findFlowAccountByKey(BaseEncoding.base16().lowerCase().encode(publicKey), network)
+                    p256PublicKey?.let { publicKey ->
+                        try {
+                            val encodedKey = BaseEncoding.base16().lowerCase().encode(publicKey)
+                            println("Looking up P256 accounts for key: $encodedKey on network $network")
+                            val accounts = Network.findFlowAccountByKey(encodedKey, network)
+                            println("Found ${accounts.size} P256 accounts on network $network")
+                            accounts.forEach { account ->
+                                println("P256 Account ${account.address} with ${account.keys?.size ?: 0} keys")
+                            }
+                            accounts
+                        } catch (e: Exception) {
+                            println("Error looking up P256 accounts on network $network: ${e.message}")
+                            e.printStackTrace()
+                            emptyList()
+                        }
                     } ?: emptyList()
                 }
 
                 val secp256k1Accounts = async {
-                    key.publicKey(SigningAlgorithm.ECDSA_secp256k1)?.let { publicKey ->
-                        Network.findFlowAccountByKey(BaseEncoding.base16().lowerCase().encode(publicKey), network)
+                    secp256k1PublicKey?.let { publicKey ->
+                        try {
+                            val encodedKey = BaseEncoding.base16().lowerCase().encode(publicKey)
+                            println("Looking up SECP256k1 accounts for key: $encodedKey on network $network")
+                            val accounts = Network.findFlowAccountByKey(encodedKey, network)
+                            println("Found ${accounts.size} SECP256k1 accounts on network $network")
+                            accounts.forEach { account ->
+                                println("SECP256k1 Account ${account.address} with ${account.keys?.size ?: 0} keys")
+                            }
+                            accounts
+                        } catch (e: Exception) {
+                            println("Error looking up SECP256k1 accounts on network $network: ${e.message}")
+                            e.printStackTrace()
+                            emptyList()
+                        }
                     } ?: emptyList()
                 }
 
+                println("Waiting for parallel account fetches to complete")
                 // Wait for both fetches to complete and combine results
-                accounts.addAll(p256Accounts.await())
-                accounts.addAll(secp256k1Accounts.await())
+                val p256Results = p256Accounts.await()
+                val secp256k1Results = secp256k1Accounts.await()
                 
-                // If we got here, the fetch was successful
+                accounts.addAll(p256Results)
+                accounts.addAll(secp256k1Results)
+                
+                println("Successfully fetched accounts for network $network: ${accounts.size} total accounts found")
+                accounts.forEach { account ->
+                    println("Final Account ${account.address} with ${account.keys?.size ?: 0} keys")
+                }
                 break
             } catch (e: Exception) {
                 retryCount++
                 if (retryCount == maxRetries) {
                     println("Failed to fetch accounts for network $network after $maxRetries attempts: ${e.message}")
+                    e.printStackTrace()
                     throw e
                 }
-                // Exponential backoff
-                kotlinx.coroutines.delay(1000L * (1 shl retryCount))
+                val backoffTime = 1000L * (1 shl retryCount)
+                println("Retry attempt $retryCount of $maxRetries for network $network. Waiting ${backoffTime}ms before retry")
+                kotlinx.coroutines.delay(backoffTime)
+            }
+        }
+
+        if (accounts.isEmpty()) {
+            println("No accounts found for any public key on network $network")
+        } else {
+            println("Found ${accounts.size} accounts on network $network")
+            accounts.forEach { account ->
+                println("Account ${account.address} with ${account.keys?.size ?: 0} keys")
             }
         }
 
