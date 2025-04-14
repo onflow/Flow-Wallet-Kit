@@ -3,12 +3,16 @@ package io.outblock.wallet.wallet
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.outblock.wallet.account.Account
+import io.outblock.wallet.account.SecurityCheckDelegate
 import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.storage.Cacheable
 import io.outblock.wallet.storage.StorageProtocol
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.Account as FlowAccount
 
@@ -20,6 +24,8 @@ interface Wallet {
     val accounts: Map<ChainId, List<Account>>
     val networks: Set<ChainId>
     val storage: StorageProtocol
+    val isLoading: StateFlow<Boolean>
+    val securityDelegate: SecurityCheckDelegate?
     
     suspend fun addNetwork(network: ChainId)
     suspend fun removeNetwork(network: ChainId)
@@ -42,11 +48,17 @@ enum class WalletType {
 
 /**
  * Base class for wallet implementations
+ * Provides core wallet functionality including:
+ * - Account management across multiple networks
+ * - Caching of account data
+ * - Loading state management
+ * - Security checks
  */
 abstract class BaseWallet(
     override val type: WalletType,
     override val networks: MutableSet<ChainId>,
-    override val storage: StorageProtocol
+    override val storage: StorageProtocol,
+    override val securityDelegate: SecurityCheckDelegate? = null
 ) : Wallet, Cacheable {
 
     companion object {
@@ -54,6 +66,10 @@ abstract class BaseWallet(
         private val gson = Gson()
         private val typeToken = object : TypeToken<Map<ChainId, List<FlowAccount>>>() {}.type
     }
+
+    // Loading state management
+    private val _isLoading = MutableStateFlow(false)
+    override val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     // Cacheable implementation
     override val cachedData: Any?
@@ -85,6 +101,7 @@ abstract class BaseWallet(
     }
 
     override suspend fun fetchAccounts() {
+        _isLoading.value = true
         try {
             // Try to load from cache first
             val cachedData = loadCache()
@@ -94,7 +111,7 @@ abstract class BaseWallet(
                 accounts.clear()
                 for ((network, acc) in cachedAccounts) {
                     accounts[network] = acc.map {
-                        Account(it, network, getKeyForAccount())
+                        Account(it, network, getKeyForAccount(), securityDelegate)
                     }.toMutableList()
                 }
             }
@@ -107,6 +124,8 @@ abstract class BaseWallet(
         fetchAllNetworkAccounts()
         // Cache the new data
         cache()
+    } finally {
+        _isLoading.value = false
     }
 
     protected suspend fun fetchAllNetworkAccounts() {
@@ -122,7 +141,7 @@ abstract class BaseWallet(
                         if (accounts.isNotEmpty()) {
                             newFlowAccounts[network] = accounts
                             newAccounts[network] = accounts.map { 
-                                Account(it, network, getKeyForAccount())
+                                Account(it, network, getKeyForAccount(), securityDelegate)
                             }.toMutableList()
                         }
                     } catch (e: Exception) {

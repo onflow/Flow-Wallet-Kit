@@ -3,6 +3,7 @@ package io.outblock.wallet.wallet
 import com.google.common.io.BaseEncoding
 import io.outblock.wallet.Network
 import io.outblock.wallet.account.Account
+import io.outblock.wallet.account.SecurityCheckDelegate
 import io.outblock.wallet.errors.WalletError
 import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.storage.StorageProtocol
@@ -23,8 +24,9 @@ import org.onflow.flow.models.SigningAlgorithm
 class KeyWallet(
     private val key: KeyProtocol,
     networks: Set<ChainId> = setOf(ChainId.Mainnet, ChainId.Testnet),
-    storage: StorageProtocol
-) : BaseWallet(WalletType.KEY, networks.toMutableSet(), storage) {
+    storage: StorageProtocol,
+    securityDelegate: SecurityCheckDelegate? = null
+) : BaseWallet(WalletType.KEY, networks.toMutableSet(), storage, securityDelegate) {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
