@@ -146,7 +146,7 @@ class Account(
     }
 
     suspend fun fetchChild(): List<ChildAccount> {
-        val childs = flow.getChildMetadata(address = account.address)
+        val childs = flow.getChildMetadata(address = account.address) // to-do: implement on flow-kmm
         val childAccounts = childs.mapNotNull { (addr, metadata) ->
             ChildAccount(
                 address = FlowAddress(addr),
@@ -161,7 +161,7 @@ class Account(
     }
 
     fun fetchVM(): COA? {
-        val address = flow.getEVMAddress(account.address) ?: return null
+        val address = flow.getEVMAddress(account.address) ?: return null 
         val coa = createCOA(address, network = chainID) ?: throw WalletError.InvalidEVMAddress
         this.coa = coa
         return coa
@@ -238,7 +238,7 @@ class Account(
         val balances = mutableListOf<TokenBalance>()
         
         // Fetch Flow token balance
-        val flowBalance = FlowApi.getFlowBalance(chainID, account.address)
+        val flowBalance = FlowApi.getFlowBalance(chainID, account.address) // to-do: flow-kmm or API 
         balances.add(
             TokenBalance(
                 tokenType = TokenBalance.TokenType.FLOW_FT,
@@ -250,11 +250,11 @@ class Account(
         )
 
         // Fetch other Flow FT balances
-        val ftBalances = FlowApi.getFungibleTokenBalances(chainID, account.address)
+        val ftBalances = FlowApi.getFungibleTokenBalances(chainID, account.address) // to-do: flow-kmm or API 
         balances.addAll(ftBalances)
 
         // Fetch NFT balances
-        val nftBalances = FlowApi.getNFTBalances(chainID, account.address)
+        val nftBalances = FlowApi.getNFTBalances(chainID, account.address) // to-do: flow-kmm or API 
         balances.addAll(nftBalances)
 
         return balances

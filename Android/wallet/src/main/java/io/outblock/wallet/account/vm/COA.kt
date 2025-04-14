@@ -29,7 +29,7 @@ class COA(
         val balances = mutableListOf<TokenBalance>()
         
         // Fetch native token balance (e.g., ETH on Ethereum)
-        val nativeBalance = FlowApi.getEVMNativeBalance(network, hexAddr)
+        val nativeBalance = FlowApi.getEVMNativeBalance(network, hexAddr) // to-do: flow-kmm or API 
         balances.add(
             TokenBalance(
                 tokenType = TokenBalance.TokenType.EVM_ERC20,
@@ -41,11 +41,11 @@ class COA(
         )
 
         // Fetch ERC20 token balances
-        val erc20Balances = FlowApi.getERC20Balances(network, hexAddr)
+        val erc20Balances = FlowApi.getERC20Balances(network, hexAddr) // to-do: flow-kmm or API 
         balances.addAll(erc20Balances)
 
         // Fetch ERC721 token balances
-        val erc721Balances = FlowApi.getERC721Balances(network, hexAddr)
+        val erc721Balances = FlowApi.getERC721Balances(network, hexAddr) // to-do: flow-kmm or API 
         balances.addAll(erc721Balances)
 
         return balances
