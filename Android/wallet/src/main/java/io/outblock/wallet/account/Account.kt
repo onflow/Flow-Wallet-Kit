@@ -2,29 +2,29 @@ package io.outblock.wallet.account
 
 import io.outblock.wallet.account.vm.COA
 import io.outblock.wallet.account.vm.COA.Companion.createCOA
-import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.errors.WalletError
+import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.security.SecurityCheckDelegate
-import io.outblock.wallet.storage.StorageProtocol
-import io.outblock.wallet.storage.FileSystemStorage
 import io.outblock.wallet.storage.Cacheable
+import io.outblock.wallet.storage.FileSystemStorage
+import io.outblock.wallet.storage.StorageProtocol
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import org.onflow.flow.ChainId
 import org.onflow.flow.FlowApi
 import org.onflow.flow.models.Account
 import org.onflow.flow.models.AccountPublicKey
 import org.onflow.flow.models.FlowAddress
-import org.onflow.flow.models.Transaction
 import org.onflow.flow.models.SigningAlgorithm
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
+import org.onflow.flow.models.Transaction
+import java.io.File
 
 /**
  * Represents a Flow blockchain account with signing capabilities
@@ -34,7 +34,7 @@ class Account(
     val chainID: ChainId,
     val key: KeyProtocol?,
     private val securityDelegate: SecurityCheckDelegate? = null,
-    override val storage: StorageProtocol = FileSystemStorage(context = TODO("Provide context"), directoryName = "account_storage")
+    override val storage: StorageProtocol = FileSystemStorage(File(System.getProperty("java.io.tmpdir"), "account_storage"))
 ) : Cacheable<AccountCache> {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val _isLoading = MutableStateFlow(false)
