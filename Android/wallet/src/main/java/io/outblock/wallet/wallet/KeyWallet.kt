@@ -6,6 +6,7 @@ import io.outblock.wallet.account.Account
 import io.outblock.wallet.account.SecurityCheckDelegate
 import io.outblock.wallet.errors.WalletError
 import io.outblock.wallet.keys.KeyProtocol
+import io.outblock.wallet.storage.Cacheable
 import io.outblock.wallet.storage.StorageProtocol
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,9 +27,16 @@ class KeyWallet(
     networks: Set<ChainId> = setOf(ChainId.Mainnet, ChainId.Testnet),
     storage: StorageProtocol,
     securityDelegate: SecurityCheckDelegate? = null
-) : BaseWallet(WalletType.KEY, networks.toMutableSet(), storage, securityDelegate) {
+) : BaseWallet(WalletType.KEY, networks.toMutableSet(), storage, securityDelegate), Cacheable<Map<ChainId, List<FlowAccount>>> {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    override val accounts: MutableMap<ChainId, MutableList<Account>> = mutableMapOf()
+
+    override val cacheId: String
+        get() = "key_wallet_${key.publicKey(SigningAlgorithm.ECDSA_P256)?.let { BaseEncoding.base16().lowerCase().encode(it) } ?: ""}"
+
+    override val cachedData: Map<ChainId, List<FlowAccount>>?
+        get() = accounts.mapValues { (_, list) -> list.map { it.flowAccount } }
 
     init {
         println("Initializing KeyWallet with networks: ${networks.joinToString()}")
@@ -39,10 +47,15 @@ class KeyWallet(
                 // Try to load from cache first
                 try {
                     println("Attempting to load accounts from cache")
-                    val cachedAccounts = storage.loadAccounts()
+                    val cachedAccounts = loadCache()
                     if (cachedAccounts != null) {
                         println("Successfully loaded ${cachedAccounts.size} accounts from cache")
-                        accounts.putAll(cachedAccounts)
+                        accounts.clear()
+                        for ((network, acc) in cachedAccounts) {
+                            accounts[network] = acc.map { account ->
+                                Account(account, network, key, securityDelegate)
+                            }.toMutableList()
+                        }
                     } else {
                         println("No cached accounts found")
                     }
@@ -52,7 +65,7 @@ class KeyWallet(
                     // Clear cache on failure
                     try {
                         println("Clearing invalid cache")
-                        storage.clearAccounts()
+                        deleteCache()
                     } catch (e: Exception) {
                         println("Failed to clear cache: ${e.message}")
                     }
@@ -64,7 +77,7 @@ class KeyWallet(
                 // Cache the results
                 try {
                     println("Caching fetched accounts")
-                    storage.saveAccounts(accounts)
+                    cache()
                     println("Successfully cached accounts")
                 } catch (e: Exception) {
                     println("Failed to cache accounts: ${e.message}")
@@ -87,6 +100,7 @@ class KeyWallet(
         val networkAccounts = accounts.getOrPut(account.chainID) { mutableListOf() }
         networkAccounts.add(account)
         println("Successfully added account ${account.address} to network ${account.chainID}")
+        cache() // Persist changes to cache
     }
 
     override suspend fun removeAccount(address: String) {
@@ -99,6 +113,7 @@ class KeyWallet(
         }
         if (removed) {
             println("Successfully removed account: $address")
+            cache() // Persist changes to cache
         } else {
             println("Account not found for removal: $address")
         }

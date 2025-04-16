@@ -1,7 +1,7 @@
 package io.outblock.wallet.backup
 
-import io.outblock.wallet.keys.WalletKey
-import io.outblock.wallet.storage.EncryptedStorage
+import io.outblock.wallet.keys.KeyProtocol
+import io.outblock.wallet.storage.StorageProtocol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.security.MessageDigest
@@ -9,7 +9,7 @@ import java.util.zip.CRC32
 
 class DefaultBackupProtocol(
     private val backupStorage: BackupStorage,
-    private val encryptedStorage: EncryptedStorage
+    private val storage: StorageProtocol
 ) : BackupProtocol {
 
     override suspend fun createBackup(type: BackupProtocol.BackupType): Result<BackupProtocol.BackupStatus> {
@@ -17,11 +17,11 @@ class DefaultBackupProtocol(
             try {
                 val backupFile = when (type) {
                     BackupProtocol.BackupType.DEVICE -> {
-                        val walletData = encryptedStorage.exportWalletData()
+                        val walletData = storage.get("wallet_data")
                         backupStorage.saveDeviceBackup(walletData)
                     }
                     BackupProtocol.BackupType.SEED_PHRASE -> {
-                        val seedPhrase = encryptedStorage.getSeedPhrase()
+                        val seedPhrase = storage.get("seed_phrase").toString(Charsets.UTF_8)
                         backupStorage.saveSeedBackup(seedPhrase)
                     }
                 }
@@ -46,7 +46,7 @@ class DefaultBackupProtocol(
         }
     }
 
-    override suspend fun restoreBackup(type: BackupProtocol.BackupType): Result<WalletKey> {
+    override suspend fun restoreBackup(type: BackupProtocol.BackupType): Result<KeyProtocol> {
         return withContext(Dispatchers.IO) {
             try {
                 val backupFile = when (type) {
@@ -54,18 +54,24 @@ class DefaultBackupProtocol(
                     BackupProtocol.BackupType.SEED_PHRASE -> backupStorage.getLatestSeedBackup()
                 } ?: throw IllegalStateException("No backup found for type: $type")
 
-                val walletKey = when (type) {
+                when (type) {
                     BackupProtocol.BackupType.DEVICE -> {
                         val backupData = backupStorage.loadDeviceBackup(backupFile)
-                        encryptedStorage.importWalletData(backupData)
+                        storage.set("wallet_data", backupData)
+                        // Return the key protocol from storage
+                        val keyData = storage.get("wallet_key")
+                        // TODO: Implement proper key protocol restoration
+                        throw NotImplementedError("Key protocol restoration not implemented")
                     }
                     BackupProtocol.BackupType.SEED_PHRASE -> {
                         val seedPhrase = backupStorage.loadSeedBackup(backupFile)
-                        encryptedStorage.importSeedPhrase(seedPhrase)
+                        storage.set("seed_phrase", seedPhrase.toByteArray())
+                        // Return the key protocol from storage
+                        val keyData = storage.get("seed_key")
+                        // TODO: Implement proper key protocol restoration
+                        throw NotImplementedError("Key protocol restoration not implemented")
                     }
                 }
-
-                Result.success(walletKey)
             } catch (e: Exception) {
                 Result.failure(e)
             }
@@ -166,7 +172,7 @@ class DefaultBackupProtocol(
      * @param provider The cloud provider to use
      * @return Result containing the restored wallet key
      */
-    suspend fun downloadFromCloud(type: BackupProtocol.BackupType, provider: CloudProvider): Result<WalletKey> {
+    suspend fun downloadFromCloud(type: BackupProtocol.BackupType, provider: CloudProvider): Result<KeyProtocol> {
         return withContext(Dispatchers.IO) {
             try {
                 when (provider) {
@@ -204,7 +210,7 @@ class DefaultBackupProtocol(
         throw NotImplementedError("Google Drive upload not implemented")
     }
 
-    private suspend fun downloadFromGoogleDrive(type: BackupProtocol.BackupType): Result<WalletKey> {
+    private suspend fun downloadFromGoogleDrive(type: BackupProtocol.BackupType): Result<KeyProtocol> {
         // TODO: Implement Google Drive download
         throw NotImplementedError("Google Drive download not implemented")
     }
@@ -220,7 +226,7 @@ class DefaultBackupProtocol(
         throw NotImplementedError("Dropbox upload not implemented")
     }
 
-    private suspend fun downloadFromDropbox(type: BackupProtocol.BackupType): Result<WalletKey> {
+    private suspend fun downloadFromDropbox(type: BackupProtocol.BackupType): Result<KeyProtocol> {
         // TODO: Implement Dropbox download
         throw NotImplementedError("Dropbox download not implemented")
     }

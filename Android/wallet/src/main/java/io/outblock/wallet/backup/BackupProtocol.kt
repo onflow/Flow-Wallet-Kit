@@ -1,6 +1,6 @@
 package io.outblock.wallet.backup
 
-import io.outblock.wallet.keys.WalletKey
+import io.outblock.wallet.keys.KeyProtocol
 
 /**
  * Protocol defining the rules and procedures for wallet backups
@@ -42,7 +42,7 @@ interface BackupProtocol {
      * @param type The type of backup to restore from
      * @return Result containing the restored wallet key
      */
-    suspend fun restoreBackup(type: BackupType): Result<WalletKey>
+    suspend fun restoreBackup(type: BackupType): Result<KeyProtocol>
 
     /**
      * Verifies the integrity of a backup

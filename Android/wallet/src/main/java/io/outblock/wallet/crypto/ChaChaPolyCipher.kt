@@ -14,7 +14,7 @@ import javax.crypto.spec.SecretKeySpec
  * Implementation of ChaCha20-Poly1305 authenticated encryption
  * Provides high-performance encryption with strong security guarantees
  */
-class ChaChaPolyCipher(private val key: String) : SymmetricEncryption {
+class ChaChaPolyCipher(private val password: String) : SymmetricEncryption {
     companion object {
         private const val TAG = "ChaChaPolyCipher"
         private const val KEY_SIZE = 32 // 256 bits
@@ -39,7 +39,7 @@ class ChaChaPolyCipher(private val key: String) : SymmetricEncryption {
     override val keySize: Int = KEY_SIZE * 8 // Convert bytes to bits
 
     init {
-        val keyBytes = deriveKey(key)
+        val keyBytes = deriveKey(password)
         secretKey = SecretKeySpec(keyBytes, ALGORITHM)
     }
 
@@ -65,7 +65,7 @@ class ChaChaPolyCipher(private val key: String) : SymmetricEncryption {
             return combined
         } catch (e: Exception) {
             Log.e(TAG, "Encryption failed", e)
-            throw WalletError("Encryption failed: ${e.message}")
+            throw WalletError(WalletError.SignError.code, "Encryption failed: ${e.message}")
         }
     }
 
@@ -90,7 +90,7 @@ class ChaChaPolyCipher(private val key: String) : SymmetricEncryption {
             return cipher.doFinal(encrypted)
         } catch (e: Exception) {
             Log.e(TAG, "Decryption failed", e)
-            throw WalletError("Decryption failed: ${e.message}")
+            throw WalletError(WalletError.SignError.code, "Decryption failed: ${e.message}")
         }
     }
 

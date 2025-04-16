@@ -1,10 +1,12 @@
 package io.outblock.wallet.account
 
+import io.outblock.wallet.account.vm.COA
 import io.outblock.wallet.storage.StorageProtocol
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.Contextual
 
 /**
  * Structure representing cacheable account data
@@ -12,6 +14,7 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class AccountCache(
     val childs: List<ChildAccount>?,
+    @Contextual
     val coa: COA?
 ) {
     companion object {

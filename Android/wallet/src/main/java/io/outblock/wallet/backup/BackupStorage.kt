@@ -3,6 +3,9 @@ package io.outblock.wallet.backup
 import android.content.Context
 import io.outblock.wallet.storage.HardwareBackedStorage
 import io.outblock.wallet.storage.StorageProtocol
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import java.io.File
 
 class BackupStorage(
@@ -83,7 +86,7 @@ class BackupStorage(
             timestamp = System.currentTimeMillis(),
             path = backupFile.absolutePath
         )
-        storage.set(BACKUP_METADATA_KEY, metadata.toJson().toByteArray())
+        storage.set(BACKUP_METADATA_KEY, Json.encodeToString(metadata).toByteArray())
     }
 
     private fun getLatestBackup(type: BackupType): File? {
@@ -97,7 +100,7 @@ class BackupStorage(
     private fun getBackupMetadata(): Map<String, BackupMetadata> {
         return storage.get(BACKUP_METADATA_KEY)
             ?.let { String(it) }
-            ?.let { it.fromJson<Map<String, BackupMetadata>>() }
+            ?.let { Json.decodeFromString<Map<String, BackupMetadata>>(it) }
             ?: emptyMap()
     }
 
@@ -106,6 +109,7 @@ class BackupStorage(
         SEED
     }
 
+    @kotlinx.serialization.Serializable
     private data class BackupMetadata(
         val type: BackupType,
         val timestamp: Long,

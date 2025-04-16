@@ -5,11 +5,13 @@ import io.outblock.wallet.account.vm.COA.Companion.createCOA
 import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.errors.WalletError
 import io.outblock.wallet.storage.StorageProtocol
-import io.outblock.wallet.storage.StandardStorage
+import io.outblock.wallet.storage.FileSystemStorage
+import io.outblock.wallet.storage.Cacheable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.onflow.flow.ChainId
+import org.onflow.flow.FlowApi
 import org.onflow.flow.models.Account
 import org.onflow.flow.models.AccountPublicKey
 import org.onflow.flow.models.FlowAddress
@@ -30,8 +32,8 @@ class Account(
     val chainID: ChainId,
     val key: KeyProtocol?,
     private val securityDelegate: SecurityCheckDelegate? = null,
-    private val storage: StorageProtocol = StandardStorage()
-) {
+    private val storage: StorageProtocol = FileSystemStorage(context = TODO("Provide context"), directoryName = "account_storage")
+) : Cacheable<AccountCache> {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -79,6 +81,13 @@ class Account(
     private val fullWeightKeys: List<AccountPublicKey>
         get() = account.keys?.filter { !it.revoked && it.weight >= 1000.toString() } ?: emptyList()
 
+    // Cacheable implementation
+    override val cachedData: AccountCache?
+        get() = AccountCache(childs, coa)
+
+    override val cacheId: String
+        get() = "Account-${chainID.name}-${account.address}"
+
     private fun findKeyInAccount(): List<AccountPublicKey> {
         val keyInstance = key ?: return emptyList()
         val keys = mutableListOf<AccountPublicKey>()
@@ -99,19 +108,38 @@ class Account(
     }
 
     // Account Relationships
-    suspend fun loadLinkedAccounts(): Pair<COA?, List<ChildAccount>> = coroutineScope {
+    suspend fun loadLinkedAccounts() {
         _isLoading.value = true
         try {
-            val vmFetch = async { fetchVM() }
-            val childFetch = async { fetchChild() }
-            Pair(vmFetch.await(), childFetch.await())
+            // Try to load from cache first
+            val cached = loadCache()
+            if (cached != null) {
+                childs = cached.childs
+                coa = cached.coa
+            }
+
+            // Fetch fresh data
+            val (vmAccounts, childAccounts) = fetchLinkedAccounts()
+            coa = vmAccounts
+            childs = childAccounts
+
+            // Cache the results
+            cache()
+        } catch (e: Exception) {
+            println("Error loading linked accounts: ${e.message}")
         } finally {
             _isLoading.value = false
         }
     }
 
+    private suspend fun fetchLinkedAccounts(): Pair<COA?, List<ChildAccount>> = coroutineScope {
+        val vmFetch = async { fetchVM() }
+        val childFetch = async { fetchChild() }
+        Pair(vmFetch.await(), childFetch.await())
+    }
+
     suspend fun fetchChild(): List<ChildAccount> {
-        val childs = flow.getChildMetadata(address = account.address) // to-do: implement on flow-kmm
+        val childs = FlowApi.getChildMetadata(address = account.address) // to-do: implement on flow-kmm
         val childAccounts = childs.mapNotNull { (addr, metadata) ->
             ChildAccount(
                 address = FlowAddress(addr),
@@ -126,25 +154,10 @@ class Account(
     }
 
     fun fetchVM(): COA? {
-        val address = flow.getEVMAddress(account.address) ?: return null 
+        val address = FlowApi.getEVMAddress(account.address) ?: return null 
         val coa = createCOA(address, network = chainID) ?: throw WalletError.InvalidEVMAddress
         this.coa = coa
         return coa
-    }
-
-    suspend fun fetchAccount() {
-        try {
-            val cache = AccountCache(childs, coa)
-            val cached = cache.loadCache()
-            if (cached != null) {
-                childs = cached.childs
-                coa = cached.coa
-            }
-        } catch (e: Exception) {
-            println("Error loading cache: ${e.message}")
-        }
-        loadLinkedAccounts()
-        AccountCache(childs, coa).cache()
     }
 
     // FlowSigner Implementation

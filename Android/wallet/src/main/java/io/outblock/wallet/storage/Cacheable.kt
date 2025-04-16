@@ -1,13 +1,13 @@
 package io.outblock.wallet.storage
 
-import com.google.gson.Gson
-import java.util.Date
+import kotlinx.serialization.Serializable
+import java.util.concurrent.TimeUnit
 
 /**
- * Interface defining caching behavior for wallet components
+ * Protocol defining caching behavior for wallet components
  * @param T The type of data being cached (must be serializable)
  */
-interface Cacheable<T> {
+interface Cacheable<T> where T : @Serializable Any {
     /**
      * Storage mechanism used for caching
      */
@@ -32,41 +32,50 @@ interface Cacheable<T> {
     /**
      * Cache the current state
      * @param expiresIn Optional custom expiration time in milliseconds
+     * @throws WalletError if caching fails
      */
     fun cache(expiresIn: Long? = null) {
-        cachedData?.let { data ->
-            val wrapper = CacheWrapper(
-                data = data,
-                timestamp = Date(),
-                expiresIn = expiresIn ?: cacheExpiration
-            )
-            val json = Gson().toJson(wrapper)
-            storage.set(cacheId, json.toByteArray())
-        }
+        val data = cachedData ?: return
+        val wrapper = CacheWrapper(
+            data = data,
+            expiresIn = expiresIn ?: cacheExpiration
+        )
+        val json = kotlinx.serialization.json.Json.encodeToString(wrapper)
+        storage.set(cacheId, json.toByteArray())
     }
 
     /**
      * Load state from cache
      * @param ignoreExpiration Whether to ignore expiration time
      * @return Cached data if available and not expired
+     * @throws WalletError if loading fails
      */
     fun loadCache(ignoreExpiration: Boolean = false): T? {
         val data = storage.get(cacheId) ?: return null
         val json = String(data)
-        val wrapper = Gson().fromJson(json, CacheWrapper::class.java)
+        val wrapper = kotlinx.serialization.json.Json.decodeFromString<CacheWrapper<T>>(json)
         
         if (!ignoreExpiration && wrapper.isExpired) {
             deleteCache()
             return null
         }
         
-        return wrapper.data as? T
+        return wrapper.data
     }
 
     /**
      * Delete cached state
+     * @throws WalletError if deletion fails
      */
     fun deleteCache() {
         storage.remove(cacheId)
     }
-} 
+}
+
+/**
+ * Extension functions for easier cache expiration configuration
+ */
+fun Cacheable<*>.expiresInDays(days: Long) = TimeUnit.DAYS.toMillis(days)
+fun Cacheable<*>.expiresInHours(hours: Long) = TimeUnit.HOURS.toMillis(hours)
+fun Cacheable<*>.expiresInMinutes(minutes: Long) = TimeUnit.MINUTES.toMillis(minutes)
+fun Cacheable<*>.expiresInSeconds(seconds: Long) = TimeUnit.SECONDS.toMillis(seconds) 

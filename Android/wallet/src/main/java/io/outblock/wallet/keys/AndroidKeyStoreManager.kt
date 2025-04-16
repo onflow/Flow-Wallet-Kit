@@ -31,7 +31,6 @@ class AndroidKeyStoreManager {
             KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
         )
             .setDigests(KeyProperties.DIGEST_SHA256)
-            .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_ECDSA_P256)
             .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
             .setUserAuthenticationRequired(false)
             .build()

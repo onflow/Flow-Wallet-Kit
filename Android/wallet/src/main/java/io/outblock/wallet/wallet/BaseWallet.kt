@@ -59,7 +59,7 @@ abstract class BaseWallet(
     override val networks: MutableSet<ChainId>,
     override val storage: StorageProtocol,
     override val securityDelegate: SecurityCheckDelegate? = null
-) : Wallet, Cacheable {
+) : Wallet, Cacheable<Map<ChainId, List<FlowAccount>>> {
 
     companion object {
         private const val CACHE_PREFIX = "Accounts"
@@ -72,8 +72,8 @@ abstract class BaseWallet(
     override val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     // Cacheable implementation
-    override val cachedData: Any?
-        get() = flowAccounts?.let { gson.toJson(it) }
+    override val cachedData: Map<ChainId, List<FlowAccount>>?
+        get() = flowAccounts
 
     override val cacheId: String
         get() = "$CACHE_PREFIX/${type.name}"
@@ -104,28 +104,27 @@ abstract class BaseWallet(
         _isLoading.value = true
         try {
             // Try to load from cache first
-            val cachedData = loadCache()
-            if (cachedData != null) {
-                val cachedAccounts = gson.fromJson<Map<ChainId, List<FlowAccount>>>(cachedData.toString(), typeToken)
+            val cachedAccounts = loadCache()
+            if (cachedAccounts != null) {
                 flowAccounts = cachedAccounts
                 accounts.clear()
                 for ((network, acc) in cachedAccounts) {
-                    accounts[network] = acc.map {
-                        Account(it, network, getKeyForAccount(), securityDelegate)
+                    accounts[network] = acc.map { account ->
+                        Account(account, network, getKeyForAccount(), securityDelegate)
                     }.toMutableList()
                 }
             }
+
+            // Fetch fresh data from networks
+            fetchAllNetworkAccounts()
+            // Cache the new data
+            cache()
         } catch (e: Exception) {
             // Handle cache loading error
             println("Error loading cache: ${e.message}")
+        } finally {
+            _isLoading.value = false
         }
-
-        // Fetch fresh data from networks
-        fetchAllNetworkAccounts()
-        // Cache the new data
-        cache()
-    } finally {
-        _isLoading.value = false
     }
 
     protected suspend fun fetchAllNetworkAccounts() {

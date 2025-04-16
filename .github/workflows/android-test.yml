@@ -1,4 +1,4 @@
-name: Android Instrumentation Tests
+name: Android Instrumentation + UnitTests
 
 on: [pull_request]
 

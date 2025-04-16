@@ -4,6 +4,8 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import io.outblock.wallet.errors.WalletError
+import org.onflow.flow.ChainId
+import org.onflow.flow.models.Account
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -11,26 +13,24 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * Hardware-backed storage implementation using Android Keystore
- * Provides the highest level of security by using the device's hardware security module
- * with support for:
- * - Biometric authentication
- * - Device-specific restrictions
- * - Access group sharing between apps
+ * Hardware-backed storage implementation
+ * Uses Android's Keystore for secure storage
  */
-class HardwareBackedStorage(
-    private val context: Context,
-    private val keyAlias: String = "hardware_backed_storage_key",
-    private val requireBiometricAuth: Boolean = false,
-    private val deviceOnly: Boolean = true,
-    private val accessGroup: String? = null
-) : StorageProtocol {
-
-    private val keyStore: KeyStore = KeyStore.getInstance("AndroidKeyStore").apply {
+class HardwareBackedStorage(private val context: Context) : StorageProtocol {
+    private val keyStore = KeyStore.getInstance("AndroidKeyStore").apply {
         load(null)
     }
 
-    private val secretKey: SecretKey by lazy {
+    private val prefs = context.getSharedPreferences("encrypted_data", Context.MODE_PRIVATE)
+
+    override val allKeys: List<String>
+        get() = prefs.all.keys.toList()
+
+    override fun findKey(keyword: String): List<String> {
+        return allKeys.filter { it.contains(keyword, ignoreCase = true) }
+    }
+
+    private fun getOrCreateKey(keyAlias: String): SecretKey {
         if (!keyStore.containsAlias(keyAlias)) {
             val keyGenerator = KeyGenerator.getInstance(
                 KeyProperties.KEY_ALGORITHM_AES,
@@ -42,124 +42,59 @@ class HardwareBackedStorage(
             )
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setUserAuthenticationRequired(requireBiometricAuth)
-                .setUserAuthenticationValidityDurationSeconds(if (requireBiometricAuth) 30 else -1)
-                .setIsStrongBoxBacked(deviceOnly)
-                .setUnlockedDeviceRequired(deviceOnly)
-                .apply {
-                    if (accessGroup != null) {
-                        setAttestationChallenge(accessGroup.toByteArray())
-                    }
-                }
+                .setUserAuthenticationRequired(false)
                 .build()
             keyGenerator.init(keyGenParameterSpec)
             keyGenerator.generateKey()
-        } else {
-            (keyStore.getEntry(keyAlias, null) as KeyStore.SecretKeyEntry).secretKey
         }
+        return keyStore.getKey(keyAlias, null) as SecretKey
     }
 
-    private val cipher: Cipher by lazy {
-        Cipher.getInstance("AES/GCM/NoPadding")
+    override fun get(key: String): ByteArray? {
+        val keyAlias = "key_$key"
+        if (!keyStore.containsAlias(keyAlias)) {
+            return null
+        }
+        val secretKey = getOrCreateKey(keyAlias)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        val encryptedData = prefs.getString(key, null)?.toByteArray() ?: return null
+        val iv = encryptedData.copyOfRange(0, 12)
+        val encryptedContent = encryptedData.copyOfRange(12, encryptedData.size)
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
+        return cipher.doFinal(encryptedContent)
     }
 
-    override val securityLevel: SecurityLevel = SecurityLevel.HARDWARE_BACKED
-
-    override val allKeys: List<String>
-        get() = try {
-            context.getSharedPreferences("hardware_backed_keys", Context.MODE_PRIVATE)
-                .all.keys.toList()
-        } catch (e: Exception) {
-            throw WalletError.LoadCacheFailed
-        }
-
-    override fun findKey(keyword: String): List<String> {
-        return try {
-            allKeys.filter { it.contains(keyword, ignoreCase = true) }
-        } catch (e: Exception) {
-            throw WalletError.LoadCacheFailed
-        }
-    }
-
-    override fun get(key: String): ByteArray {
-        val encryptedData = try {
-            context.getSharedPreferences("hardware_backed_data", Context.MODE_PRIVATE)
-                .getString(key, null) ?: throw WalletError.EmptyKeychain
-        } catch (e: Exception) {
-            throw WalletError.LoadCacheFailed
-        }
-
-        return try {
-            val (iv, encrypted) = encryptedData.split(":").let {
-                it[0].toByteArray() to it[1].toByteArray()
-            }
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
-            cipher.doFinal(encrypted)
-        } catch (e: Exception) {
-            throw WalletError.InitPrivateKeyFailed
-        }
-    }
-
-    override fun set(key: String, value: ByteArray) {
-        try {
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey)
-            val iv = cipher.iv
-            val encrypted = cipher.doFinal(value)
-            val encryptedData = "${iv.joinToString(":")}:${encrypted.joinToString(":")}"
-            
-            context.getSharedPreferences("hardware_backed_data", Context.MODE_PRIVATE)
-                .edit()
-                .putString(key, encryptedData)
-                .apply()
-            
-            context.getSharedPreferences("hardware_backed_keys", Context.MODE_PRIVATE)
-                .edit()
-                .putString(key, "")
-                .apply()
-        } catch (e: Exception) {
-            throw WalletError.InitPrivateKeyFailed
-        }
+    override fun set(key: String, data: ByteArray) {
+        val keyAlias = "key_$key"
+        val secretKey = getOrCreateKey(keyAlias)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+        val iv = cipher.iv
+        val encryptedContent = cipher.doFinal(data)
+        val encryptedData = iv + encryptedContent
+        prefs.edit()
+            .putString(key, encryptedData.toString(Charsets.ISO_8859_1))
+            .apply()
     }
 
     override fun remove(key: String) {
-        try {
-            context.getSharedPreferences("hardware_backed_data", Context.MODE_PRIVATE)
-                .edit()
-                .remove(key)
-                .apply()
-            
-            context.getSharedPreferences("hardware_backed_keys", Context.MODE_PRIVATE)
-                .edit()
-                .remove(key)
-                .apply()
-        } catch (e: Exception) {
-            throw WalletError.LoadCacheFailed
+        val keyAlias = "key_$key"
+        if (keyStore.containsAlias(keyAlias)) {
+            keyStore.deleteEntry(keyAlias)
         }
+        prefs.edit()
+            .remove(key)
+            .apply()
     }
 
     override fun removeAll() {
-        try {
-            context.getSharedPreferences("hardware_backed_data", Context.MODE_PRIVATE)
-                .edit()
-                .clear()
-                .apply()
-            
-            context.getSharedPreferences("hardware_backed_keys", Context.MODE_PRIVATE)
-                .edit()
-                .clear()
-                .apply()
-        } catch (e: Exception) {
-            throw WalletError.LoadCacheFailed
+        val aliases = keyStore.aliases()
+        while (aliases.hasMoreElements()) {
+            keyStore.deleteEntry(aliases.nextElement())
         }
-    }
-
-    override fun exists(key: String): Boolean {
-        return try {
-            context.getSharedPreferences("hardware_backed_keys", Context.MODE_PRIVATE)
-                .contains(key)
-        } catch (e: Exception) {
-            throw WalletError.LoadCacheFailed
-        }
+        prefs.edit()
+            .clear()
+            .apply()
     }
 
     /**

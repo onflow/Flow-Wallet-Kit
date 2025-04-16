@@ -22,5 +22,10 @@ enum class KeyFormat {
     /**
      * JSON keystore
      */
-    KEYSTORE
+    KEYSTORE,
+
+    /**
+     * PKCS8 format
+     */
+    PKCS8
 } 

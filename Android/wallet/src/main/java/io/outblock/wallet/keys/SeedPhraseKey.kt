@@ -2,13 +2,15 @@ package io.outblock.wallet.keys
 
 import android.util.Log
 import com.google.common.io.BaseEncoding
-import com.trustwallet.wallet.core.CoinType
-import com.trustwallet.wallet.core.HDWallet
-import com.trustwallet.wallet.core.PrivateKey
+import io.outblock.wallet.crypto.ChaChaPolyCipher
 import io.outblock.wallet.errors.WalletError
 import io.outblock.wallet.storage.StorageProtocol
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
+import org.web3j.crypto.Bip32ECKeyPair
+import org.web3j.crypto.Credentials
+import org.web3j.crypto.MnemonicUtils
+import org.web3j.crypto.Sign
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
@@ -17,15 +19,17 @@ import java.security.PublicKey
 import java.security.spec.ECGenParameterSpec
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /**
  * Concrete implementation of SeedPhraseKeyProvider
- * Manages BIP39 seed phrase based keys using WalletCore
+ * Manages BIP39 seed phrase based keys using web3j
  */
 class SeedPhraseKey(
-    private val mnemonic: String,
+    private val mnemonicString: String,
     private val passphrase: String,
-    private val derivationPath: String,
+    override val derivationPath: String,
     private var keyPair: KeyPair?,
     override var storage: StorageProtocol
 ) : SeedPhraseKeyProvider {
@@ -35,8 +39,17 @@ class SeedPhraseKey(
         private const val COIN_TYPE = 539L // Flow coin type
     }
 
-    private val hdWallet: HDWallet = try {
-        HDWallet(mnemonic, passphrase)
+    private val hdWallet: Bip32ECKeyPair = try {
+        val seed = MnemonicUtils.generateSeed(mnemonicString, passphrase)
+        Bip32ECKeyPair.generateKeyPair(seed)
+    } catch (e: Exception) {
+        Log.e(TAG, "Failed to initialize HD wallet", e)
+        throw WalletError.InitHDWalletFailed
+    }
+
+    private val credentials: Credentials = try {
+        val derivedKeyPair = Bip32ECKeyPair.deriveKeyPair(hdWallet, derivationPath)
+        Credentials.create(derivedKeyPair)
     } catch (e: Exception) {
         Log.e(TAG, "Failed to initialize HD wallet", e)
         throw WalletError.InitHDWalletFailed
@@ -45,7 +58,7 @@ class SeedPhraseKey(
     override val key: KeyPair
         get() = keyPair ?: throw WalletError.EmptyKey
 
-    override val secret: ByteArray = mnemonic.toByteArray()
+    override val secret: ByteArray = mnemonicString.toByteArray()
     override val advance: Any = Unit
     override val keyType: KeyType = KeyType.SEED_PHRASE
     override val isHardwareBacked: Boolean = false
@@ -55,9 +68,7 @@ class SeedPhraseKey(
             BaseEncoding.base64().encode(it)
         } ?: java.util.UUID.randomUUID().toString()
 
-    override val mnemonic: List<String> = mnemonic.split(" ")
-
-    override val derivationPath: String = derivationPath
+    public override val mnemonic: List<String> = mnemonicString.split(" ")
 
     override fun deriveKey(index: Int): KeyProtocol {
         val newPath = derivationPath.replaceAfterLast("/", index.toString())
@@ -67,12 +78,13 @@ class SeedPhraseKey(
 
     private fun deriveKeyPair(path: String): KeyPair {
         try {
-            val privateKey = hdWallet.getKeyForCoin(CoinType.FLOW)
-            val publicKey = privateKey.getPublicKeySecp256k1(true)
+            val derivedKeyPair = Bip32ECKeyPair.deriveKeyPair(hdWallet, path)
+            val privateKey = derivedKeyPair.privateKey
+            val publicKey = derivedKeyPair.publicKey
             
             val keyFactory = KeyFactory.getInstance("EC")
-            val privateKeySpec = PKCS8EncodedKeySpec(privateKey.data())
-            val publicKeySpec = X509EncodedKeySpec(publicKey.data())
+            val privateKeySpec = PKCS8EncodedKeySpec(privateKey.toByteArray())
+            val publicKeySpec = X509EncodedKeySpec(publicKey.toByteArray())
             
             return KeyPair(
                 keyFactory.generatePublic(publicKeySpec),
@@ -121,7 +133,7 @@ class SeedPhraseKey(
     }
 
     override suspend fun restore(secret: ByteArray, storage: StorageProtocol): KeyProtocol {
-        val mnemonic = secret.toString(Charsets.UTF_8)
+        val mnemonic = String(secret, Charsets.UTF_8)
         val keyPair = deriveKeyPair(DEFAULT_DERIVATION_PATH)
         return SeedPhraseKey(mnemonic, "", DEFAULT_DERIVATION_PATH, keyPair, storage)
     }
@@ -135,13 +147,11 @@ class SeedPhraseKey(
     }
 
     override suspend fun sign(data: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): ByteArray {
-        if (keyPair?.private == null) {
-            throw WalletError.EmptySignKey
-        }
+        val currentKeyPair = keyPair ?: throw WalletError.EmptySignKey
         
         return try {
             val signature = java.security.Signature.getInstance("SHA256withECDSA")
-            signature.initSign(keyPair.private)
+            signature.initSign(currentKeyPair.private)
             signature.update(data)
             signature.sign()
         } catch (e: Exception) {
@@ -151,13 +161,11 @@ class SeedPhraseKey(
     }
 
     override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm): Boolean {
-        if (keyPair?.public == null) {
-            return false
-        }
+        val currentKeyPair = keyPair ?: return false
         
         return try {
             val sig = java.security.Signature.getInstance("SHA256withECDSA")
-            sig.initVerify(keyPair.public)
+            sig.initVerify(currentKeyPair.public)
             sig.update(message)
             sig.verify(signature)
         } catch (e: Exception) {
@@ -186,16 +194,16 @@ class SeedPhraseKey(
     }
 
     private fun generateMnemonic(): String {
-        return hdWallet.mnemonic
+        return MnemonicUtils.generateMnemonic()
     }
 
     private fun createKeyData(): ByteArray {
         val data = mapOf(
-            "mnemonic" to mnemonic,
+            "mnemonic" to mnemonicString,
             "passphrase" to passphrase,
-            "derivationPath" to derivationPath
+            "path" to derivationPath
         )
-        return com.google.gson.Gson().toJson(data).toByteArray()
+        return Json.encodeToString(data).toByteArray()
     }
 
     private fun parseKeyData(data: ByteArray): Triple<String, String, String> {
@@ -204,7 +212,7 @@ class SeedPhraseKey(
         return Triple(
             map["mnemonic"] as String,
             map["passphrase"] as String,
-            map["derivationPath"] as String
+            map["path"] as String
         )
     }
 

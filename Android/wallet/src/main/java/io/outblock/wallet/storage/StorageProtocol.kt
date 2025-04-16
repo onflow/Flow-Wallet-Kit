@@ -1,16 +1,15 @@
 package io.outblock.wallet.storage
 
 import io.outblock.wallet.errors.WalletError
+import org.onflow.flow.ChainId
+import org.onflow.flow.models.Account
 
 /**
- * Protocol defining the interface for secure data storage
- * Provides a unified interface for storing and retrieving sensitive data like keys,
- * allowing different storage backends to be used interchangeably.
+ * Protocol defining storage behavior for wallet data
  */
 interface StorageProtocol {
     /**
      * Get all keys currently stored in the storage
-     * @throws WalletError if operation fails
      */
     val allKeys: List<String>
 
@@ -23,47 +22,33 @@ interface StorageProtocol {
     fun findKey(keyword: String): List<String>
 
     /**
-     * Retrieve data for a key
-     * @param key Key to lookup
-     * @return Stored data
-     * @throws WalletError if key not found or operation fails
-     */
-    fun get(key: String): ByteArray
-
-    /**
-     * Store data for a key
-     * @param key Key to store under
-     * @param value Data to store
+     * Get data from storage
+     * @param key The key to retrieve data for
+     * @return The stored data, or null if not found
      * @throws WalletError if operation fails
      */
-    fun set(key: String, value: ByteArray)
+    fun get(key: String): ByteArray?
 
     /**
-     * Remove data for a key
-     * @param key Key to remove
+     * Store data in storage
+     * @param key The key to store data under
+     * @param data The data to store
+     * @throws WalletError if operation fails
+     */
+    fun set(key: String, data: ByteArray)
+
+    /**
+     * Remove data from storage
+     * @param key The key to remove data for
      * @throws WalletError if operation fails
      */
     fun remove(key: String)
 
     /**
-     * Remove all stored data
+     * Remove all data from storage
      * @throws WalletError if operation fails
      */
     fun removeAll()
-
-    /**
-     * Check if a key exists in storage
-     * @param key Key to check
-     * @return Whether the key exists
-     * @throws WalletError if operation fails
-     */
-    fun exists(key: String): Boolean
-
-    /**
-     * Get the security level of this storage backend
-     * @return SecurityLevel indicating the security guarantees
-     */
-    val securityLevel: SecurityLevel
 }
 
 /**

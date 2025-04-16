@@ -1,6 +1,7 @@
 package io.outblock.wallet.account.vm
 
 import io.outblock.wallet.account.Account
+import io.outblock.wallet.account.TokenBalance
 import org.onflow.flow.ChainId
 import org.onflow.flow.FlowApi
 import org.onflow.flow.models.FlowAddress

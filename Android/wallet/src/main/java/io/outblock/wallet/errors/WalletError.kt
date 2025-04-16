@@ -38,6 +38,7 @@ class WalletError(
         val InvalidKeyStorePassword = WalletError(15, "Invalid KeyStore password")
         val SignError = WalletError(16, "Error during signing operation")
         val InitPublicKeyFailed = WalletError(17, "Failed to initialize public key")
+        val FailedPassSecurityCheck = WalletError(32, "Security check failed")
 
         // MARK: - Network Errors
         val IncorrectKeyIndexerURL = WalletError(18, "Invalid key indexer URL")
@@ -46,6 +47,7 @@ class WalletError(
 
         // MARK: - Storage Errors
         val LoadCacheFailed = WalletError(21, "Failed to load data from cache")
+        val RemoveCacheFailed = WalletError(31, "Failed to remove data from cache")
         val InvalidWalletType = WalletError(22, "Invalid wallet type for operation")
 
         // MARK: - Connection Errors
@@ -91,6 +93,8 @@ class WalletError(
                 28 -> InvalidSession
                 29 -> NetworkNotSupported
                 30 -> ConnectionTimeout
+                31 -> RemoveCacheFailed
+                32 -> FailedPassSecurityCheck
                 else -> throw IllegalArgumentException("Unknown error code: $code")
             }
         }

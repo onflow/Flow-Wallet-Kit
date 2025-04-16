@@ -3,7 +3,7 @@ package io.outblock.wallet.keys
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Log
-import io.outblock.wallet.WalletKeyManager
+import io.outblock.wallet.KeyManager
 import io.outblock.wallet.errors.WalletError
 import io.outblock.wallet.storage.StorageProtocol
 import org.onflow.flow.models.HashingAlgorithm
@@ -47,8 +47,7 @@ class SecureElementKey(
 
     override suspend fun create(advance: Any, storage: StorageProtocol): KeyProtocol {
         try {
-            val keyManager = WalletKeyManager()
-            val keyPair = keyManager.generateKeyWithPrefix("secure_element")
+            val keyPair = KeyManager.generateKeyWithPrefix("secure_element")
             return SecureElementKey(keyPair, storage)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create secure element key", e)
@@ -68,9 +67,8 @@ class SecureElementKey(
 
     override suspend fun get(id: String, password: String, storage: StorageProtocol): KeyProtocol {
         try {
-            val keyManager = WalletKeyManager()
-            val privateKey = keyManager.getPrivateKeyByPrefix(id) ?: throw WalletError.EmptyKeychain
-            val publicKey = keyManager.getPublicKeyByPrefix(id) ?: throw WalletError.InitPublicKeyFailed
+            val privateKey = KeyManager.getPrivateKeyByPrefix(id) ?: throw WalletError.EmptyKeychain
+            val publicKey = KeyManager.getPublicKeyByPrefix(id) ?: throw WalletError.InitPublicKeyFailed
             return SecureElementKey(KeyPair(publicKey, privateKey), storage)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get secure element key", e)
@@ -128,8 +126,7 @@ class SecureElementKey(
 
     override suspend fun remove(id: String) {
         try {
-            val keyManager = WalletKeyManager()
-            keyManager.removeKey(id)
+            KeyManager.deleteEntry(id)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to remove secure element key", e)
             throw WalletError.InitPrivateKeyFailed
@@ -138,8 +135,7 @@ class SecureElementKey(
 
     override fun allKeys(): List<String> {
         try {
-            val keyManager = WalletKeyManager()
-            return keyManager.getAllKeyAliases()
+            return KeyManager.getAllAliases()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get all key aliases", e)
             return emptyList()

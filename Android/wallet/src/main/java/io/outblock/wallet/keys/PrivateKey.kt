@@ -5,6 +5,7 @@ import io.outblock.wallet.errors.WalletError
 import io.outblock.wallet.storage.StorageProtocol
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
+import io.outblock.wallet.crypto.ChaChaPolyCipher
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
@@ -19,7 +20,7 @@ import java.security.spec.X509EncodedKeySpec
  * Manages raw private keys
  */
 class PrivateKey(
-    private val keyPair: KeyPair,
+    private var keyPair: KeyPair,
     override var storage: StorageProtocol
 ) : PrivateKeyProvider {
     companion object {
@@ -50,6 +51,13 @@ class PrivateKey(
                     val privateKey = keyFactory.generatePrivate(pkcs8Spec)
                     privateKey.encoded
                 }
+                KeyFormat.BASE64 -> keyPair.private.encoded.let { 
+                    java.util.Base64.getEncoder().encodeToString(it).toByteArray(Charsets.UTF_8)
+                }
+                KeyFormat.HEX -> keyPair.private.encoded.let {
+                    it.joinToString("") { byte -> "%02x".format(byte) }.toByteArray(Charsets.UTF_8)
+                }
+                KeyFormat.KEYSTORE -> throw WalletError.InvalidPrivateKey
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to export private key", e)
@@ -66,6 +74,16 @@ class PrivateKey(
                     val pkcs8Spec = PKCS8EncodedKeySpec(data)
                     keyFactory.generatePrivate(pkcs8Spec)
                 }
+                KeyFormat.BASE64 -> {
+                    val decoded = java.util.Base64.getDecoder().decode(String(data, Charsets.UTF_8))
+                    keyFactory.generatePrivate(PKCS8EncodedKeySpec(decoded))
+                }
+                KeyFormat.HEX -> {
+                    val hexString = String(data, Charsets.UTF_8)
+                    val bytes = hexString.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+                    keyFactory.generatePrivate(PKCS8EncodedKeySpec(bytes))
+                }
+                KeyFormat.KEYSTORE -> throw WalletError.InvalidPrivateKey
             }
             val publicKey = keyFactory.generatePublic(X509EncodedKeySpec(keyPair.public.encoded))
             keyPair = KeyPair(publicKey, privateKey)

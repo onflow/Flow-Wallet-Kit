@@ -12,7 +12,7 @@ import javax.crypto.spec.SecretKeySpec
  * Implementation of AES-GCM authenticated encryption
  * Provides industry-standard encryption with strong security guarantees
  */
-class AESGCMCipher(private val key: String) : SymmetricEncryption {
+class AESGCMCipher(private val password: String) : SymmetricEncryption {
     companion object {
         private const val TAG = "AESGCMCipher"
         private const val KEY_SIZE = 32 // 256 bits
@@ -30,7 +30,7 @@ class AESGCMCipher(private val key: String) : SymmetricEncryption {
     override val keySize: Int = KEY_SIZE * 8 // Convert bytes to bits
 
     init {
-        val keyBytes = deriveKey(key)
+        val keyBytes = deriveKey(password)
         secretKey = SecretKeySpec(keyBytes, ALGORITHM)
     }
 
@@ -56,7 +56,7 @@ class AESGCMCipher(private val key: String) : SymmetricEncryption {
             return combined
         } catch (e: Exception) {
             Log.e(TAG, "Encryption failed", e)
-            throw WalletError("Encryption failed: ${e.message}")
+            throw WalletError(WalletError.SignError.code, "Encryption failed: ${e.message}")
         }
     }
 
@@ -81,7 +81,7 @@ class AESGCMCipher(private val key: String) : SymmetricEncryption {
             return cipher.doFinal(encrypted)
         } catch (e: Exception) {
             Log.e(TAG, "Decryption failed", e)
-            throw WalletError("Decryption failed: ${e.message}")
+            throw WalletError(WalletError.SignError.code, "Decryption failed: ${e.message}")
         }
     }
 
