@@ -3,7 +3,11 @@ package io.outblock.wallet.wallet
 import io.outblock.wallet.keys.PrivateKey
 import io.outblock.wallet.storage.InMemoryStorage
 import io.outblock.wallet.storage.StorageProtocol
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertNotNull
+import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.runBlocking
+import org.junit.Test
 import org.onflow.flow.ChainId
 import kotlin.test.Test
 import kotlin.test.assertEquals

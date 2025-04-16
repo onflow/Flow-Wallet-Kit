@@ -1,17 +1,17 @@
 package io.outblock.wallet.wallet
 
-import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.storage.InMemoryStorage
 import io.outblock.wallet.storage.StorageProtocol
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertNotNull
+import junit.framework.TestCase.assertNull
+import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.junit.Test
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.Account as FlowAccount
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class WatchWalletTest {
     private val storage: StorageProtocol = InMemoryStorage()

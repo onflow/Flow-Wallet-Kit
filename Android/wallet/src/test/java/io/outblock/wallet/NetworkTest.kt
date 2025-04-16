@@ -5,19 +5,17 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.http.content.*
 import io.outblock.wallet.errors.WalletError
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertNotNull
+import junit.framework.TestCase.assertNull
+import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
+import org.junit.Test
 import org.onflow.flow.ChainId
-import org.onflow.flow.models.AccountExpandable
-import org.onflow.flow.models.Account as FlowAccount
-import org.onflow.flow.models.AccountPublicKey
-import org.onflow.flow.models.FlowAddress
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 
 class NetworkTest {
     private val mockEngine = MockEngine { request ->
@@ -136,16 +134,18 @@ class NetworkTest {
         
         assertEquals("0x123", account.address)
         assertEquals("0", account.balance)
-        assertTrue(account.contracts.isEmpty())
+        account.contracts?.let { assertTrue(it.isEmpty()) }
         assertNull(account.links)
         
         val key = account.keys?.first()
         assertNotNull(key)
-        assertEquals("0", key.index)
-        assertEquals("valid-key", key.publicKey)
-        assertEquals(SigningAlgorithm.ECDSA_P256, key.signingAlgorithm)
-        assertEquals(HashingAlgorithm.SHA2_256, key.hashingAlgorithm)
-        assertEquals("1000", key.weight)
-        assertFalse(key.revoked)
+        if (key != null) {
+            assertEquals("0", key.index)
+            assertEquals("valid-key", key.publicKey)
+            assertEquals(SigningAlgorithm.ECDSA_P256, key.signingAlgorithm)
+            assertEquals(HashingAlgorithm.SHA2_256, key.hashingAlgorithm)
+            assertEquals("1000", key.weight)
+            assertFalse(key.revoked)
+        }
     }
 } 

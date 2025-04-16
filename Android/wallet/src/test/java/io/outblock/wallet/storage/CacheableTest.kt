@@ -1,13 +1,13 @@
 package io.outblock.wallet.storage
 
 import io.outblock.wallet.errors.WalletError
+import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertNull
+import junit.framework.TestCase.assertTrue
 import org.junit.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 
 class CacheableTest {
     private class TestCacheable(
@@ -110,8 +110,6 @@ class CacheableTest {
             override fun set(key: String, value: ByteArray) = throw WalletError("Test error")
             override fun remove(key: String) = throw WalletError("Test error")
             override fun removeAll() = throw WalletError("Test error")
-            override fun exists(key: String): Boolean = false
-            override val securityLevel: SecurityLevel = SecurityLevel.IN_MEMORY
         }
         
         val cacheable = TestCacheable(storage, "test-cache", "test data", null)

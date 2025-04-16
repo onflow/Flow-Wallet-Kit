@@ -17,8 +17,8 @@ abstract class SymmetricEncryptionTest {
     @Test
     fun testKeyProperties() {
         val cipher = createCipher()
-        assertTrue(cipher.key.isNotEmpty(), "Key should not be empty")
-        assertTrue(cipher.keySize > 0, "Key size should be positive")
+        assertTrue(cipher.key.isNotEmpty())
+        assertTrue(cipher.keySize > 0)
     }
 
     @Test
@@ -29,8 +29,8 @@ abstract class SymmetricEncryptionTest {
         val encrypted = cipher.encrypt(originalData)
         val decrypted = cipher.decrypt(encrypted)
         
-        assertEquals(originalData.size, decrypted.size, "Decrypted data size should match original")
-        assertTrue(originalData.contentEquals(decrypted), "Decrypted data should match original")
+        assertEquals(originalData.size, decrypted.size)
+        assertTrue(originalData.contentEquals(decrypted))
     }
 
     @Test
@@ -41,7 +41,7 @@ abstract class SymmetricEncryptionTest {
         val encrypted = cipher.encrypt(emptyData)
         val decrypted = cipher.decrypt(encrypted)
         
-        assertEquals(0, decrypted.size, "Decrypted empty data should be empty")
+        assertEquals(0, decrypted.size)
     }
 
     @Test
@@ -52,7 +52,7 @@ abstract class SymmetricEncryptionTest {
         val encrypted = cipher.encrypt(largeData)
         val decrypted = cipher.decrypt(encrypted)
         
-        assertEquals(largeData.size, decrypted.size, "Decrypted large data size should match original")
-        assertTrue(largeData.contentEquals(decrypted), "Decrypted large data should match original")
+        assertEquals(largeData.size, decrypted.size)
+        assertTrue(largeData.contentEquals(decrypted))
     }
 } 

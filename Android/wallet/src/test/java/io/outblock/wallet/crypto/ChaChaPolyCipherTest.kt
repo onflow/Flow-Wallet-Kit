@@ -1,7 +1,9 @@
 package io.outblock.wallet.crypto
 
 import io.outblock.wallet.errors.WalletError
-import kotlin.test.Test
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertTrue
+import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue

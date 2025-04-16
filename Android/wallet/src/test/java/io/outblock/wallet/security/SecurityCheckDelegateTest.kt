@@ -1,5 +1,8 @@
 package io.outblock.wallet.security
 
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
@@ -19,14 +22,14 @@ class SecurityCheckDelegateTest {
     @Test
     fun testSecurityCheckPass() = runBlocking {
         val delegate = TestSecurityCheckDelegate(true)
-        val result = delegate.verify().first()
+        val result = delegate.verify()
         assertTrue(result)
     }
 
     @Test
     fun testSecurityCheckFail() = runBlocking {
         val delegate = TestSecurityCheckDelegate(false)
-        val result = delegate.verify().first()
+        val result = delegate.verify()
         assertFalse(result)
     }
 
@@ -39,16 +42,16 @@ class SecurityCheckDelegateTest {
         )
         
         val results = delegates.map { delegate ->
-            delegate.verify().first()
+            delegate.verify()
         }
         
         assertEquals(listOf(true, false, true), results)
     }
 
     @Test
-    fun testSecurityCheckFlow() = runBlocking {
+    fun testSecurityCheckFlow() = runBlocking { // to-do: no longer uses a coroutine
         val delegate = object : SecurityCheckDelegate {
-            override suspend fun verify(): Flow<Boolean> {
+            override suspend fun verify(): Boolean {
                 return kotlinx.coroutines.flow.flow {
                     emit(true)
                     emit(false)

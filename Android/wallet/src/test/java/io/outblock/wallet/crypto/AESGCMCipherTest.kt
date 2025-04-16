@@ -4,10 +4,7 @@ import io.outblock.wallet.errors.WalletError
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
 import org.junit.Test
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 
 class AESGCMCipherTest : SymmetricEncryptionTest() {
     override fun createCipher(): SymmetricEncryption {

@@ -4,16 +4,17 @@ import io.outblock.wallet.account.Account
 import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.storage.InMemoryStorage
 import io.outblock.wallet.storage.StorageProtocol
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertNotNull
+import junit.framework.TestCase.assertNull
+import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.junit.Test
 import org.onflow.flow.ChainId
+import org.onflow.flow.models.AccountExpandable
 import org.onflow.flow.models.Account as FlowAccount
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class BaseWalletTest {
     private val storage: StorageProtocol = InMemoryStorage()
@@ -63,7 +64,7 @@ class BaseWalletTest {
                 balance = "0",
                 keys = emptySet(),
                 contracts = emptyMap(),
-                expandable = null,
+                expandable = AccountExpandable(),
                 links = null
             ),
             ChainId.Mainnet,
