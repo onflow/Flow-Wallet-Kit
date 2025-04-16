@@ -14,6 +14,7 @@ import org.web3j.crypto.Credentials
 import org.web3j.crypto.MnemonicUtils
 import java.security.KeyFactory
 import java.security.KeyPair
+import java.security.SecureRandom
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 
@@ -31,6 +32,20 @@ class SeedPhraseKey(
     companion object {
         private const val TAG = "SeedPhraseKey"
         private const val DEFAULT_DERIVATION_PATH = "m/44'/539'/0'/0/0"
+
+        private const val HARDENED_BIT = -0x80000000
+
+        fun parseDerivationPath(path: String): IntArray {
+            return path.split("/")
+                .filter { it.isNotBlank() && it != "m" }
+                .map {
+                    when {
+                        it.endsWith("'") -> it.dropLast(1).toInt() or HARDENED_BIT
+                        else -> it.toInt()
+                    }
+                }
+                .toIntArray()
+        }
     }
 
     private val hdWallet: Bip32ECKeyPair = try {
@@ -42,7 +57,7 @@ class SeedPhraseKey(
     }
 
     private val credentials: Credentials = try {
-        val derivedKeyPair = Bip32ECKeyPair.deriveKeyPair(hdWallet, derivationPath)
+        val derivedKeyPair = Bip32ECKeyPair.deriveKeyPair(hdWallet, parseDerivationPath(derivationPath))
         Credentials.create(derivedKeyPair)
     } catch (e: Exception) {
         Log.e(TAG, "Failed to initialize HD wallet", e)
@@ -72,7 +87,7 @@ class SeedPhraseKey(
 
     private fun deriveKeyPair(path: String): KeyPair {
         try {
-            val derivedKeyPair = Bip32ECKeyPair.deriveKeyPair(hdWallet, path)
+            val derivedKeyPair = Bip32ECKeyPair.deriveKeyPair(hdWallet, parseDerivationPath(derivationPath))
             val privateKey = derivedKeyPair.privateKey
             val publicKey = derivedKeyPair.publicKey
             
@@ -188,7 +203,9 @@ class SeedPhraseKey(
     }
 
     private fun generateMnemonic(): String {
-        return MnemonicUtils.generateMnemonic()
+        val initialEntropy = ByteArray(16) // 128 bits = 12 words
+        SecureRandom().nextBytes(initialEntropy)
+        return MnemonicUtils.generateMnemonic(initialEntropy)
     }
 
     private fun createKeyData(): ByteArray {
