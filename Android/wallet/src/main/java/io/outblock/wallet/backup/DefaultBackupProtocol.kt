@@ -1,6 +1,9 @@
 package io.outblock.wallet.backup
 
+import io.outblock.wallet.keys.AndroidKeyStoreManager
 import io.outblock.wallet.keys.KeyProtocol
+import io.outblock.wallet.keys.SecureElementKey
+import io.outblock.wallet.keys.SeedPhraseKey
 import io.outblock.wallet.storage.StorageProtocol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -61,16 +64,31 @@ class DefaultBackupProtocol(
                         storage.set("wallet_data", backupData)
                         // Return the key protocol from storage
                         val keyData = storage.get("wallet_key")
-                        // TODO: Implement proper key protocol restoration
-                        throw NotImplementedError("Key protocol restoration not implemented")
+                            ?: throw IllegalStateException("No wallet key found in storage")
+                        val keyManager = AndroidKeyStoreManager()
+                        val keyPair = keyManager.getKeyPair("wallet_key")
+                            ?: throw IllegalStateException("Failed to retrieve key pair from Android Keystore")
+                        // Restore the key using the stored key data
+                        val secureElementKey = SecureElementKey(keyPair, storage)
+                        secureElementKey.restore(keyData, storage)
+                        return@withContext Result.success(secureElementKey)
                     }
                     BackupProtocol.BackupType.SEED_PHRASE -> {
                         val seedPhrase = backupStorage.loadSeedBackup(backupFile)
                         storage.set("seed_phrase", seedPhrase.toByteArray())
                         // Return the key protocol from storage
                         val keyData = storage.get("seed_key")
-                        // TODO: Implement proper key protocol restoration
-                        throw NotImplementedError("Key protocol restoration not implemented")
+                            ?: throw IllegalStateException("No seed key found in storage")
+                        // Restore the key using the stored key data
+                        val seedKey = SeedPhraseKey(
+                            mnemonicString = seedPhrase,
+                            passphrase = "",
+                            derivationPath = "m/44'/539'/0'/0/0",
+                            keyPair = null,
+                            storage = storage
+                        )
+                        seedKey.restore(keyData, storage)
+                        return@withContext Result.success(seedKey)
                     }
                 }
             } catch (e: Exception) {
