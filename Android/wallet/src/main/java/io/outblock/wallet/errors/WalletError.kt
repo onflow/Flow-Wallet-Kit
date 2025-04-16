@@ -48,6 +48,16 @@ class WalletError(
         val LoadCacheFailed = WalletError(21, "Failed to load data from cache")
         val InvalidWalletType = WalletError(22, "Invalid wallet type for operation")
 
+        // MARK: - Connection Errors
+        val InvalidConnectionType = WalletError(23, "Invalid connection type")
+        val ConnectionFailed = WalletError(24, "Failed to establish connection")
+        val DisconnectionFailed = WalletError(25, "Failed to disconnect")
+        val InvalidDeepLink = WalletError(26, "Invalid deep link format")
+        val SessionExpired = WalletError(27, "Connection session expired")
+        val InvalidSession = WalletError(28, "Invalid connection session")
+        val NetworkNotSupported = WalletError(29, "Network not supported")
+        val ConnectionTimeout = WalletError(30, "Connection attempt timed out")
+
         fun fromCode(code: Int): WalletError {
             return when (code) {
                 0 -> NoImplement
@@ -73,6 +83,14 @@ class WalletError(
                 20 -> DecodeKeyIndexerFailed
                 21 -> LoadCacheFailed
                 22 -> InvalidWalletType
+                23 -> InvalidConnectionType
+                24 -> ConnectionFailed
+                25 -> DisconnectionFailed
+                26 -> InvalidDeepLink
+                27 -> SessionExpired
+                28 -> InvalidSession
+                29 -> NetworkNotSupported
+                30 -> ConnectionTimeout
                 else -> throw IllegalArgumentException("Unknown error code: $code")
             }
         }

@@ -31,9 +31,7 @@ data class NonFungibleTokenPermission(
 /**
  * Enum representing different types of token permissions
  */
-enum class Permission { // do we have a pre-set list of token permissions?
+enum class Permission {
     READ,           
-    TRANSFER,       
-    MINT,           
-    BURN   
+    WRITE,       
 } 

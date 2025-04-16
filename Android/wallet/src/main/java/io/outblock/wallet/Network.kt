@@ -85,7 +85,7 @@ object Network {
                                 hashingAlgorithm = account.hashing,
                                 weight = account.weight.toString(),
                                 revoked = account.isRevoked,
-                                sequenceNumber = "0" // ??
+                                sequenceNumber = "0"
                             )
                         )
                         response[index] = existingAccount.copy(keys = existingKeys)
@@ -102,10 +102,10 @@ object Network {
                                         hashingAlgorithm = account.hashing,
                                         weight = account.weight.toString(),
                                         revoked = account.isRevoked,
-                                        sequenceNumber = "0" // Default sequence number
+                                        sequenceNumber = "0"
                                     )
                                 ),
-                                balance = "0", // ??
+                                balance = "0",
                                 expandable = AccountExpandable(), // ??
                                 contracts = emptyMap(), //?
                                 links = null // ??

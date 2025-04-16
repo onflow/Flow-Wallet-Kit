@@ -1,5 +1,7 @@
 package io.outblock.wallet.storage
 
+import io.outblock.wallet.errors.WalletError
+
 /**
  * Protocol defining the interface for secure data storage
  * Provides a unified interface for storing and retrieving sensitive data like keys,
@@ -8,6 +10,7 @@ package io.outblock.wallet.storage
 interface StorageProtocol {
     /**
      * Get all keys currently stored in the storage
+     * @throws WalletError if operation fails
      */
     val allKeys: List<String>
 
@@ -15,31 +18,36 @@ interface StorageProtocol {
      * Find keys matching a keyword
      * @param keyword Search term to match against keys
      * @return List of matching keys
+     * @throws WalletError if operation fails
      */
     fun findKey(keyword: String): List<String>
 
     /**
      * Retrieve data for a key
      * @param key Key to lookup
-     * @return Stored data, or null if not found
+     * @return Stored data
+     * @throws WalletError if key not found or operation fails
      */
-    fun get(key: String): ByteArray?
+    fun get(key: String): ByteArray
 
     /**
      * Store data for a key
      * @param key Key to store under
      * @param value Data to store
+     * @throws WalletError if operation fails
      */
     fun set(key: String, value: ByteArray)
 
     /**
      * Remove data for a key
      * @param key Key to remove
+     * @throws WalletError if operation fails
      */
     fun remove(key: String)
 
     /**
      * Remove all stored data
+     * @throws WalletError if operation fails
      */
     fun removeAll()
 
@@ -47,6 +55,7 @@ interface StorageProtocol {
      * Check if a key exists in storage
      * @param key Key to check
      * @return Whether the key exists
+     * @throws WalletError if operation fails
      */
     fun exists(key: String): Boolean
 

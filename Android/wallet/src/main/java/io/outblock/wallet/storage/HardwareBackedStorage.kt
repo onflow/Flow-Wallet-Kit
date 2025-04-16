@@ -3,6 +3,7 @@ package io.outblock.wallet.storage
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import io.outblock.wallet.errors.WalletError
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -12,10 +13,17 @@ import javax.crypto.spec.GCMParameterSpec
 /**
  * Hardware-backed storage implementation using Android Keystore
  * Provides the highest level of security by using the device's hardware security module
+ * with support for:
+ * - Biometric authentication
+ * - Device-specific restrictions
+ * - Access group sharing between apps
  */
 class HardwareBackedStorage(
     private val context: Context,
-    private val keyAlias: String = "hardware_backed_storage_key"
+    private val keyAlias: String = "hardware_backed_storage_key",
+    private val requireBiometricAuth: Boolean = false,
+    private val deviceOnly: Boolean = true,
+    private val accessGroup: String? = null
 ) : StorageProtocol {
 
     private val keyStore: KeyStore = KeyStore.getInstance("AndroidKeyStore").apply {
@@ -34,7 +42,15 @@ class HardwareBackedStorage(
             )
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setUserAuthenticationRequired(false)
+                .setUserAuthenticationRequired(requireBiometricAuth)
+                .setUserAuthenticationValidityDurationSeconds(if (requireBiometricAuth) 30 else -1)
+                .setIsStrongBoxBacked(deviceOnly)
+                .setUnlockedDeviceRequired(deviceOnly)
+                .apply {
+                    if (accessGroup != null) {
+                        setAttestationChallenge(accessGroup.toByteArray())
+                    }
+                }
                 .build()
             keyGenerator.init(keyGenParameterSpec)
             keyGenerator.generateKey()
@@ -50,16 +66,28 @@ class HardwareBackedStorage(
     override val securityLevel: SecurityLevel = SecurityLevel.HARDWARE_BACKED
 
     override val allKeys: List<String>
-        get() = context.getSharedPreferences("hardware_backed_keys", Context.MODE_PRIVATE)
-            .all.keys.toList()
+        get() = try {
+            context.getSharedPreferences("hardware_backed_keys", Context.MODE_PRIVATE)
+                .all.keys.toList()
+        } catch (e: Exception) {
+            throw WalletError.LoadCacheFailed
+        }
 
     override fun findKey(keyword: String): List<String> {
-        return allKeys.filter { it.contains(keyword, ignoreCase = true) }
+        return try {
+            allKeys.filter { it.contains(keyword, ignoreCase = true) }
+        } catch (e: Exception) {
+            throw WalletError.LoadCacheFailed
+        }
     }
 
-    override fun get(key: String): ByteArray? {
-        val encryptedData = context.getSharedPreferences("hardware_backed_data", Context.MODE_PRIVATE)
-            .getString(key, null) ?: return null
+    override fun get(key: String): ByteArray {
+        val encryptedData = try {
+            context.getSharedPreferences("hardware_backed_data", Context.MODE_PRIVATE)
+                .getString(key, null) ?: throw WalletError.EmptyKeychain
+        } catch (e: Exception) {
+            throw WalletError.LoadCacheFailed
+        }
 
         return try {
             val (iv, encrypted) = encryptedData.split(":").let {
@@ -68,7 +96,7 @@ class HardwareBackedStorage(
             cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
             cipher.doFinal(encrypted)
         } catch (e: Exception) {
-            null
+            throw WalletError.InitPrivateKeyFailed
         }
     }
 
@@ -89,36 +117,92 @@ class HardwareBackedStorage(
                 .putString(key, "")
                 .apply()
         } catch (e: Exception) {
-            throw RuntimeException("Failed to encrypt and store data", e)
+            throw WalletError.InitPrivateKeyFailed
         }
     }
 
     override fun remove(key: String) {
-        context.getSharedPreferences("hardware_backed_data", Context.MODE_PRIVATE)
-            .edit()
-            .remove(key)
-            .apply()
-        
-        context.getSharedPreferences("hardware_backed_keys", Context.MODE_PRIVATE)
-            .edit()
-            .remove(key)
-            .apply()
+        try {
+            context.getSharedPreferences("hardware_backed_data", Context.MODE_PRIVATE)
+                .edit()
+                .remove(key)
+                .apply()
+            
+            context.getSharedPreferences("hardware_backed_keys", Context.MODE_PRIVATE)
+                .edit()
+                .remove(key)
+                .apply()
+        } catch (e: Exception) {
+            throw WalletError.LoadCacheFailed
+        }
     }
 
     override fun removeAll() {
-        context.getSharedPreferences("hardware_backed_data", Context.MODE_PRIVATE)
-            .edit()
-            .clear()
-            .apply()
-        
-        context.getSharedPreferences("hardware_backed_keys", Context.MODE_PRIVATE)
-            .edit()
-            .clear()
-            .apply()
+        try {
+            context.getSharedPreferences("hardware_backed_data", Context.MODE_PRIVATE)
+                .edit()
+                .clear()
+                .apply()
+            
+            context.getSharedPreferences("hardware_backed_keys", Context.MODE_PRIVATE)
+                .edit()
+                .clear()
+                .apply()
+        } catch (e: Exception) {
+            throw WalletError.LoadCacheFailed
+        }
     }
 
     override fun exists(key: String): Boolean {
-        return context.getSharedPreferences("hardware_backed_keys", Context.MODE_PRIVATE)
-            .contains(key)
+        return try {
+            context.getSharedPreferences("hardware_backed_keys", Context.MODE_PRIVATE)
+                .contains(key)
+        } catch (e: Exception) {
+            throw WalletError.LoadCacheFailed
+        }
+    }
+
+    /**
+     * Check if biometric authentication is available on the device
+     */
+    fun isBiometricAuthAvailable(): Boolean {
+        return try {
+            val keyGenerator = KeyGenerator.getInstance(
+                KeyProperties.KEY_ALGORITHM_AES,
+                "AndroidKeyStore"
+            )
+            val keyGenParameterSpec = KeyGenParameterSpec.Builder(
+                "test_biometric_key",
+                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+            )
+                .setUserAuthenticationRequired(true)
+                .build()
+            keyGenerator.init(keyGenParameterSpec)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Check if the device has a hardware security module
+     */
+    fun isHardwareSecurityModuleAvailable(): Boolean {
+        return try {
+            val keyGenerator = KeyGenerator.getInstance(
+                KeyProperties.KEY_ALGORITHM_AES,
+                "AndroidKeyStore"
+            )
+            val keyGenParameterSpec = KeyGenParameterSpec.Builder(
+                "test_hsm_key",
+                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+            )
+                .setIsStrongBoxBacked(true)
+                .build()
+            keyGenerator.init(keyGenParameterSpec)
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 } 
