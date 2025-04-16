@@ -96,7 +96,7 @@ public extension Cacheable {
             }
             return wrapper.data
         } catch {
-            throw WalletError.cacheDecodeFailed
+            throw FWKError.cacheDecodeFailed
         }
     }
     

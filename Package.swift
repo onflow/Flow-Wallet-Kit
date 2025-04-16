@@ -16,7 +16,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/kishikawakatsumi/KeychainAccess", from: "4.2.2"),
-        .package(url: "https://github.com/Outblock/flow-swift", .revisionItem("e76a25a287f89523a085ea7662d03b8bdf60af16")),
+        .package(url: "https://github.com/Outblock/flow-swift", .revisionItem("0bd562c0c7e19686603763d1e25ad7f471e58a8a")),
         .package(url: "https://github.com/Outblock/wallet-core", .branchItem("master")),
     ],
     targets: [
@@ -32,7 +32,11 @@ let package = Package(
         ),
         .testTarget(
             name: "FlowWalletKitTests",
-            dependencies: ["FlowWalletKit"],
+            dependencies: [
+                "FlowWalletKit",
+                .product(name: "Flow", package: "flow-swift"),
+                .product(name: "WalletCore", package: "wallet-core")
+            ],
             path: "iOS/FlowWalletKit/Tests"
         ),
     ]
