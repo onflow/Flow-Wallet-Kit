@@ -2,6 +2,9 @@ package io.outblock.wallet.keys
 
 import io.outblock.wallet.errors.WalletError
 import io.outblock.wallet.storage.StorageProtocol
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertNotNull
+import junit.framework.TestCase.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -9,10 +12,7 @@ import org.mockito.Mock
 import org.mockito.Mockito.`when`
 import org.mockito.MockitoAnnotations
 import org.mockito.junit.MockitoJUnitRunner
-import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 @RunWith(MockitoJUnitRunner::class)
 class SeedPhraseKeyProviderTest {

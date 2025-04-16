@@ -1,11 +1,11 @@
 package io.outblock.wallet.storage
 
 import io.outblock.wallet.errors.WalletError
-import kotlin.test.Test
-import kotlin.test.assertEquals
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertTrue
+import org.junit.Test
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class InMemoryStorageTest : StorageProtocolTest() {
     override fun createStorage(): StorageProtocol {

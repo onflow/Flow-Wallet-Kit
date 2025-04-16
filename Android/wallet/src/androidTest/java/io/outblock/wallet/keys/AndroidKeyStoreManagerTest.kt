@@ -1,13 +1,13 @@
 package io.outblock.wallet.keys
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertNotNull
+import junit.framework.TestCase.assertTrue
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 class AndroidKeyStoreManagerTest {
@@ -47,8 +47,8 @@ class AndroidKeyStoreManagerTest {
         val retrievedKeyPair = keyStoreManager.getKeyPair(testAlias)
         
         assertNotNull(retrievedKeyPair)
-        assertNotNull(retrievedKeyPair.private)
-        assertNotNull(retrievedKeyPair.public)
+        assertNotNull(retrievedKeyPair?.private)
+        assertNotNull(retrievedKeyPair?.public)
     }
 
     @Test

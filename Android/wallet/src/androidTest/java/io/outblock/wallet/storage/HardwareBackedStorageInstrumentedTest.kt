@@ -3,17 +3,12 @@ package io.outblock.wallet.storage
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import io.outblock.wallet.errors.WalletError
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertTrue
+import org.junit.Test
 import org.junit.runner.RunWith
 import java.security.KeyStore
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
+import kotlin.test.assertFalse
 
 @RunWith(AndroidJUnit4::class)
 class HardwareBackedStorageInstrumentedTest {
@@ -25,7 +20,7 @@ class HardwareBackedStorageInstrumentedTest {
 
     @Test
     fun testHardwareBackedKeyGeneration() {
-        val storage = HardwareBackedStorage(context, testAlias)
+        val storage = HardwareBackedStorage(context)
         val key = "test-key"
         val value = "test-value".toByteArray()
         
@@ -42,7 +37,7 @@ class HardwareBackedStorageInstrumentedTest {
 
     @Test
     fun testKeyStoreOperations() {
-        val storage = HardwareBackedStorage(context, testAlias)
+        val storage = HardwareBackedStorage(context)
         val key = "test-key"
         val value = "test-value".toByteArray()
         
@@ -58,7 +53,7 @@ class HardwareBackedStorageInstrumentedTest {
 
     @Test
     fun testKeyStoreCleanup() {
-        val storage = HardwareBackedStorage(context, testAlias)
+        val storage = HardwareBackedStorage(context)
         val keys = listOf("key1", "key2", "key3")
         val value = "test".toByteArray()
         
@@ -70,7 +65,7 @@ class HardwareBackedStorageInstrumentedTest {
 
     @Test
     fun testKeyStoreSecurity() {
-        val storage = HardwareBackedStorage(context, testAlias)
+        val storage = HardwareBackedStorage(context)
         val key = "test-key"
         val value = "test-value".toByteArray()
         
@@ -86,29 +81,21 @@ class HardwareBackedStorageInstrumentedTest {
 
     @Test
     fun testKeyStorePersistence() {
-        val storage = HardwareBackedStorage(context, testAlias)
+        val storage = HardwareBackedStorage(context)
         val key = "test-key"
         val value = "test-value".toByteArray()
         
         storage.set(key, value)
         
         // Create new instance to verify persistence
-        val newStorage = HardwareBackedStorage(context, testAlias)
+        val newStorage = HardwareBackedStorage(context)
         assertTrue(newStorage.exists(key))
         assertTrue(value.contentEquals(newStorage.get(key)))
     }
 
     @Test
-    fun testKeyStoreErrorHandling() {
-        val invalidAlias = ""
-        assertFailsWith<WalletError> {
-            HardwareBackedStorage(context, invalidAlias)
-        }
-    }
-
-    @Test
     fun testKeyStoreConcurrentAccess() {
-        val storage = HardwareBackedStorage(context, testAlias)
+        val storage = HardwareBackedStorage(context)
         val key = "test-key"
         val value = "test-value".toByteArray()
         

@@ -1,12 +1,10 @@
 package io.outblock.wallet.storage
 
 import io.outblock.wallet.errors.WalletError
-import kotlin.test.Test
-import kotlin.test.assertEquals
+import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertNotNull
+import junit.framework.TestCase.assertTrue
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 /**
  * Base test class for storage protocol implementations

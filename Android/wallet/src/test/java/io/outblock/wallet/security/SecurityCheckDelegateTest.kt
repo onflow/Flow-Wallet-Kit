@@ -2,7 +2,7 @@ package io.outblock.wallet.security
 
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import kotlin.test.Test
+import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -11,7 +11,7 @@ class SecurityCheckDelegateTest {
     private class TestSecurityCheckDelegate(
         private val shouldPass: Boolean
     ) : SecurityCheckDelegate {
-        override suspend fun verify(): Flow<Boolean> {
+        override suspend fun verify(): Boolean {
             return kotlinx.coroutines.flow.flow { emit(shouldPass) }
         }
     }

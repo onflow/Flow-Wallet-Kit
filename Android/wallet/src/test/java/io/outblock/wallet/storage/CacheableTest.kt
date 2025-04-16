@@ -1,12 +1,12 @@
 package io.outblock.wallet.storage
 
 import io.outblock.wallet.errors.WalletError
-import kotlin.test.Test
+import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertNotNull
+import junit.framework.TestCase.assertNull
+import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class CacheableTest {

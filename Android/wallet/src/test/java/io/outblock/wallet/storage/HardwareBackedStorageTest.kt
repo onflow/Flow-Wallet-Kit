@@ -1,20 +1,17 @@
 package io.outblock.wallet.storage
 
 import android.content.Context
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
 import io.outblock.wallet.errors.WalletError
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertTrue
+import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mock
 import org.mockito.Mockito.`when`
 import org.mockito.junit.MockitoJUnitRunner
 import java.security.KeyStore
-import javax.crypto.KeyGenerator
+import kotlin.test.assertFailsWith
 
 @RunWith(MockitoJUnitRunner::class)
 class HardwareBackedStorageTest : StorageProtocolTest() {
@@ -27,7 +24,7 @@ class HardwareBackedStorageTest : StorageProtocolTest() {
     }
 
     override fun createStorage(): StorageProtocol {
-        return HardwareBackedStorage(mockContext, testAlias)
+        return HardwareBackedStorage(mockContext)
     }
 
     @Test

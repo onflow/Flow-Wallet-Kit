@@ -6,6 +6,9 @@ import android.security.keystore.KeyProperties
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.outblock.wallet.storage.StorageProtocol
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertNotNull
+import junit.framework.TestCase.assertTrue
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -15,9 +18,6 @@ import org.mockito.MockitoAnnotations
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
 import java.security.KeyStore
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 class SecureElementKeyInstrumentedTest {
@@ -167,7 +167,7 @@ class SecureElementKeyInstrumentedTest {
         // Test public key export
         val publicKey = key.publicKey(SigningAlgorithm.ECDSA_P256)
         assertNotNull(publicKey)
-        assertTrue(publicKey.isNotEmpty())
+        publicKey?.isNotEmpty()?.let { assertTrue(it) }
 
         // Test private key export (should be null as it's hardware-backed)
         val privateKey = key.privateKey(SigningAlgorithm.ECDSA_P256)

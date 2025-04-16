@@ -1,17 +1,17 @@
 package io.outblock.wallet.keys
 
+import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertNotNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 
 @RunWith(JUnit4::class)
 class KeyFormatTest {
 
     @Test
     fun `test key format values`() {
-        assertEquals(2, KeyFormat.values().size)
+        assertEquals(2, KeyFormat.entries.size)
         assertNotNull(KeyFormat.PKCS8)
         assertNotNull(KeyFormat.RAW)
     }

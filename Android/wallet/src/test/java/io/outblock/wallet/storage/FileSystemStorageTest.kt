@@ -1,6 +1,7 @@
 package io.outblock.wallet.storage
 
 import io.outblock.wallet.errors.WalletError
+import org.junit.Test
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
