@@ -33,8 +33,6 @@ public class SeedPhraseKey: KeyProtocol {
         let mnemonic: String
         /// BIP44 derivation path
         let derivationPath: String
-        /// Length of the seed phrase
-        let seedPhraseLength: BIP39.SeedPhraseLength
         /// Optional passphrase
         let passphrase: String
     }
@@ -48,9 +46,12 @@ public class SeedPhraseKey: KeyProtocol {
     /// BIP44 derivation path (default: Flow path m/44'/539'/0'/0/0)
     static public var derivationPath = "m/44'/539'/0'/0/0"
     /// Optional passphrase for additional security
-    public var passphrase: String = ""
-    /// Length of the seed phrase
-    public var seedPhraseLength: BIP39.SeedPhraseLength = SeedPhraseKey.defaultSeedPhraseLength
+    static public var passphrase: String = ""
+    
+    /// BIP44 derivation path (default: Flow path m/44'/539'/0'/0/0)
+    public var derivationPath: String
+    /// Optional passphrase for additional security
+    public var passphrase: String
 
     /// Default seed phrase length (12 words)
     public static let defaultSeedPhraseLength: BIP39.SeedPhraseLength = .twelve
@@ -68,16 +69,14 @@ public class SeedPhraseKey: KeyProtocol {
     ///   - passphrase: Optional passphrase
     ///   - seedPhraseLength: Length of seed phrase
     public init(hdWallet: HDWallet,
-         storage: any StorageProtocol,
-         derivationPath: String = "m/44'/539'/0'/0/0",
-         passphrase: String = "",
-         seedPhraseLength: BIP39.SeedPhraseLength = SeedPhraseKey.defaultSeedPhraseLength
+                storage: any StorageProtocol,
+                derivationPath: String = SeedPhraseKey.derivationPath,
+                passphrase: String = SeedPhraseKey.passphrase
     ) {
         self.hdWallet = hdWallet
         self.storage = storage
-        SeedPhraseKey.derivationPath = derivationPath
+        self.derivationPath = derivationPath
         self.passphrase = passphrase
-        self.seedPhraseLength = seedPhraseLength
     }
 
     // MARK: - Key Creation
@@ -96,9 +95,28 @@ public class SeedPhraseKey: KeyProtocol {
         let key = SeedPhraseKey(hdWallet: hdWallet,
                                 storage: storage,
                                 derivationPath: advance.derivationPath,
-                                passphrase: advance.passphrase,
-                                seedPhraseLength: advance.seedPhraseLength
-        )
+                                passphrase: advance.passphrase)
+        return key
+    }
+    
+    /// Create a new key with advanced options
+    /// - Parameters:
+    ///   - seedphrase: Seed Phrase
+    ///   - storage: Storage implementation
+    /// - Returns: New seed phrase key
+    /// - Throws: WalletError if HD wallet creation fails
+    public static func create(_ seedphrase: String,
+                              derivationPath: String = SeedPhraseKey.derivationPath,
+                              passphrase: String = SeedPhraseKey.passphrase,
+                              storage: any StorageProtocol) throws -> SeedPhraseKey {
+        guard let hdWallet = HDWallet(mnemonic: seedphrase, passphrase: passphrase) else {
+            throw WalletError.initHDWalletFailed
+        }
+        
+        let key = SeedPhraseKey(hdWallet: hdWallet,
+                                storage: storage,
+                                derivationPath: derivationPath,
+                                passphrase: passphrase)
         return key
     }
 
@@ -154,7 +172,7 @@ public class SeedPhraseKey: KeyProtocol {
             throw WalletError.initHDWalletFailed
         }
         
-        return SeedPhraseKey(hdWallet: hdWallet, storage: storage, derivationPath: model.derivationPath, passphrase: model.passphrase, seedPhraseLength: model.seedPhraseLength)
+        return SeedPhraseKey(hdWallet: hdWallet, storage: storage, derivationPath: model.derivationPath, passphrase: model.passphrase)
     }
 
     // MARK: - Cryptographic Operations
@@ -181,7 +199,9 @@ public class SeedPhraseKey: KeyProtocol {
         guard let cipher = ChaChaPolyCipher(key: password) else {
             throw WalletError.initChaChapolyFailed
         }
-        let model = KeyData(mnemonic: hdWallet.mnemonic, derivationPath: SeedPhraseKey.derivationPath, seedPhraseLength: seedPhraseLength, passphrase: passphrase)
+        let model = KeyData(mnemonic: hdWallet.mnemonic,
+                            derivationPath: SeedPhraseKey.derivationPath,
+                            passphrase: passphrase)
         let data = try JSONEncoder().encode(model)
         let encrypted = try cipher.encrypt(data: data)
         try storage.set(id, value: encrypted)
