@@ -12,7 +12,7 @@ import javax.crypto.spec.SecretKeySpec
  * Implementation of AES-GCM authenticated encryption
  * Provides industry-standard encryption with strong security guarantees
  */
-class AESGCMCipher(private val password: String) : SymmetricEncryption {
+class AESGCMCipher(password: String) : SymmetricEncryption {
     companion object {
         private const val TAG = "AESGCMCipher"
         private const val KEY_SIZE = 32 // 256 bits

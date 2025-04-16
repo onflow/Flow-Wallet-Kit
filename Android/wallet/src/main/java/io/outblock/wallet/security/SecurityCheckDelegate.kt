@@ -1,4 +1,4 @@
-package io.outblock.wallet.account
+package io.outblock.wallet.security
 
 import kotlinx.coroutines.flow.Flow
 
@@ -10,5 +10,5 @@ interface SecurityCheckDelegate {
      * Verify if the security check passes
      * @return Flow<Boolean> indicating if the security check passed
      */
-    suspend fun verify(): Flow<Boolean>
+    suspend fun verify(): Boolean
 } 

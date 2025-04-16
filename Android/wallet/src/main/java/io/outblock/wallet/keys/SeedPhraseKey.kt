@@ -5,22 +5,17 @@ import com.google.common.io.BaseEncoding
 import io.outblock.wallet.crypto.ChaChaPolyCipher
 import io.outblock.wallet.errors.WalletError
 import io.outblock.wallet.storage.StorageProtocol
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
 import org.web3j.crypto.Bip32ECKeyPair
 import org.web3j.crypto.Credentials
 import org.web3j.crypto.MnemonicUtils
-import org.web3j.crypto.Sign
 import java.security.KeyFactory
 import java.security.KeyPair
-import java.security.KeyPairGenerator
-import java.security.PrivateKey as JavaPrivateKey
-import java.security.PublicKey
-import java.security.spec.ECGenParameterSpec
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 /**
  * Concrete implementation of SeedPhraseKeyProvider
@@ -36,7 +31,6 @@ class SeedPhraseKey(
     companion object {
         private const val TAG = "SeedPhraseKey"
         private const val DEFAULT_DERIVATION_PATH = "m/44'/539'/0'/0/0"
-        private const val COIN_TYPE = 539L // Flow coin type
     }
 
     private val hdWallet: Bip32ECKeyPair = try {
@@ -68,7 +62,7 @@ class SeedPhraseKey(
             BaseEncoding.base64().encode(it)
         } ?: java.util.UUID.randomUUID().toString()
 
-    public override val mnemonic: List<String> = mnemonicString.split(" ")
+    override val mnemonic: List<String> = mnemonicString.split(" ")
 
     override fun deriveKey(index: Int): KeyProtocol {
         val newPath = derivationPath.replaceAfterLast("/", index.toString())

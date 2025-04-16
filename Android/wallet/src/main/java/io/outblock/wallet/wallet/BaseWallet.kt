@@ -1,9 +1,7 @@
 package io.outblock.wallet.wallet
 
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import io.outblock.wallet.account.Account
-import io.outblock.wallet.account.SecurityCheckDelegate
+import io.outblock.wallet.security.SecurityCheckDelegate
 import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.storage.Cacheable
 import io.outblock.wallet.storage.StorageProtocol
@@ -63,8 +61,6 @@ abstract class BaseWallet(
 
     companion object {
         private const val CACHE_PREFIX = "Accounts"
-        private val gson = Gson()
-        private val typeToken = object : TypeToken<Map<ChainId, List<FlowAccount>>>() {}.type
     }
 
     // Loading state management
@@ -79,7 +75,7 @@ abstract class BaseWallet(
         get() = "$CACHE_PREFIX/${type.name}"
 
     // Raw Flow accounts data, used for caching
-    protected var flowAccounts: Map<ChainId, List<FlowAccount>>? = null
+    private var flowAccounts: Map<ChainId, List<FlowAccount>>? = null
 
     override val accounts: MutableMap<ChainId, MutableList<Account>> = mutableMapOf()
 
@@ -127,7 +123,7 @@ abstract class BaseWallet(
         }
     }
 
-    protected suspend fun fetchAllNetworkAccounts() {
+    private suspend fun fetchAllNetworkAccounts() {
         val newFlowAccounts = mutableMapOf<ChainId, List<FlowAccount>>()
         val newAccounts = mutableMapOf<ChainId, MutableList<Account>>()
 

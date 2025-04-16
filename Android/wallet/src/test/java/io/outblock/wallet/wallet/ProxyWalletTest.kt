@@ -1,6 +1,5 @@
 package io.outblock.wallet.wallet
 
-import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.storage.InMemoryStorage
 import io.outblock.wallet.storage.StorageProtocol
 import kotlinx.coroutines.flow.first

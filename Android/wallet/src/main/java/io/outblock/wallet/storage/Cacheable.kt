@@ -32,7 +32,6 @@ interface Cacheable<T> where T : @Serializable Any {
     /**
      * Cache the current state
      * @param expiresIn Optional custom expiration time in milliseconds
-     * @throws WalletError if caching fails
      */
     fun cache(expiresIn: Long? = null) {
         val data = cachedData ?: return
@@ -48,7 +47,6 @@ interface Cacheable<T> where T : @Serializable Any {
      * Load state from cache
      * @param ignoreExpiration Whether to ignore expiration time
      * @return Cached data if available and not expired
-     * @throws WalletError if loading fails
      */
     fun loadCache(ignoreExpiration: Boolean = false): T? {
         val data = storage.get(cacheId) ?: return null
@@ -65,7 +63,6 @@ interface Cacheable<T> where T : @Serializable Any {
 
     /**
      * Delete cached state
-     * @throws WalletError if deletion fails
      */
     fun deleteCache() {
         storage.remove(cacheId)

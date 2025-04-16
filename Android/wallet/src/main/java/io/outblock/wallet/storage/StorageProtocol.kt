@@ -1,8 +1,6 @@
 package io.outblock.wallet.storage
 
 import io.outblock.wallet.errors.WalletError
-import org.onflow.flow.ChainId
-import org.onflow.flow.models.Account
 
 /**
  * Protocol defining storage behavior for wallet data
@@ -60,12 +58,6 @@ enum class SecurityLevel {
      * (e.g., Android Keystore, Secure Enclave)
      */
     HARDWARE_BACKED,
-
-    /**
-     * High security level - uses software encryption
-     * (e.g., EncryptedSharedPreferences)
-     */
-    ENCRYPTED,
 
     /**
      * Medium security level - uses standard secure storage

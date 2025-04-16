@@ -9,8 +9,6 @@ import io.outblock.wallet.crypto.ChaChaPolyCipher
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
-import java.security.PrivateKey
-import java.security.PublicKey
 import java.security.spec.ECGenParameterSpec
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
@@ -54,9 +52,8 @@ class PrivateKey(
                 KeyFormat.BASE64 -> keyPair.private.encoded.let { 
                     java.util.Base64.getEncoder().encodeToString(it).toByteArray(Charsets.UTF_8)
                 }
-                KeyFormat.HEX -> keyPair.private.encoded.let {
-                    it.joinToString("") { byte -> "%02x".format(byte) }.toByteArray(Charsets.UTF_8)
-                }
+                KeyFormat.HEX -> keyPair.private.encoded.joinToString("") { byte -> "%02x".format(byte) }
+                    .toByteArray(Charsets.UTF_8)
                 KeyFormat.KEYSTORE -> throw WalletError.InvalidPrivateKey
             }
         } catch (e: Exception) {

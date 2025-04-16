@@ -31,12 +31,12 @@ data class AccountCache(
      * Unique identifier for caching account data
      */
     val cacheId: String
-        get() = "Account-${chainID.name}-${account.address}"
+        get() = "Account-${coa?.chainID?.description}-${coa?.address}"
 
     /**
      * Cache the current account data
      */
-    suspend fun cache() {
+    fun cache() {
         val json = json.encodeToString(this)
         storage.set(cacheId, json.toByteArray())
     }
@@ -44,7 +44,7 @@ data class AccountCache(
     /**
      * Load cached account data
      */
-    suspend fun loadCache(): AccountCache? {
+    fun loadCache(): AccountCache? {
         val cachedData = storage.get(cacheId) ?: return null
         return try {
             json.decodeFromString<AccountCache>(cachedData.toString(Charsets.UTF_8))

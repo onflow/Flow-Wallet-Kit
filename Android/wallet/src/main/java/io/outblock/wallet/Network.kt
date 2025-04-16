@@ -1,24 +1,23 @@
 package io.outblock.wallet
 
-import io.ktor.client.*
+import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.get
+import io.ktor.client.request.headers
+import io.ktor.http.isSuccess
+import io.ktor.serialization.kotlinx.json.json
 import io.outblock.wallet.errors.WalletError
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.AccountExpandable
-import org.onflow.flow.models.Account as FlowAccount
 import org.onflow.flow.models.AccountPublicKey
-import org.onflow.flow.models.FlowAddress
-import java.net.URL
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
+import java.net.URL
+import org.onflow.flow.models.Account as FlowAccount
 
 /**
  * Network layer for Flow blockchain interactions
@@ -161,7 +160,7 @@ object Network {
         return model.accountResponse
     }
 
-    private fun ChainId.keyIndexerUrl(publicKey: String): URL? {
+    private fun ChainId.keyIndexerUrl(publicKey: String): URL {
         val baseUrl = when (this) {
             ChainId.Mainnet -> "https://mainnet.onflow.org"
             ChainId.Testnet -> "https://testnet.onflow.org"

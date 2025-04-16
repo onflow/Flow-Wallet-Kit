@@ -4,7 +4,6 @@ import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.storage.StorageProtocol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.security.MessageDigest
 import java.util.zip.CRC32
 
 class DefaultBackupProtocol(
@@ -18,10 +17,12 @@ class DefaultBackupProtocol(
                 val backupFile = when (type) {
                     BackupProtocol.BackupType.DEVICE -> {
                         val walletData = storage.get("wallet_data")
+                            ?: return@withContext Result.failure(IllegalStateException("No wallet data to back up"))
                         backupStorage.saveDeviceBackup(walletData)
                     }
                     BackupProtocol.BackupType.SEED_PHRASE -> {
-                        val seedPhrase = storage.get("seed_phrase").toString(Charsets.UTF_8)
+                        val seedPhrase = storage.get("seed_phrase")?.toString(Charsets.UTF_8)
+                            ?: return@withContext Result.failure(IllegalStateException("No seed phrase to back up"))
                         backupStorage.saveSeedBackup(seedPhrase)
                     }
                 }

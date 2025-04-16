@@ -3,7 +3,7 @@ package io.outblock.wallet.wallet
 import com.google.common.io.BaseEncoding
 import io.outblock.wallet.Network
 import io.outblock.wallet.account.Account
-import io.outblock.wallet.account.SecurityCheckDelegate
+import io.outblock.wallet.security.SecurityCheckDelegate
 import io.outblock.wallet.errors.WalletError
 import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.storage.Cacheable
@@ -35,8 +35,8 @@ class KeyWallet(
     override val cacheId: String
         get() = "key_wallet_${key.publicKey(SigningAlgorithm.ECDSA_P256)?.let { BaseEncoding.base16().lowerCase().encode(it) } ?: ""}"
 
-    override val cachedData: Map<ChainId, List<FlowAccount>>?
-        get() = accounts.mapValues { (_, list) -> list.map { it.flowAccount } }
+    override val cachedData: Map<ChainId, List<FlowAccount>>
+        get() = accounts.mapValues { (_, list) -> list.map { it.account } }
 
     init {
         println("Initializing KeyWallet with networks: ${networks.joinToString()}")

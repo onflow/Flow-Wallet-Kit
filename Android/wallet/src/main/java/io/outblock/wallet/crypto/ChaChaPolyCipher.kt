@@ -14,7 +14,7 @@ import javax.crypto.spec.SecretKeySpec
  * Implementation of ChaCha20-Poly1305 authenticated encryption
  * Provides high-performance encryption with strong security guarantees
  */
-class ChaChaPolyCipher(private val password: String) : SymmetricEncryption {
+class ChaChaPolyCipher(password: String) : SymmetricEncryption {
     companion object {
         private const val TAG = "ChaChaPolyCipher"
         private const val KEY_SIZE = 32 // 256 bits
@@ -51,7 +51,7 @@ class ChaChaPolyCipher(private val password: String) : SymmetricEncryption {
      */
     override fun encrypt(data: ByteArray): ByteArray {
         try {
-            val cipher = Cipher.getInstance(ALGORITHM, PROVIDER)
+            val cipher = Cipher.getInstance(ALGORITHM)
             val nonce = generateNonce()
             val iv = IvParameterSpec(nonce)
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, iv)
@@ -83,7 +83,7 @@ class ChaChaPolyCipher(private val password: String) : SymmetricEncryption {
             val encrypted = ByteArray(buffer.remaining())
             buffer.get(encrypted)
 
-            val cipher = Cipher.getInstance(ALGORITHM, PROVIDER)
+            val cipher = Cipher.getInstance(ALGORITHM)
             val iv = IvParameterSpec(nonce)
             cipher.init(Cipher.DECRYPT_MODE, secretKey, iv)
 

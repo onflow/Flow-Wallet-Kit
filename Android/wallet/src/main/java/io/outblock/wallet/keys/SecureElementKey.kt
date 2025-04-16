@@ -1,7 +1,5 @@
 package io.outblock.wallet.keys
 
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
 import android.util.Log
 import io.outblock.wallet.KeyManager
 import io.outblock.wallet.errors.WalletError
@@ -9,10 +7,6 @@ import io.outblock.wallet.storage.StorageProtocol
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
 import java.security.KeyPair
-import java.security.PrivateKey
-import java.security.PublicKey
-import java.security.spec.ECGenParameterSpec
-import javax.security.auth.x500.X500Principal
 
 /**
  * Concrete implementation of SecureElementKeyProvider
@@ -33,7 +27,7 @@ class SecureElementKey(
     override val isHardwareBacked: Boolean = true
 
     override val id: String
-        get() = (keyPair.public as? PublicKey)?.encoded?.let { 
+        get() = keyPair.public?.encoded?.let {
             java.util.Base64.getEncoder().encodeToString(it)
         } ?: java.util.UUID.randomUUID().toString()
 

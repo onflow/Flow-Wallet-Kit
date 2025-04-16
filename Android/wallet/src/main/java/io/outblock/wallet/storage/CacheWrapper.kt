@@ -1,7 +1,6 @@
 package io.outblock.wallet.storage
 
 import kotlinx.serialization.Serializable
-import java.util.Date
 
 /**
  * Wrapper for cached data with timestamp and expiration

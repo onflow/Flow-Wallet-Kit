@@ -4,9 +4,7 @@ import android.content.Context
 import android.webkit.WebView
 import io.outblock.wallet.account.Account
 import io.outblock.wallet.errors.WalletError
-import org.onflow.flow.ChainId
 import org.onflow.flow.models.Transaction
-import org.onflow.flow.models.Account as FlowAccount
 import io.outblock.wallet.connect.ConnectProtocol.ConnectionType
 import io.outblock.wallet.connect.ConnectProtocol.NetworkType
 

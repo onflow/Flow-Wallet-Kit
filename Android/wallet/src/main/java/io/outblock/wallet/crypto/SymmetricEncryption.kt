@@ -19,7 +19,6 @@ interface SymmetricEncryption {
      * Encrypt data using the symmetric key
      * @param data Data to encrypt
      * @return Encrypted data with authentication tag
-     * @throws WalletError if encryption fails
      */
     fun encrypt(data: ByteArray): ByteArray
 
@@ -27,7 +26,6 @@ interface SymmetricEncryption {
      * Decrypt data using the symmetric key
      * @param combinedData Encrypted data with authentication tag
      * @return Original decrypted data
-     * @throws WalletError if decryption or authentication fails
      */
     fun decrypt(combinedData: ByteArray): ByteArray
 } 

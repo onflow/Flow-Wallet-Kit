@@ -4,6 +4,7 @@ import io.outblock.wallet.account.vm.COA
 import io.outblock.wallet.account.vm.COA.Companion.createCOA
 import io.outblock.wallet.keys.KeyProtocol
 import io.outblock.wallet.errors.WalletError
+import io.outblock.wallet.security.SecurityCheckDelegate
 import io.outblock.wallet.storage.StorageProtocol
 import io.outblock.wallet.storage.FileSystemStorage
 import io.outblock.wallet.storage.Cacheable
@@ -22,6 +23,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -32,7 +34,7 @@ class Account(
     val chainID: ChainId,
     val key: KeyProtocol?,
     private val securityDelegate: SecurityCheckDelegate? = null,
-    private val storage: StorageProtocol = FileSystemStorage(context = TODO("Provide context"), directoryName = "account_storage")
+    override val storage: StorageProtocol = FileSystemStorage(context = TODO("Provide context"), directoryName = "account_storage")
 ) : Cacheable<AccountCache> {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val _isLoading = MutableStateFlow(false)
@@ -86,7 +88,7 @@ class Account(
         get() = AccountCache(childs, coa)
 
     override val cacheId: String
-        get() = "Account-${chainID.name}-${account.address}"
+        get() = "Account-${chainID.description}-${account.address}"
 
     private fun findKeyInAccount(): List<AccountPublicKey> {
         val keyInstance = key ?: return emptyList()
@@ -139,7 +141,7 @@ class Account(
     }
 
     suspend fun fetchChild(): List<ChildAccount> {
-        val childs = FlowApi.getChildMetadata(address = account.address) // to-do: implement on flow-kmm
+        val childs = FlowApi.getChildMetadata(address = account.address) // implemented
         val childAccounts = childs.mapNotNull { (addr, metadata) ->
             ChildAccount(
                 address = FlowAddress(addr),
@@ -154,8 +156,8 @@ class Account(
     }
 
     fun fetchVM(): COA? {
-        val address = FlowApi.getEVMAddress(account.address) ?: return null 
-        val coa = createCOA(address, network = chainID) ?: throw WalletError.InvalidEVMAddress
+        val address = FlowApi.getEVMAddress(account.address) ?: return null // implemented
+        val coa = createCOA(address, network = chainID)
         this.coa = coa
         return coa
     }
@@ -173,7 +175,7 @@ class Account(
 
         if (securityDelegate != null) {
             val result = securityDelegate.verify()
-            if (!result.value) {
+            if (!result) {
                 throw WalletError.FailedPassSecurityCheck
             }
         }
@@ -247,7 +249,7 @@ class Account(
         childs?.forEach { child ->
             try {
                 val childPermissions = child.fetchTokenPermissions()
-                permissions[child.address.hex] = childPermissions
+                permissions[child.address.base16Value] = childPermissions
             } catch (e: Exception) {
                 println("Error fetching permissions for child account ${child.address}: ${e.message}")
             }

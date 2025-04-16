@@ -1,6 +1,5 @@
 package io.outblock.wallet.wallet
 
-import io.outblock.wallet.CryptoProvider
 import io.outblock.wallet.account.Account
 import io.outblock.wallet.errors.WalletError
 import io.outblock.wallet.keys.KeyProtocol
@@ -15,7 +14,6 @@ import org.onflow.flow.models.Account as FlowAccount
  * TODO: Implement proper hardware device integration and account fetching
  */
 class ProxyWallet(
-    private val cryptoProvider: CryptoProvider,
     networks: Set<ChainId> = setOf(ChainId.Mainnet, ChainId.Testnet),
     storage: StorageProtocol
 ) : BaseWallet(WalletType.PROXY, networks.toMutableSet(), storage) {

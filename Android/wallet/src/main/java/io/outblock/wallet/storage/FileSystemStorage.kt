@@ -1,12 +1,8 @@
 package io.outblock.wallet.storage
 
-import android.content.Context
 import android.content.SharedPreferences
 import io.outblock.wallet.errors.WalletError
-import org.onflow.flow.ChainId
-import org.onflow.flow.models.Account
 import java.io.File
-import java.io.FileNotFoundException
 import java.util.Date
 
 /**

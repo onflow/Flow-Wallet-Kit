@@ -3,9 +3,6 @@ package io.outblock.wallet.storage
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import io.outblock.wallet.errors.WalletError
-import org.onflow.flow.ChainId
-import org.onflow.flow.models.Account
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -16,7 +13,7 @@ import javax.crypto.spec.GCMParameterSpec
  * Hardware-backed storage implementation
  * Uses Android's Keystore for secure storage
  */
-class HardwareBackedStorage(private val context: Context) : StorageProtocol {
+class HardwareBackedStorage(context: Context) : StorageProtocol {
     private val keyStore = KeyStore.getInstance("AndroidKeyStore").apply {
         load(null)
     }

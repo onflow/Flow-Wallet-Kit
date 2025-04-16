@@ -4,13 +4,12 @@ import android.content.Context
 import io.outblock.wallet.storage.HardwareBackedStorage
 import io.outblock.wallet.storage.StorageProtocol
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.io.File
 
 class BackupStorage(
     private val context: Context,
-    private val storage: StorageProtocol = HardwareBackedStorage(context, "wallet_backup_key")
+    private val storage: StorageProtocol = HardwareBackedStorage(context)
 ) {
     companion object {
         private const val BACKUP_DIR = "backups"
