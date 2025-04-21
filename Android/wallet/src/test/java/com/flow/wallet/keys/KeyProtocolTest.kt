@@ -1,7 +1,7 @@
 package com.flow.wallet.keys
 
-import io.outblock.wallet.errors.WalletError
-import io.outblock.wallet.storage.StorageProtocol
+import com.flow.wallet.errors.WalletError
+import com.flow.wallet.storage.StorageProtocol
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertTrue

@@ -1,7 +1,7 @@
 package com.flow.wallet.storage
 
 import android.content.Context
-import io.outblock.wallet.errors.WalletError
+import com.flow.wallet.errors.WalletError
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertTrue
@@ -23,8 +23,8 @@ class HardwareBackedStorageTest : com.flow.wallet.storage.StorageProtocolTest() 
         load(null)
     }
 
-    override fun createStorage(): io.outblock.wallet.storage.StorageProtocol {
-        return io.outblock.wallet.storage.HardwareBackedStorage(mockContext)
+    override fun createStorage(): com.flow.wallet.storage.StorageProtocol {
+        return com.flow.wallet.storage.HardwareBackedStorage(mockContext)
     }
 
     @Test
@@ -45,7 +45,7 @@ class HardwareBackedStorageTest : com.flow.wallet.storage.StorageProtocolTest() 
     @Test
     fun testSecurityLevel() {
         val storage = createStorage()
-        assertEquals(io.outblock.wallet.storage.SecurityLevel.HARDWARE_BACKED, storage.securityLevel)
+        assertEquals(com.flow.wallet.storage.SecurityLevel.HARDWARE_BACKED, storage.securityLevel)
     }
 
     @Test
@@ -76,7 +76,7 @@ class HardwareBackedStorageTest : com.flow.wallet.storage.StorageProtocolTest() 
         `when`(mockContext.packageName).thenReturn("invalid.package")
         
         assertFailsWith<WalletError> {
-            io.outblock.wallet.storage.HardwareBackedStorage(mockContext, testAlias)
+            com.flow.wallet.storage.HardwareBackedStorage(mockContext, testAlias)
         }
     }
 

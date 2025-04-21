@@ -1,6 +1,6 @@
 package com.flow.wallet.storage
 
-import io.outblock.wallet.errors.WalletError
+import com.flow.wallet.errors.WalletError
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
 import org.junit.Test

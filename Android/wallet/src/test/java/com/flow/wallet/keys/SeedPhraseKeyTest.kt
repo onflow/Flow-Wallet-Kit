@@ -1,7 +1,7 @@
 package com.flow.wallet.keys
 
-import io.outblock.wallet.errors.WalletError
-import io.outblock.wallet.storage.StorageProtocol
+import com.flow.wallet.errors.WalletError
+import com.flow.wallet.storage.StorageProtocol
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith

@@ -3,9 +3,9 @@ package com.flow.wallet.wallet
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import io.outblock.wallet.keys.PrivateKey
-import io.outblock.wallet.storage.AndroidStorage
-import io.outblock.wallet.storage.StorageProtocol
+import com.flow.wallet.keys.PrivateKey
+import com.flow.wallet.storage.AndroidStorage
+import com.flow.wallet.storage.StorageProtocol
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test

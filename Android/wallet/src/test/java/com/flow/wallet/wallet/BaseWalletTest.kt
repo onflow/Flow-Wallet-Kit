@@ -1,9 +1,9 @@
 package com.flow.wallet.wallet
 
-import io.outblock.wallet.account.Account
-import io.outblock.wallet.keys.KeyProtocol
-import io.outblock.wallet.storage.InMemoryStorage
-import io.outblock.wallet.storage.StorageProtocol
+import com.flow.wallet.account.Account
+import com.flow.wallet.keys.KeyProtocol
+import com.flow.wallet.storage.InMemoryStorage
+import com.flow.wallet.storage.StorageProtocol
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertNotNull

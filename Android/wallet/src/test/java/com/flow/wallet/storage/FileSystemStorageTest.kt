@@ -1,6 +1,6 @@
 package com.flow.wallet.storage
 
-import io.outblock.wallet.errors.WalletError
+import com.flow.wallet.errors.WalletError
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

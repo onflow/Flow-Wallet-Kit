@@ -1,7 +1,7 @@
 package com.flow.wallet.account
 
-import io.outblock.wallet.account.vm.COA
-import io.outblock.wallet.keys.KeyProtocol
+import com.flow.wallet.account.vm.COA
+import com.flow.wallet.keys.KeyProtocol
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
