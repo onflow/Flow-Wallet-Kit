@@ -1,9 +1,9 @@
 package com.flow.wallet.wallet
 
-import io.outblock.wallet.account.Account
-import io.outblock.wallet.errors.WalletError
-import io.outblock.wallet.keys.KeyProtocol
-import io.outblock.wallet.storage.StorageProtocol
+import com.flow.wallet.account.Account
+import com.flow.wallet.errors.WalletError
+import com.flow.wallet.keys.KeyProtocol
+import com.flow.wallet.storage.StorageProtocol
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.Account as FlowAccount
 

@@ -1,7 +1,7 @@
 package com.flow.wallet.account
 
-import io.outblock.wallet.account.vm.COA
-import io.outblock.wallet.storage.StorageProtocol
+import com.flow.wallet.account.vm.COA
+import com.flow.wallet.storage.StorageProtocol
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json

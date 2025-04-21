@@ -1,11 +1,11 @@
 package com.flow.wallet.keys
 
 import android.util.Log
-import io.outblock.wallet.errors.WalletError
-import io.outblock.wallet.storage.StorageProtocol
+import com.flow.wallet.errors.WalletError
+import com.flow.wallet.storage.StorageProtocol
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
-import io.outblock.wallet.crypto.ChaChaPolyCipher
+import com.flow.wallet.crypto.ChaChaPolyCipher
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator

@@ -2,8 +2,8 @@ package com.flow.wallet.connect
 
 import android.content.Context
 import android.webkit.WebView
-import io.outblock.wallet.account.Account
-import io.outblock.wallet.errors.WalletError
+import com.flow.wallet.account.Account
+import com.flow.wallet.errors.WalletError
 import org.onflow.flow.models.Transaction
 import com.flow.wallet.connect.ConnectProtocol.ConnectionType
 import com.flow.wallet.connect.ConnectProtocol.NetworkType

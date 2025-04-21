@@ -1,8 +1,8 @@
 package com.flow.wallet.connect
 
 import android.content.Context
-import io.outblock.wallet.account.Account
-import io.outblock.wallet.errors.WalletError
+import com.flow.wallet.account.Account
+import com.flow.wallet.errors.WalletError
 import org.onflow.flow.models.Transaction
 import com.flow.wallet.connect.ConnectProtocol.ConnectionType
 import com.flow.wallet.connect.ConnectProtocol.NetworkType
@@ -13,9 +13,9 @@ import com.flow.wallet.connect.ConnectProtocol.NetworkType
  */
 class WalletConnect(
     private val context: Context
-) : com.flow.wallet.connect.ConnectProtocol {
+) : ConnectProtocol {
     private val connectedAccounts = mutableMapOf<NetworkType, Account>()
-    private var session: com.flow.wallet.connect.WalletConnect.WalletConnectSession? = null
+    private var session: WalletConnectSession? = null
 
     override suspend fun connect(type: ConnectionType, network: NetworkType): Result<Account> {
         // TODO: Implement WalletConnect connection

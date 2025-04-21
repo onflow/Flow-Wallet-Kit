@@ -1,10 +1,10 @@
 package com.flow.wallet.wallet
 
-import io.outblock.wallet.account.Account
-import io.outblock.wallet.security.SecurityCheckDelegate
-import io.outblock.wallet.errors.WalletError
-import io.outblock.wallet.keys.KeyProtocol
-import io.outblock.wallet.storage.StorageProtocol
+import com.flow.wallet.account.Account
+import com.flow.wallet.security.SecurityCheckDelegate
+import com.flow.wallet.errors.WalletError
+import com.flow.wallet.keys.KeyProtocol
+import com.flow.wallet.storage.StorageProtocol
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

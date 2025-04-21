@@ -1,8 +1,8 @@
 package com.flow.wallet.backup
 
 import android.content.Context
-import io.outblock.wallet.storage.HardwareBackedStorage
-import io.outblock.wallet.storage.StorageProtocol
+import com.flow.wallet.storage.HardwareBackedStorage
+import com.flow.wallet.storage.StorageProtocol
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File

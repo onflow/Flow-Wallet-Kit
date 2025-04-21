@@ -1,8 +1,8 @@
 package com.flow.wallet.wallet
 
 import com.flow.wallet.CryptoProvider
-import io.outblock.wallet.keys.KeyProtocol
-import io.outblock.wallet.storage.StorageProtocol
+import com.flow.wallet.keys.KeyProtocol
+import com.flow.wallet.storage.StorageProtocol
 import org.onflow.flow.ChainId
 
 /**

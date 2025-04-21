@@ -1,7 +1,7 @@
 package com.flow.wallet.storage
 
 import android.content.SharedPreferences
-import io.outblock.wallet.errors.WalletError
+import com.flow.wallet.errors.WalletError
 import java.io.File
 import java.util.Date
 

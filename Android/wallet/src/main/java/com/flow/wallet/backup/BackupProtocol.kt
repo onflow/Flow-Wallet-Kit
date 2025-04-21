@@ -1,6 +1,6 @@
 package com.flow.wallet.backup
 
-import io.outblock.wallet.keys.KeyProtocol
+import com.flow.wallet.keys.KeyProtocol
 
 /**
  * Protocol defining the rules and procedures for wallet backups

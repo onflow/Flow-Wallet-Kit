@@ -2,9 +2,9 @@ package com.flow.wallet.keys
 
 import android.util.Log
 import com.google.common.io.BaseEncoding
-import io.outblock.wallet.crypto.ChaChaPolyCipher
-import io.outblock.wallet.errors.WalletError
-import io.outblock.wallet.storage.StorageProtocol
+import com.flow.wallet.crypto.ChaChaPolyCipher
+import com.flow.wallet.errors.WalletError
+import com.flow.wallet.storage.StorageProtocol
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.onflow.flow.models.HashingAlgorithm

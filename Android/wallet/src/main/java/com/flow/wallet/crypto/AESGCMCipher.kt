@@ -1,7 +1,7 @@
 package com.flow.wallet.crypto
 
 import android.util.Log
-import io.outblock.wallet.errors.WalletError
+import com.flow.wallet.errors.WalletError
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import javax.crypto.Cipher

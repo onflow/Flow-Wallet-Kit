@@ -1,6 +1,6 @@
 package com.flow.wallet.storage
 
-import io.outblock.wallet.errors.WalletError
+import com.flow.wallet.errors.WalletError
 
 /**
  * Protocol defining storage behavior for wallet data

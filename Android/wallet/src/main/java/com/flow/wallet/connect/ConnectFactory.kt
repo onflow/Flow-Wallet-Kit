@@ -2,7 +2,7 @@ package com.flow.wallet.connect
 
 import android.content.Context
 import android.webkit.WebView
-import io.outblock.wallet.errors.WalletError
+import com.flow.wallet.errors.WalletError
 
 /**
  * Factory class for creating and managing wallet connections

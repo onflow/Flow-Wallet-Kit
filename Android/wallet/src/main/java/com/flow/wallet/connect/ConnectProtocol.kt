@@ -1,6 +1,6 @@
 package com.flow.wallet.connect
 
-import io.outblock.wallet.account.Account
+import com.flow.wallet.account.Account
 import org.onflow.flow.models.Transaction
 
 /**

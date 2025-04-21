@@ -1,7 +1,7 @@
 package com.flow.wallet.account.vm
 
-import io.outblock.wallet.account.Account
-import io.outblock.wallet.account.TokenBalance
+import com.flow.wallet.account.Account
+import com.flow.wallet.account.TokenBalance
 import org.onflow.flow.ChainId
 import org.onflow.flow.FlowApi
 import org.onflow.flow.models.FlowAddress

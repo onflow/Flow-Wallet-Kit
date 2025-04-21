@@ -1,6 +1,6 @@
 package com.flow.wallet.keys
 
-import io.outblock.wallet.storage.StorageProtocol
+import com.flow.wallet.storage.StorageProtocol
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
 
