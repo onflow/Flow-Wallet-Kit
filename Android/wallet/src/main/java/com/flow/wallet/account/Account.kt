@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.onflow.flow.ChainId
 import org.onflow.flow.FlowApi
+import org.onflow.flow.models.Account
 import org.onflow.flow.models.AccountPublicKey
 import org.onflow.flow.models.FlowAddress
 import org.onflow.flow.models.SigningAlgorithm
