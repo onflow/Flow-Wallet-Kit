@@ -1,183 +1,164 @@
 package com.flow.wallet.keys
 
 import android.util.Log
+import com.flow.wallet.crypto.ChaChaPolyCipher
+import com.flow.wallet.crypto.HasherImpl
 import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
+import com.trustwallet.wallet.core.CoinType
+import com.trustwallet.wallet.core.PrivateKey as TWPrivateKey
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
-import com.flow.wallet.crypto.ChaChaPolyCipher
 import java.security.KeyFactory
 import java.security.KeyPair
-import java.security.KeyPairGenerator
-import java.security.spec.ECGenParameterSpec
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 
 /**
- * Concrete implementation of PrivateKeyProvider
- * Manages raw private keys
+ * Implementation of KeyProtocol using raw private keys
+ * Uses Trust WalletCore for cryptographic operations
  */
 class PrivateKey(
-    private var keyPair: KeyPair,
+    private val pk: TWPrivateKey,
     override var storage: StorageProtocol
-) : PrivateKeyProvider {
+) : KeyProtocol {
     companion object {
         private const val TAG = "PrivateKey"
-        private const val KEY_ALGORITHM = "EC"
-        private const val CURVE_NAME = "secp256k1"
+
+        /**
+         * Create a new private key with storage
+         */
+        fun create(storage: StorageProtocol): PrivateKey {
+            val pk = TWPrivateKey()
+            return PrivateKey(pk, storage)
+        }
+
+        /**
+         * Create and store a new private key
+         */
+        fun createAndStore(id: String, password: String, storage: StorageProtocol): PrivateKey {
+            val pk = TWPrivateKey()
+            val cipher = ChaChaPolyCipher(password)
+            val encrypted = cipher.encrypt(pk.data())
+            storage.set(id, encrypted)
+            return PrivateKey(pk, storage)
+        }
+
+        /**
+         * Retrieve a stored private key
+         */
+        fun get(id: String, password: String, storage: StorageProtocol): PrivateKey {
+            val encryptedData = storage.get(id) ?: throw WalletError.EmptyKeychain
+            val cipher = ChaChaPolyCipher(password)
+            val pkData = cipher.decrypt(encryptedData)
+            val pk = TWPrivateKey(pkData)
+            return PrivateKey(pk, storage)
+        }
+
+        /**
+         * Restore a private key from raw data
+         */
+        fun restore(secret: ByteArray, storage: StorageProtocol): PrivateKey {
+            val pk = TWPrivateKey(secret)
+            return PrivateKey(pk, storage)
+        }
     }
 
-    override val key: KeyPair = keyPair
-    override val secret: ByteArray = keyPair.private.encoded
-    override val advance: Any = Unit
     override val keyType: KeyType = KeyType.PRIVATE_KEY
     override val isHardwareBacked: Boolean = false
+    override val advance: Any = Unit
+
+    override val key: KeyPair
+        get() = try {
+            val publicKey = pk.getPublicKeySecp256k1(false)
+            val keyFactory = KeyFactory.getInstance("EC")
+            val privateKeySpec = PKCS8EncodedKeySpec(pk.data())
+            val publicKeySpec = X509EncodedKeySpec(publicKey.data())
+            KeyPair(
+                keyFactory.generatePublic(publicKeySpec),
+                keyFactory.generatePrivate(privateKeySpec)
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create KeyPair", e)
+            throw WalletError.InitPrivateKeyFailed
+        }
+
+    override val secret: ByteArray
+        get() = pk.data()
 
     override val id: String
-        get() = keyPair.public.encoded.let { 
-            java.util.Base64.getEncoder().encodeToString(it)
+        get() = key.public.encoded.let { 
+            com.google.common.io.BaseEncoding.base64().encode(it)
         }
 
-    override fun exportPrivateKey(format: KeyFormat): ByteArray {
-        return try {
-            when (format) {
-                KeyFormat.PKCS8 -> keyPair.private.encoded
-                KeyFormat.RAW -> {
-                    val spec = keyPair.private.encoded
-                    val pkcs8Spec = PKCS8EncodedKeySpec(spec)
-                    val keyFactory = KeyFactory.getInstance(KEY_ALGORITHM)
-                    val privateKey = keyFactory.generatePrivate(pkcs8Spec)
-                    privateKey.encoded
-                }
-                KeyFormat.BASE64 -> keyPair.private.encoded.let { 
-                    java.util.Base64.getEncoder().encodeToString(it).toByteArray(Charsets.UTF_8)
-                }
-                KeyFormat.HEX -> keyPair.private.encoded.joinToString("") { byte -> "%02x".format(byte) }
-                    .toByteArray(Charsets.UTF_8)
-                KeyFormat.KEYSTORE -> throw WalletError.InvalidPrivateKey
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to export private key", e)
-            throw WalletError.InvalidPrivateKey
-        }
-    }
-
-    override fun importPrivateKey(data: ByteArray, format: KeyFormat) {
-        try {
-            val keyFactory = KeyFactory.getInstance(KEY_ALGORITHM)
-            val privateKey = when (format) {
-                KeyFormat.PKCS8 -> keyFactory.generatePrivate(PKCS8EncodedKeySpec(data))
-                KeyFormat.RAW -> {
-                    val pkcs8Spec = PKCS8EncodedKeySpec(data)
-                    keyFactory.generatePrivate(pkcs8Spec)
-                }
-                KeyFormat.BASE64 -> {
-                    val decoded = java.util.Base64.getDecoder().decode(String(data, Charsets.UTF_8))
-                    keyFactory.generatePrivate(PKCS8EncodedKeySpec(decoded))
-                }
-                KeyFormat.HEX -> {
-                    val hexString = String(data, Charsets.UTF_8)
-                    val bytes = hexString.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-                    keyFactory.generatePrivate(PKCS8EncodedKeySpec(bytes))
-                }
-                KeyFormat.KEYSTORE -> throw WalletError.InvalidPrivateKey
-            }
-            val publicKey = keyFactory.generatePublic(X509EncodedKeySpec(keyPair.public.encoded))
-            keyPair = KeyPair(publicKey, privateKey)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to import private key", e)
-            throw WalletError.InvalidPrivateKey
-        }
+    override fun deriveKey(index: Int): KeyProtocol {
+        throw WalletError.UnsupportedOperation
     }
 
     override suspend fun create(advance: Any, storage: StorageProtocol): KeyProtocol {
-        try {
-            val keyPairGenerator = KeyPairGenerator.getInstance(KEY_ALGORITHM)
-            val ecSpec = ECGenParameterSpec(CURVE_NAME)
-            keyPairGenerator.initialize(ecSpec)
-            return PrivateKey(keyPairGenerator.generateKeyPair(), storage)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to create key pair", e)
-            throw WalletError.InitPrivateKeyFailed
-        }
+        return create(storage)
     }
 
     override suspend fun create(storage: StorageProtocol): KeyProtocol {
-        return create(Unit, storage)
+        return create(storage)
     }
 
     override suspend fun createAndStore(id: String, password: String, storage: StorageProtocol): KeyProtocol {
-        val key = create(storage)
-        key.store(id, password)
-        return key
+        return createAndStore(id, password, storage)
     }
 
     override suspend fun get(id: String, password: String, storage: StorageProtocol): KeyProtocol {
-        val encryptedData = storage.get(id) ?: throw WalletError.EmptyKeychain
-        val decryptedData = try {
-            decryptData(encryptedData, password)
-        } catch (e: Exception) {
-            Log.e(TAG, "Decryption failed", e)
-            throw WalletError.InvalidPassword
-        }
-        
-        try {
-            val keyFactory = KeyFactory.getInstance(KEY_ALGORITHM)
-            val privateKey = keyFactory.generatePrivate(PKCS8EncodedKeySpec(decryptedData))
-            val publicKey = keyFactory.generatePublic(X509EncodedKeySpec(decryptedData))
-            return PrivateKey(KeyPair(publicKey, privateKey), storage)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize key pair", e)
-            throw WalletError.InitPrivateKeyFailed
-        }
+        return get(id, password, storage)
     }
 
     override suspend fun restore(secret: ByteArray, storage: StorageProtocol): KeyProtocol {
-        try {
-            val keyFactory = KeyFactory.getInstance(KEY_ALGORITHM)
-            val privateKey = keyFactory.generatePrivate(PKCS8EncodedKeySpec(secret))
-            val publicKey = keyFactory.generatePublic(X509EncodedKeySpec(secret))
-            return PrivateKey(KeyPair(publicKey, privateKey), storage)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to restore key pair", e)
-            throw WalletError.RestoreWalletFailed
-        }
+        return restore(secret, storage)
     }
 
     override fun publicKey(signAlgo: SigningAlgorithm): ByteArray? {
-        return keyPair.public.encoded
+        return try {
+            when (signAlgo) {
+                SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1().data()
+                SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false).data()
+                else -> null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get public key", e)
+            null
+        }
     }
 
     override fun privateKey(signAlgo: SigningAlgorithm): ByteArray? {
-        return keyPair.private.encoded
+        return pk.data()
     }
 
     override suspend fun sign(data: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): ByteArray {
-        if (keyPair.private == null) {
-            throw WalletError.EmptySignKey
-        }
-        
         return try {
-            val signature = java.security.Signature.getInstance("SHA256withECDSA")
-            signature.initSign(keyPair.private)
-            signature.update(data)
-            signature.sign()
+            val hashed = HasherImpl.hash(data, hashAlgo)
+            when (signAlgo) {
+                SigningAlgorithm.ECDSA_P256 -> pk.sign(hashed, CoinType.FLOW)
+                SigningAlgorithm.ECDSA_secp256k1 -> pk.sign(hashed, CoinType.FLOW)
+                else -> throw WalletError.UnsupportedSignatureAlgorithm
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Signing failed", e)
             throw WalletError.SignError
         }
     }
 
-    override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm): Boolean {
-        if (keyPair.public == null) {
-            return false
-        }
-        
+    override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
         return try {
-            val sig = java.security.Signature.getInstance("SHA256withECDSA")
-            sig.initVerify(keyPair.public)
-            sig.update(message)
-            sig.verify(signature)
+            val publicKey = when (signAlgo) {
+                SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false)
+                else -> return false
+            }
+            val hashed = HasherImpl.hash(message, hashAlgo)
+            when (signAlgo) {
+                SigningAlgorithm.ECDSA_P256 -> publicKey.verify(hashed, signature)
+                SigningAlgorithm.ECDSA_secp256k1 -> publicKey.verify(hashed, signature)
+                else -> false
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Signature verification failed", e)
             false
@@ -185,13 +166,9 @@ class PrivateKey(
     }
 
     override suspend fun store(id: String, password: String) {
-        try {
-            val encryptedData = encryptData(keyPair.private.encoded, password)
-            storage.set(id, encryptedData)
-        } catch (e: Exception) {
-            Log.e(TAG, "Encryption failed", e)
-            throw WalletError.InitChaChaPolyFailed
-        }
+        val cipher = ChaChaPolyCipher(password)
+        val encrypted = cipher.encrypt(pk.data())
+        storage.set(id, encrypted)
     }
 
     override suspend fun remove(id: String) {
@@ -200,15 +177,5 @@ class PrivateKey(
 
     override fun allKeys(): List<String> {
         return storage.allKeys
-    }
-
-    private fun encryptData(data: ByteArray, password: String): ByteArray {
-        val cipher = ChaChaPolyCipher(password)
-        return cipher.encrypt(data)
-    }
-
-    private fun decryptData(encryptedData: ByteArray, password: String): ByteArray {
-        val cipher = ChaChaPolyCipher(password)
-        return cipher.decrypt(encryptedData)
     }
 } 

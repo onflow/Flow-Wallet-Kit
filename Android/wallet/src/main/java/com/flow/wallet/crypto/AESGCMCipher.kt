@@ -3,7 +3,6 @@ package com.flow.wallet.crypto
 import android.util.Log
 import com.flow.wallet.errors.WalletError
 import java.nio.ByteBuffer
-import java.security.MessageDigest
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -86,8 +85,7 @@ class AESGCMCipher(password: String) : SymmetricEncryption {
     }
 
     private fun deriveKey(password: String): ByteArray {
-        val digest = MessageDigest.getInstance("SHA-256")
-        return digest.digest(password.toByteArray(Charsets.UTF_8))
+        return HasherImpl.sha256(password.toByteArray(Charsets.UTF_8))
     }
 
     private fun generateNonce(): ByteArray {

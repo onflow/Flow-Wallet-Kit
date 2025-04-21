@@ -4,7 +4,6 @@ import android.util.Log
 import com.flow.wallet.errors.WalletError
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.nio.ByteBuffer
-import java.security.MessageDigest
 import java.security.Security
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
@@ -95,8 +94,7 @@ class ChaChaPolyCipher(password: String) : SymmetricEncryption {
     }
 
     private fun deriveKey(password: String): ByteArray {
-        val digest = MessageDigest.getInstance("SHA-256")
-        return digest.digest(password.toByteArray(Charsets.UTF_8))
+        return HasherImpl.sha256(password.toByteArray(Charsets.UTF_8))
     }
 
     private fun generateNonce(): ByteArray {

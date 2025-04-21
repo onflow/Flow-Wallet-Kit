@@ -15,7 +15,7 @@ import java.security.KeyPair
 class SecureElementKey(
     private val keyPair: KeyPair,
     override var storage: StorageProtocol
-) : com.flow.wallet.keys.SecureElementKeyProvider {
+) : SecureElementKeyProvider {
     companion object {
         private const val TAG = "SecureElementKey"
     }
