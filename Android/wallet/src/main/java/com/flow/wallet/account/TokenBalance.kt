@@ -31,7 +31,19 @@ data class TokenBalance(
     /**
      * The number of decimal places for the token
      */
-    val decimals: Int
+    val decimals: Int,
+
+    /**
+     * The Flow identifier for the token (e.g., contract address or resource path)
+     * Used to identify the token on the Flow blockchain
+     */
+    val flowIdentifier: String? = null,
+
+    /**
+     * The EVM address of the token (e.g., ERC20 contract address)
+     * Used to identify the token on EVM-compatible chains
+     */
+    val evmAddress: String? = null
 ) {
     /**
      * Enum representing different types of tokens
@@ -39,15 +51,9 @@ data class TokenBalance(
     @Serializable
     enum class TokenType {
         /**
-         * Flow native token
-         */
-        FLOW_FT,
-        
-        /**
          * Flow fungible tokens
          */
-        FLOW_FUNGIBLE,
-        
+        FLOW_FT,
         /**
          * Flow non-fungible tokens
          */

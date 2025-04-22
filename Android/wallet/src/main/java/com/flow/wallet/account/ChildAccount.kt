@@ -19,37 +19,6 @@ class ChildAccount(
         get() = _tokenPermissions
 
     /**
-     * Fetches token permissions for this child account
-     */
-    suspend fun fetchTokenPermissions(): TokenPermissions {
-        // Fetch FT permissions
-        val ftPermissions = FlowApi.getFungibleTokenPermissions(network, address) // to-do: implement in flow-kmm
-            .map { token ->
-                FungibleTokenPermission(
-                    tokenAddress = token.address,
-                    tokenName = token.name,
-                    tokenSymbol = token.symbol,
-                    decimals = token.decimals,
-                    permissions = token.permissions
-                )
-            }
-
-        // Fetch NFT permissions
-        val nftPermissions = FlowApi.getNonFungibleTokenPermissions(network, address) // to-do: implement in flow-kmm
-            .map { token ->
-                NonFungibleTokenPermission(
-                    tokenAddress = token.address,
-                    tokenName = token.name,
-                    permissions = token.permissions
-                )
-            }
-
-        val permissions = TokenPermissions(ftPermissions, nftPermissions)
-        _tokenPermissions = permissions
-        return permissions
-    }
-
-    /**
      * Checks if the account has a specific permission for a token
      * @param tokenAddress The address of the token
      * @param permission The permission to check

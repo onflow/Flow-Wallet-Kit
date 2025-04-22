@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.onflow.flow.ChainId
 import org.onflow.flow.FlowApi
+import org.onflow.flow.evm.EVMManager
 import org.onflow.flow.models.Account
 import org.onflow.flow.models.AccountPublicKey
 import org.onflow.flow.models.FlowAddress
@@ -42,6 +43,8 @@ class Account(
 
     private val _tokenBalances = MutableStateFlow<List<TokenBalance>>(emptyList())
     val tokenBalances: StateFlow<List<TokenBalance>> = _tokenBalances.asStateFlow()
+
+    private val evmManager = EVMManager(chainID)
 
     init {
         // Initialize account by fetching linked accounts
@@ -141,7 +144,7 @@ class Account(
     }
 
     suspend fun fetchChild(): List<ChildAccount> {
-        val childs = FlowApi.getChildMetadata(address = account.address) // implemented
+        val childs = evmManager.getChildAccountMetadata(FlowAddress(account.address))
         val childAccounts = childs.mapNotNull { (addr, metadata) ->
             ChildAccount(
                 address = FlowAddress(addr),
@@ -155,8 +158,8 @@ class Account(
         return childAccounts
     }
 
-    fun fetchVM(): COA? {
-        val address = FlowApi.getEVMAddress(account.address) ?: return null // implemented
+    suspend fun fetchVM(): COA? {
+        val address = evmManager.getEVMAddress(FlowAddress(account.address))
         val coa = createCOA(address, network = chainID)
         this.coa = coa
         return coa
@@ -185,59 +188,6 @@ class Account(
             signAlgo = signKey.signingAlgorithm,
             hashAlgo = signKey.hashingAlgorithm
         )
-    }
-
-    /**
-     * Fetches all token balances for the account
-     */
-    suspend fun fetchTokenBalances() {
-        _isLoading.value = true
-        try {
-            val balances = mutableListOf<TokenBalance>()
-            
-            // Fetch Flow token balances
-            val flowBalances = fetchFlowTokenBalances()
-            balances.addAll(flowBalances)
-
-            // If account has COA, fetch EVM token balances
-            coa?.let { coa ->
-                val evmBalances = coa.fetchEVMTokenBalances()
-                balances.addAll(evmBalances)
-            }
-
-            _tokenBalances.value = balances
-        } finally {
-            _isLoading.value = false
-        }
-    }
-
-    /**
-     * Fetches Flow token balances (FT and NFT)
-     */
-    private suspend fun fetchFlowTokenBalances(): List<TokenBalance> {
-        val balances = mutableListOf<TokenBalance>()
-        
-        // Fetch Flow token balance
-        val flowBalance = FlowApi.getFlowBalance(chainID, account.address) // to-do: flow-kmm or API 
-        balances.add(
-            TokenBalance(
-                tokenType = TokenBalance.TokenType.FLOW_FT,
-                balance = flowBalance,
-                symbol = "FLOW",
-                name = "Flow Token",
-                decimals = 8
-            )
-        )
-
-        // Fetch other Flow FT balances
-        val ftBalances = FlowApi.getFungibleTokenBalances(chainID, account.address) // to-do: flow-kmm or API 
-        balances.addAll(ftBalances)
-
-        // Fetch NFT balances
-        val nftBalances = FlowApi.getNFTBalances(chainID, account.address) // to-do: flow-kmm or API 
-        balances.addAll(nftBalances)
-
-        return balances
     }
 
     /**
