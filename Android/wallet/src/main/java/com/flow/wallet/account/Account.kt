@@ -189,21 +189,4 @@ class Account(
             hashAlgo = signKey.hashingAlgorithm
         )
     }
-
-    /**
-     * Fetches token permissions for all child accounts
-     * @return Map of child account addresses to their token permissions
-     */
-    suspend fun fetchChildTokenPermissions(): Map<String, TokenPermissions> {
-        val permissions = mutableMapOf<String, TokenPermissions>()
-        childs?.forEach { child ->
-            try {
-                val childPermissions = child.fetchTokenPermissions()
-                permissions[child.address.base16Value] = childPermissions
-            } catch (e: Exception) {
-                println("Error fetching permissions for child account ${child.address}: ${e.message}")
-            }
-        }
-        return permissions
-    }
 }
