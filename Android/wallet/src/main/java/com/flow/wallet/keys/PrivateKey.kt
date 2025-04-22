@@ -91,10 +91,6 @@ class PrivateKey(
             com.google.common.io.BaseEncoding.base64().encode(it)
         }
 
-    override fun deriveKey(index: Int): KeyProtocol {
-        throw WalletError.UnsupportedOperation
-    }
-
     override suspend fun create(advance: Any, storage: StorageProtocol): KeyProtocol {
         return create(storage)
     }

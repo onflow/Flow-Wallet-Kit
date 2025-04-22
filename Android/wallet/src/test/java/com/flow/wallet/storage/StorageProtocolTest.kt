@@ -3,6 +3,7 @@ package com.flow.wallet.storage
 import com.flow.wallet.errors.WalletError
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertNotNull
+import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
 import kotlin.test.assertFailsWith
 
@@ -24,12 +25,9 @@ abstract class StorageProtocolTest {
         assertNotNull(retrieved)
         assertTrue(testValue.contentEquals(retrieved))
 
-        // Test exists
-        assertTrue(storage.exists(testKey))
-
         // Test remove
         storage.remove(testKey)
-        assertFalse(storage.exists(testKey))
+        assertNull(storage.get(testKey))
     }
 
     fun testMultipleKeys() {
@@ -66,10 +64,56 @@ abstract class StorageProtocolTest {
         assertFailsWith<WalletError> {
             storage.remove(nonExistentKey)
         }
+
+        // Test removeAll error handling
+        val errorStorage = object : StorageProtocol {
+            override val allKeys: List<String> = emptyList()
+            override fun findKey(keyword: String): List<String> = emptyList()
+            override fun get(key: String): ByteArray? = null
+            override fun set(key: String, data: ByteArray) {}
+            override fun remove(key: String) {}
+            override fun removeAll() = throw WalletError(0, "Test error")
+            override val securityLevel: SecurityLevel
+                get() = SecurityLevel.STANDARD
+        }
+        assertFailsWith<WalletError> {
+            errorStorage.removeAll()
+        }
     }
 
     fun testSecurityLevel() {
         val storage = createStorage()
         assertNotNull(storage.securityLevel)
+    }
+
+    fun testCaseSensitivity() {
+        val storage = createStorage()
+        val upperKey = "TEST-KEY"
+        val lowerKey = "test-key"
+        val value = "test".toByteArray()
+
+        // Test case sensitivity in set/get
+        storage.set(upperKey, value)
+        assertNotNull(storage.get(upperKey))
+        assertNull(storage.get(lowerKey))
+
+        // Test case sensitivity in findKey
+        storage.set(lowerKey, value)
+        val foundKeys = storage.findKey("test")
+        assertTrue(foundKeys.contains(lowerKey))
+        assertFalse(foundKeys.contains(upperKey))
+    }
+
+    fun testEmptyStorage() {
+        val storage = createStorage()
+        
+        // Test allKeys with empty storage
+        assertTrue(storage.allKeys.isEmpty())
+        
+        // Test findKey with empty storage
+        assertTrue(storage.findKey("any").isEmpty())
+        
+        // Test get with empty storage
+        assertNull(storage.get("any"))
     }
 } 

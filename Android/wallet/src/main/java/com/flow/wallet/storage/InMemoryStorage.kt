@@ -27,4 +27,7 @@ class InMemoryStorage : StorageProtocol {
     override fun removeAll() {
         storage.clear()
     }
+
+    override val securityLevel: SecurityLevel
+        get() = SecurityLevel.IN_MEMORY
 } 

@@ -5,26 +5,30 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
 import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertTrue
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.Mock
-import org.mockito.MockitoAnnotations
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
 import java.security.KeyStore
+import org.mockito.Mock
+import org.mockito.MockitoAnnotations
+import kotlinx.coroutines.runBlocking
+import kotlin.test.assertFailsWith
 
 @RunWith(AndroidJUnit4::class)
 class SecureElementKeyInstrumentedTest {
 
     private lateinit var context: Context
     private lateinit var keyStore: KeyStore
-    private lateinit var secureElementKey: com.flow.wallet.keys.SecureElementKey
+    private lateinit var secureElementKey: SecureElementKey
 
     @Mock
     private lateinit var mockStorage: StorageProtocol
@@ -52,7 +56,7 @@ class SecureElementKeyInstrumentedTest {
             .setUserAuthenticationRequired(false)
             .build()
 
-        secureElementKey = com.flow.wallet.keys.SecureElementKey(keyStore, mockStorage)
+        secureElementKey = SecureElementKey(keyStore, mockStorage)
     }
 
     @After
@@ -66,11 +70,11 @@ class SecureElementKeyInstrumentedTest {
     }
 
     @Test
-    fun `test key creation with Android Keystore`() {
+    fun `test key creation with Android Keystore`() = runBlocking {
         val key = secureElementKey.create(mockStorage)
         assertNotNull(key)
         assertEquals(KeyType.SECURE_ELEMENT, key.keyType)
-        assertTrue(key is com.flow.wallet.keys.SecureElementKey)
+        assertTrue(key is SecureElementKey)
     }
 
     @Test
@@ -95,7 +99,7 @@ class SecureElementKeyInstrumentedTest {
     }
 
     @Test
-    fun `test signing with hardware backed key`() {
+    fun `test signing with hardware backed key`() = runBlocking {
         val message = "test message".toByteArray()
         val signature = secureElementKey.sign(message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256)
         
@@ -104,7 +108,7 @@ class SecureElementKeyInstrumentedTest {
     }
 
     @Test
-    fun `test key persistence in Android Keystore`() {
+    fun `test key persistence in Android Keystore`()= runBlocking {
         // Create and store a key
         val key = secureElementKey.create(mockStorage)
         key.store(TEST_KEY_ALIAS, "test_password")
@@ -114,7 +118,7 @@ class SecureElementKeyInstrumentedTest {
     }
 
     @Test
-    fun `test key retrieval from Android Keystore`() {
+    fun `test key retrieval from Android Keystore`() = runBlocking {
         // Create and store a key
         val originalKey = secureElementKey.create(mockStorage)
         originalKey.store(TEST_KEY_ALIAS, "test_password")
@@ -127,7 +131,7 @@ class SecureElementKeyInstrumentedTest {
     }
 
     @Test
-    fun `test key removal from Android Keystore`() {
+    fun `test key removal from Android Keystore`() = runBlocking {
         // Create and store a key
         val key = secureElementKey.create(mockStorage)
         key.store(TEST_KEY_ALIAS, "test_password")
@@ -140,7 +144,7 @@ class SecureElementKeyInstrumentedTest {
     }
 
     @Test
-    fun `test key operations with authentication required`() {
+    fun `test key operations with authentication required`() = runBlocking {
         val keyGenParameterSpec = KeyGenParameterSpec.Builder(
             "test_auth_key",
             KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
@@ -161,7 +165,7 @@ class SecureElementKeyInstrumentedTest {
     }
 
     @Test
-    fun `test key import and export`() {
+    fun `test key import and export`() = runBlocking {
         val key = secureElementKey.create(mockStorage)
         
         // Test public key export
@@ -173,4 +177,35 @@ class SecureElementKeyInstrumentedTest {
         val privateKey = key.privateKey(SigningAlgorithm.ECDSA_P256)
         assertTrue(privateKey == null || privateKey.isEmpty())
     }
-} 
+
+    @Test
+    fun `test key creation with invalid parameters`() = runBlocking {
+        val invalidSpec = KeyGenParameterSpec.Builder(
+            "test_invalid_key",
+            KeyProperties.PURPOSE_ENCRYPT // Invalid purpose for signing
+        )
+            .setDigests(KeyProperties.DIGEST_SHA256)
+            .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+            .build()
+
+        assertFailsWith<WalletError.InitPrivateKeyFailed> {
+            secureElementKey.create(invalidSpec, mockStorage)
+        }
+    }
+
+    @Test
+    fun `test failed signature verification`() {
+        val message = "test message".toByteArray()
+        val invalidSignature = "invalid signature".toByteArray()
+
+        assertFalse(secureElementKey.isValidSignature(invalidSignature, message, SigningAlgorithm.ECDSA_P256))
+    }
+
+    @Test
+    fun `test key creation with empty parameters`() = runBlocking {
+        assertFailsWith<IllegalArgumentException> {
+            secureElementKey.create(KeyGenParameterSpec.Builder("", 0).build(), mockStorage)
+        }
+    }
+
+}

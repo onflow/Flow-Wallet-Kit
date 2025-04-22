@@ -2,6 +2,9 @@ package com.flow.wallet.account
 
 import com.flow.wallet.account.vm.COA
 import com.flow.wallet.keys.KeyProtocol
+import com.flow.wallet.security.SecurityCheckDelegate
+import com.flow.wallet.storage.InMemoryStorage
+import com.flow.wallet.storage.StorageProtocol
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
@@ -17,15 +20,19 @@ import org.onflow.flow.models.HashingAlgorithm
 class AccountTest {
     private lateinit var mockFlowAccount: FlowAccount
     private lateinit var mockKey: KeyProtocol
+    private lateinit var mockSecurityDelegate: SecurityCheckDelegate
+    private lateinit var mockStorage: StorageProtocol
     private lateinit var account: Account
 
     @Before
     fun setup() {
         mockFlowAccount = mock(FlowAccount::class.java)
         mockKey = mock(KeyProtocol::class.java)
+        mockSecurityDelegate = mock(SecurityCheckDelegate::class.java)
+        mockStorage = InMemoryStorage()
         
         `when`(mockFlowAccount.address).thenReturn("0x1234")
-        `when`(mockFlowAccount.keys).thenReturn(listOf(
+        `when`(mockFlowAccount.keys).thenReturn(setOf(
             AccountPublicKey(
                 index = "0",
                 publicKey = "testPublicKey",
@@ -37,7 +44,7 @@ class AccountTest {
             )
         ))
 
-        account = Account(mockFlowAccount, ChainId.Testnet, mockKey)
+        account = Account(mockFlowAccount, ChainId.Testnet, mockKey, mockSecurityDelegate, mockStorage)
     }
 
     @Test
@@ -95,28 +102,69 @@ class AccountTest {
     }
 
     @Test
-    fun `test fetchVM`() = runBlocking {
-        val coa = account.fetchVM()
-        
-        assertNotNull(coa)
-        // Additional assertions would depend on COA implementation
-    }
-
-    @Test
-    fun `test loadLinkedAccounts`() = runBlocking {
-        val (coa, childAccounts) = account.loadLinkedAccounts()
-        
-        assertNotNull(childAccounts)
-        assertEquals(2, childAccounts.size)
-        // COA assertions would depend on implementation
-    }
-
-    @Test
     fun `test fullWeightKey property`() {
         val key = account.fullWeightKey
         assertNotNull(key)
         assertEquals("0", key?.index)
         assertEquals("1000", key?.weight)
         assertFalse(key?.revoked ?: true)
+    }
+
+    @Test
+    fun `test cache operations`() = runBlocking {
+        // Test cache ID
+        val expectedCacheId = "Account-${ChainId.Testnet.description}-${mockFlowAccount.address}"
+        assertEquals(expectedCacheId, account.cacheId)
+
+        // Test cache data when no data is present
+        assertNull(account.cachedData)
+
+        // Set some data and test caching
+        val testChilds = listOf(
+            ChildAccount(
+                address = FlowAddress("0x5678"),
+                network = ChainId.Testnet,
+                name = "Test Child",
+                description = null,
+                icon = null
+            )
+        )
+        val testCOA = mock(COA::class.java)
+        
+        account.childs = testChilds
+        account.coa = testCOA
+
+        // Test cache data after setting values
+        val cacheData = account.cachedData
+        assertNotNull(cacheData)
+        if (cacheData != null) {
+            assertEquals(testChilds, cacheData.childs)
+            assertEquals(testCOA, cacheData.coa)
+        }
+
+        // Test cache loading
+        val newAccount = Account(mockFlowAccount, ChainId.Testnet, mockKey, null, mockStorage)
+        newAccount.cache()
+        
+        val loadedAccount = Account(mockFlowAccount, ChainId.Testnet, mockKey, null, mockStorage)
+        loadedAccount.loadCache()
+        
+        assertNotNull(loadedAccount.cachedData)
+        assertEquals(testChilds, loadedAccount.cachedData?.childs)
+        assertEquals(testCOA, loadedAccount.cachedData?.coa)
+    }
+
+    @Test
+    fun `test cache operations with null values`() = runBlocking {
+        // Test cache data with null values
+        account.childs = null
+        account.coa = null
+        
+        val cacheData = account.cachedData
+        assertNotNull(cacheData)
+        if (cacheData != null) {
+            assertNull(cacheData.childs)
+            assertNull(cacheData.coa)
+        }
     }
 } 

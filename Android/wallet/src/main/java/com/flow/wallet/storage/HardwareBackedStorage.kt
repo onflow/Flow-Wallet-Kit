@@ -137,4 +137,7 @@ class HardwareBackedStorage(context: Context) : StorageProtocol {
             false
         }
     }
+
+    override val securityLevel: SecurityLevel
+        get() = SecurityLevel.HARDWARE_BACKED
 } 

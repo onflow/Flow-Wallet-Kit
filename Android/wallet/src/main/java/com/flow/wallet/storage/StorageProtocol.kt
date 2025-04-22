@@ -47,6 +47,11 @@ interface StorageProtocol {
      * @throws WalletError if operation fails
      */
     fun removeAll()
+
+    /**
+     * Get the security level of the storage implementation
+     */
+    val securityLevel: SecurityLevel
 }
 
 /**

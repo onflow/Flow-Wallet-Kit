@@ -55,6 +55,9 @@ class FileSystemStorage(private val baseDir: File) : StorageProtocol {
         baseDir.listFiles()?.forEach { it.delete() }
     }
 
+    override val securityLevel: SecurityLevel
+        get() = SecurityLevel.STANDARD
+
     /**
      * Get the total size of all cached files in bytes
      * Only applicable when using file-based storage

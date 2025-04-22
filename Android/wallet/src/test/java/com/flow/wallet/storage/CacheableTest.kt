@@ -6,8 +6,10 @@ import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
+import kotlinx.serialization.json.Json
 import org.junit.Test
 import kotlin.test.assertFailsWith
+import java.util.concurrent.TimeUnit
 
 class CacheableTest {
     private class TestCacheable(
@@ -40,6 +42,30 @@ class CacheableTest {
         // Wait for expiration
         Thread.sleep(expiration + 100)
         assertTrue(wrapper.isExpired)
+    }
+
+    @Test
+    fun testCacheWrapperSerialization() {
+        val data = "test data"
+        val wrapper = CacheWrapper(data, expiresIn = 1000L)
+        
+        // Test serialization
+        val json = Json.encodeToString(wrapper)
+        assertTrue(json.contains("test data"))
+        assertTrue(json.contains("1000"))
+        
+        // Test deserialization
+        val deserialized = Json.decodeFromString<CacheWrapper<String>>(json)
+        assertEquals(data, deserialized.data)
+        assertEquals(1000L, deserialized.expiresIn)
+    }
+
+    @Test
+    fun testCacheWrapperDeserializationError() {
+        val invalidJson = """{"invalid": "json"}"""
+        assertFailsWith<kotlinx.serialization.SerializationException> {
+            Json.decodeFromString<CacheWrapper<String>>(invalidJson)
+        }
     }
 
     @Test
@@ -106,10 +132,10 @@ class CacheableTest {
         val storage = object : StorageProtocol {
             override val allKeys: List<String> = emptyList()
             override fun findKey(keyword: String): List<String> = emptyList()
-            override fun get(key: String): ByteArray = throw WalletError("Test error")
-            override fun set(key: String, value: ByteArray) = throw WalletError("Test error")
-            override fun remove(key: String) = throw WalletError("Test error")
-            override fun removeAll() = throw WalletError("Test error")
+            override fun get(key: String): ByteArray = throw WalletError(0, "Test error")
+            override fun set(key: String, value: ByteArray) = throw WalletError(0, "Test error")
+            override fun remove(key: String) = throw WalletError(0, "Test error")
+            override fun removeAll() = throw WalletError(0, "Test error")
         }
         
         val cacheable = TestCacheable(storage, "test-cache", "test data", null)
@@ -125,5 +151,36 @@ class CacheableTest {
         assertFailsWith<WalletError> {
             cacheable.deleteCache()
         }
+    }
+
+    @Test
+    fun testTimeUnitExtensions() {
+        val cacheable = TestCacheable(InMemoryStorage(), "test", "data", null)
+        
+        assertEquals(TimeUnit.DAYS.toMillis(1), cacheable.expiresInDays(1))
+        assertEquals(TimeUnit.HOURS.toMillis(1), cacheable.expiresInHours(1))
+        assertEquals(TimeUnit.MINUTES.toMillis(1), cacheable.expiresInMinutes(1))
+        assertEquals(TimeUnit.SECONDS.toMillis(1), cacheable.expiresInSeconds(1))
+    }
+
+    @Test
+    fun testConcurrentCacheAccess() {
+        val storage = InMemoryStorage()
+        val cacheable = TestCacheable(storage, "test-cache", "test data", null)
+        
+        // Simulate concurrent access
+        val threads = List(10) {
+            Thread {
+                cacheable.cache()
+                cacheable.loadCache()
+                cacheable.deleteCache()
+            }
+        }
+        
+        threads.forEach { it.start() }
+        threads.forEach { it.join() }
+        
+        // Verify final state
+        assertNull(cacheable.loadCache())
     }
 } 
