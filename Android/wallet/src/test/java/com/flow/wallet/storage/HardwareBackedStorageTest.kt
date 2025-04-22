@@ -3,9 +3,9 @@ package com.flow.wallet.storage
 import android.content.Context
 import android.hardware.biometrics.BiometricManager
 import com.flow.wallet.errors.WalletError
-import com.trustwallet.wallet.core.PrivateKey
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -70,7 +70,7 @@ class HardwareBackedStorageTest : StorageProtocolTest() {
         val value = "test-value".toByteArray()
         
         storage.set(key, value)
-        assertTrue(storage.exists(key))
+        assertNotNull(storage.get(key))
         
         val retrieved = storage.get(key)
         assertTrue(value.contentEquals(retrieved))

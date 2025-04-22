@@ -2,6 +2,7 @@ package com.flow.wallet.storage
 
 import com.flow.wallet.errors.WalletError
 import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertTrue
 import org.junit.Test
 import kotlin.test.assertFailsWith
@@ -45,7 +46,7 @@ class InMemoryStorageTest : StorageProtocolTest() {
             Thread {
                 storage.set(key, value)
                 storage.get(key)
-                storage.exists(key)
+                assertNotNull(storage.get(key))
             }
         }
         
@@ -53,7 +54,7 @@ class InMemoryStorageTest : StorageProtocolTest() {
         threads.forEach { it.join() }
         
         // Verify final state
-        assertTrue(storage.exists(key))
+        assertNotNull(storage.get(key))
         assertTrue(value.contentEquals(storage.get(key)))
     }
 

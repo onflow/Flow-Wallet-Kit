@@ -24,10 +24,27 @@ import org.onflow.flow.models.Account as FlowAccount
  * Handles communication with Flow blockchain and key indexer services
  */
 object Network {
-    private val ktorClient = HttpClient(CIO) {
-        install(ContentNegotiation) {
-            json()
+    private var _ktorClient: HttpClient? = null
+    private val ktorClient: HttpClient
+        get() = _ktorClient ?: HttpClient(CIO) {
+            install(ContentNegotiation) {
+                json()
+            }
         }
+
+    /**
+     * Set a custom HTTP client for testing purposes
+     * @param client The HTTP client to use
+     */
+    fun setHttpClient(client: HttpClient) {
+        _ktorClient = client
+    }
+
+    /**
+     * Reset the HTTP client to the default implementation
+     */
+    fun resetHttpClient() {
+        _ktorClient = null
     }
 
     /**
@@ -160,7 +177,7 @@ object Network {
         return model.accountResponse
     }
 
-    private fun ChainId.keyIndexerUrl(publicKey: String): URL {
+    fun ChainId.keyIndexerUrl(publicKey: String): URL {
         val baseUrl = when (this) {
             ChainId.Mainnet -> "https://production.key-indexer.flow.com"
             ChainId.Testnet -> "https://staging.key-indexer.flow.com"

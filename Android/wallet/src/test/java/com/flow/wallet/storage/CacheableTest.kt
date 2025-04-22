@@ -6,6 +6,7 @@ import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import org.junit.Test
 import kotlin.test.assertFailsWith
@@ -50,12 +51,12 @@ class CacheableTest {
         val wrapper = CacheWrapper(data, expiresIn = 1000L)
         
         // Test serialization
-        val json = Json.encodeToString(wrapper)
+        val json = Json.encodeToString(CacheWrapper.serializer(String.serializer()), wrapper)
         assertTrue(json.contains("test data"))
         assertTrue(json.contains("1000"))
         
         // Test deserialization
-        val deserialized = Json.decodeFromString<CacheWrapper<String>>(json)
+        val deserialized = Json.decodeFromString(CacheWrapper.serializer(String.serializer()), json)
         assertEquals(data, deserialized.data)
         assertEquals(1000L, deserialized.expiresIn)
     }
@@ -130,10 +131,11 @@ class CacheableTest {
     @Test
     fun testCacheErrorHandling() {
         val storage = object : StorageProtocol {
+            override val securityLevel: SecurityLevel = SecurityLevel.STANDARD
             override val allKeys: List<String> = emptyList()
             override fun findKey(keyword: String): List<String> = emptyList()
             override fun get(key: String): ByteArray = throw WalletError(0, "Test error")
-            override fun set(key: String, value: ByteArray) = throw WalletError(0, "Test error")
+            override fun set(key: String, data: ByteArray) = throw WalletError(0, "Test error")
             override fun remove(key: String) = throw WalletError(0, "Test error")
             override fun removeAll() = throw WalletError(0, "Test error")
         }
