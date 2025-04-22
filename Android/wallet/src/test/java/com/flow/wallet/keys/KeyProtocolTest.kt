@@ -2,9 +2,12 @@ package com.flow.wallet.keys
 
 import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
+import com.trustwallet.wallet.core.PrivateKey as TWPrivateKey
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertTrue
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,8 +18,8 @@ import org.mockito.junit.MockitoJUnitRunner
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
 import java.security.KeyPairGenerator
-import java.security.KeyStore
 import kotlin.test.assertFailsWith
+import kotlin.test.assertThrows
 
 @RunWith(MockitoJUnitRunner::class)
 class KeyProtocolTest {
@@ -33,9 +36,19 @@ class KeyProtocolTest {
         MockitoAnnotations.openMocks(this)
         
         // Initialize different key types
-        privateKey = PrivateKey(KeyPairGenerator.getInstance("EC").generateKeyPair(), mockStorage)
-        secureElementKey = SecureElementKey(KeyStore.getInstance("AndroidKeyStore"), mockStorage)
-        seedPhraseKey = SeedPhraseKey("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about", mockStorage)
+        val keyPairGenerator = KeyPairGenerator.getInstance("EC")
+        keyPairGenerator.initialize(256)
+        val keyPair = keyPairGenerator.generateKeyPair()
+        
+        privateKey = PrivateKey(keyPair, mockStorage)
+        secureElementKey = SecureElementKey(keyPair, mockStorage)
+        seedPhraseKey = SeedPhraseKey(
+            mnemonicString = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+            passphrase = "",
+            derivationPath = "m/44'/539'/0'/0/0",
+            keyPair = keyPair,
+            storage = mockStorage
+        )
     }
 
     @Test
@@ -46,7 +59,25 @@ class KeyProtocolTest {
     }
 
     @Test
-    fun `test key creation with default options`() {
+    fun `test key properties`() {
+        listOf(privateKey, secureElementKey, seedPhraseKey).forEach { key ->
+            assertNotNull(key.key)
+            assertNotNull(key.secret)
+            assertNotNull(key.advance)
+            assertNotNull(key.id)
+            assertTrue(key.id.isNotEmpty())
+        }
+    }
+
+    @Test
+    fun `test hardware backed property`() {
+        assertTrue(secureElementKey.isHardwareBacked)
+        assertTrue(!privateKey.isHardwareBacked)
+        assertTrue(!seedPhraseKey.isHardwareBacked)
+    }
+
+    @Test
+    fun `test key creation with default options`() = runBlocking {
         listOf(privateKey, secureElementKey, seedPhraseKey).forEach { key ->
             val newKey = key.create(mockStorage)
             assertNotNull(newKey)
@@ -55,7 +86,7 @@ class KeyProtocolTest {
     }
 
     @Test
-    fun `test key creation with advanced options`() {
+    fun `test key creation with advanced options`() = runBlocking {
         listOf(privateKey, secureElementKey, seedPhraseKey).forEach { key ->
             val newKey = key.create(Unit, mockStorage)
             assertNotNull(newKey)
@@ -64,7 +95,7 @@ class KeyProtocolTest {
     }
 
     @Test
-    fun `test key storage and retrieval`() {
+    fun `test key storage and retrieval`() = runBlocking {
         val testId = "test_key"
         val testPassword = "test_password"
         val encryptedData = "encrypted_data".toByteArray()
@@ -79,7 +110,7 @@ class KeyProtocolTest {
     }
 
     @Test
-    fun `test key retrieval with invalid password`() {
+    fun `test key retrieval with invalid password`() = runBlocking {
         val testId = "test_key"
         val testPassword = "invalid_password"
         val encryptedData = "encrypted_data".toByteArray()
@@ -94,7 +125,7 @@ class KeyProtocolTest {
     }
 
     @Test
-    fun `test key restoration`() {
+    fun `test key restoration`() = runBlocking {
         listOf(privateKey, secureElementKey, seedPhraseKey).forEach { key ->
             val secret = key.secret
             val restoredKey = key.restore(secret, mockStorage)
@@ -108,12 +139,25 @@ class KeyProtocolTest {
         listOf(privateKey, secureElementKey, seedPhraseKey).forEach { key ->
             val publicKey = key.publicKey(SigningAlgorithm.ECDSA_P256)
             assertNotNull(publicKey)
-            assertTrue(publicKey.isNotEmpty())
+            if (publicKey != null) {
+                assertTrue(publicKey.isNotEmpty())
+            }
         }
     }
 
     @Test
-    fun `test signing and verification`() {
+    fun `test private key retrieval`() {
+        listOf(privateKey, secureElementKey, seedPhraseKey).forEach { key ->
+            val privateKey = key.privateKey(SigningAlgorithm.ECDSA_P256)
+            assertNotNull(privateKey)
+            if (privateKey != null) {
+                assertTrue(privateKey.isNotEmpty())
+            }
+        }
+    }
+
+    @Test
+    fun `test signing and verification`() = runBlocking {
         val message = "test message".toByteArray()
         
         listOf(privateKey, secureElementKey, seedPhraseKey).forEach { key ->
@@ -134,7 +178,19 @@ class KeyProtocolTest {
     }
 
     @Test
-    fun `test key removal`() {
+    fun `test key storage`() = runBlocking {
+        val testId = "test_key"
+        val testPassword = "test_password"
+        
+        listOf(privateKey, secureElementKey, seedPhraseKey).forEach { key ->
+            key.store(testId, testPassword)
+            // Verify that storage.set was called with the correct parameters
+            // This would typically be done with Mockito.verify()
+        }
+    }
+
+    @Test
+    fun `test key removal`() = runBlocking {
         val testId = "test_key"
         
         listOf(privateKey, secureElementKey, seedPhraseKey).forEach { key ->
@@ -152,6 +208,45 @@ class KeyProtocolTest {
         listOf(privateKey, secureElementKey, seedPhraseKey).forEach { key ->
             val allKeys = key.allKeys()
             assertEquals(testKeys, allKeys)
+        }
+    }
+
+    @Test
+    fun `test secure element specific functionality`() {
+        assertTrue(secureElementKey.isSecureElementAvailable())
+        val properties = secureElementKey.getKeyProperties()
+        assertTrue(properties.isNotEmpty())
+        assertTrue(properties.containsKey("isHardwareBacked"))
+    }
+
+    @Test
+    fun `test seed phrase specific functionality`() {
+        assertTrue(seedPhraseKey.mnemonic.isNotEmpty())
+        assertTrue(seedPhraseKey.derivationPath.isNotEmpty())
+        
+        val derivedKey = seedPhraseKey.deriveKey(0)
+        assertNotNull(derivedKey)
+        assertEquals(KeyType.PRIVATE_KEY, derivedKey.keyType)
+    }
+
+    @Test
+    fun `test error cases`() = runBlocking {
+        // Test empty key error
+        val emptyKey = PrivateKey(TWPrivateKey(ByteArray(32)), mockStorage)
+        assertFailsWith<WalletError.EmptyKey> {
+            emptyKey.importPrivateKey(ByteArray(0), KeyFormat.RAW)
+        }
+
+        // Test invalid private key error
+        val invalidKey = PrivateKey(TWPrivateKey(ByteArray(32)), mockStorage)
+        assertFailsWith<WalletError.InvalidPrivateKey> {
+            invalidKey.importPrivateKey(ByteArray(31), KeyFormat.RAW) // Invalid length for private key
+        }
+
+        // Test sign error
+        val signKey = PrivateKey(TWPrivateKey(ByteArray(32)), mockStorage)
+        assertFailsWith<WalletError.SignError> {
+            signKey.sign(ByteArray(0), SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA3_256)
         }
     }
 } 

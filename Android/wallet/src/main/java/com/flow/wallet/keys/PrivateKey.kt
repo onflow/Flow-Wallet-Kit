@@ -21,7 +21,7 @@ import java.security.spec.X509EncodedKeySpec
 class PrivateKey(
     private val pk: TWPrivateKey,
     override var storage: StorageProtocol
-) : KeyProtocol {
+) : KeyProtocol, PrivateKeyProvider {
     companion object {
         private const val TAG = "PrivateKey"
 
@@ -173,5 +173,41 @@ class PrivateKey(
 
     override fun allKeys(): List<String> {
         return storage.allKeys
+    }
+
+    /**
+     * Export private key in specified format
+     * @param format Export format
+     * @return Exported key data
+     */
+    override fun exportPrivateKey(format: KeyFormat): ByteArray {
+        return when (format) {
+            KeyFormat.PKCS8 -> pk.data()
+            KeyFormat.RAW -> pk.data()
+            else -> throw WalletError.UnsupportedKeyFormat
+        }
+    }
+
+    /**
+     * Import private key from data
+     * @param data Key data
+     * @param format Import format
+     */
+    override fun importPrivateKey(data: ByteArray, format: KeyFormat) {
+        when (format) {
+            KeyFormat.PKCS8, KeyFormat.RAW -> {
+                if (data.isEmpty()) {
+                    throw WalletError.EmptyKey
+                }
+                try {
+                    val newPk = TWPrivateKey(data)
+                    pk.data().copyInto(newPk.data())
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to import private key", e)
+                    throw WalletError.InvalidPrivateKey
+                }
+            }
+            else -> throw WalletError.UnsupportedKeyFormat
+        }
     }
 } 

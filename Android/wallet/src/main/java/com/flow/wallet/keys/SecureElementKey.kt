@@ -23,7 +23,7 @@ class SecureElementKey(
     override val key: KeyPair = keyPair
     override val secret: ByteArray = ByteArray(0) // No secret material for hardware-backed keys
     override val advance: Any = Unit
-    override val keyType: com.flow.wallet.keys.KeyType = com.flow.wallet.keys.KeyType.SECURE_ELEMENT
+    override val keyType: KeyType = KeyType.SECURE_ELEMENT
     override val isHardwareBacked: Boolean = true
 
     override val id: String
@@ -39,38 +39,38 @@ class SecureElementKey(
         "isHardwareBacked" to isHardwareBacked
     )
 
-    override suspend fun create(advance: Any, storage: StorageProtocol): com.flow.wallet.keys.KeyProtocol {
+    override suspend fun create(advance: Any, storage: StorageProtocol): KeyProtocol {
         try {
             val keyPair = KeyManager.generateKeyWithPrefix("secure_element")
-            return com.flow.wallet.keys.SecureElementKey(keyPair, storage)
+            return SecureElementKey(keyPair, storage)
         } catch (e: Exception) {
-            Log.e(com.flow.wallet.keys.SecureElementKey.Companion.TAG, "Failed to create secure element key", e)
+            Log.e(SecureElementKey.TAG, "Failed to create secure element key", e)
             throw WalletError.InitPrivateKeyFailed
         }
     }
 
-    override suspend fun create(storage: StorageProtocol): com.flow.wallet.keys.KeyProtocol {
+    override suspend fun create(storage: StorageProtocol): KeyProtocol {
         return create(Unit, storage)
     }
 
-    override suspend fun createAndStore(id: String, password: String, storage: StorageProtocol): com.flow.wallet.keys.KeyProtocol {
+    override suspend fun createAndStore(id: String, password: String, storage: StorageProtocol): KeyProtocol {
         val key = create(storage)
         key.store(id, password)
         return key
     }
 
-    override suspend fun get(id: String, password: String, storage: StorageProtocol): com.flow.wallet.keys.KeyProtocol {
+    override suspend fun get(id: String, password: String, storage: StorageProtocol): KeyProtocol {
         try {
             val privateKey = KeyManager.getPrivateKeyByPrefix(id) ?: throw WalletError.EmptyKeychain
             val publicKey = KeyManager.getPublicKeyByPrefix(id) ?: throw WalletError.InitPublicKeyFailed
-            return com.flow.wallet.keys.SecureElementKey(KeyPair(publicKey, privateKey), storage)
+            return SecureElementKey(KeyPair(publicKey, privateKey), storage)
         } catch (e: Exception) {
-            Log.e(com.flow.wallet.keys.SecureElementKey.Companion.TAG, "Failed to get secure element key", e)
+            Log.e(TAG, "Failed to get secure element key", e)
             throw WalletError.InitPrivateKeyFailed
         }
     }
 
-    override suspend fun restore(secret: ByteArray, storage: StorageProtocol): com.flow.wallet.keys.KeyProtocol {
+    override suspend fun restore(secret: ByteArray, storage: StorageProtocol): KeyProtocol {
         throw WalletError.NoImplement
     }
 
@@ -93,7 +93,7 @@ class SecureElementKey(
             signature.update(data)
             signature.sign()
         } catch (e: Exception) {
-            Log.e(com.flow.wallet.keys.SecureElementKey.Companion.TAG, "Signing failed", e)
+            Log.e(TAG, "Signing failed", e)
             throw WalletError.SignError
         }
     }
@@ -109,7 +109,7 @@ class SecureElementKey(
             sig.update(message)
             sig.verify(signature)
         } catch (e: Exception) {
-            Log.e(com.flow.wallet.keys.SecureElementKey.Companion.TAG, "Signature verification failed", e)
+            Log.e(TAG, "Signature verification failed", e)
             false
         }
     }
@@ -122,7 +122,7 @@ class SecureElementKey(
         try {
             KeyManager.deleteEntry(id)
         } catch (e: Exception) {
-            Log.e(com.flow.wallet.keys.SecureElementKey.Companion.TAG, "Failed to remove secure element key", e)
+            Log.e(TAG, "Failed to remove secure element key", e)
             throw WalletError.InitPrivateKeyFailed
         }
     }
@@ -131,7 +131,7 @@ class SecureElementKey(
         try {
             return KeyManager.getAllAliases()
         } catch (e: Exception) {
-            Log.e(com.flow.wallet.keys.SecureElementKey.Companion.TAG, "Failed to get all key aliases", e)
+            Log.e(TAG, "Failed to get all key aliases", e)
             return emptyList()
         }
     }
