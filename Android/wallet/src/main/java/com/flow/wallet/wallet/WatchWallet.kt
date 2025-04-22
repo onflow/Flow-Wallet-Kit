@@ -58,7 +58,7 @@ class WatchWallet(
     /// - Retrieves the account at the watched address
     override suspend fun fetchAccountsForNetwork(network: ChainId): List<FlowAccount> {
         return try {
-            listOf(FlowApi.getAccountAtLatestBlock(address)) // implemented
+            listOf(FlowApi(network).getAccount(address))
         } catch (e: Exception) {
             println("Error fetching account for network $network: ${e.message}")
             emptyList()

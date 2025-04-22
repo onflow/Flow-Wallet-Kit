@@ -158,7 +158,7 @@ class Account(
         return childAccounts
     }
 
-    suspend fun fetchVM(): COA? {
+    suspend fun fetchVM(): COA {
         val address = evmManager.getEVMAddress(FlowAddress(account.address))
         val coa = createCOA(address, network = chainID)
         this.coa = coa
