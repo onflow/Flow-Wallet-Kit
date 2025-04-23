@@ -1,10 +1,13 @@
 package com.flow.wallet.account.vm
 
 import com.flow.wallet.account.Account
+import com.flow.wallet.errors.WalletError
+import com.flow.wallet.keys.KeyProtocol
 import org.onflow.flow.ChainId
 import org.onflow.flow.FlowApi
 import org.onflow.flow.models.FlowAddress
 import org.onflow.flow.models.Signer
+import org.onflow.flow.models.Transaction
 
 /**
  * Represents a Cadence Owned Account (COA) that links a Flow account to an EVM address
@@ -13,6 +16,27 @@ class COA(
     private val hexAddr: String,
     val network: ChainId
 ) : FlowVMProtocol<String> {
+
+    private class AccountSigner(
+        private val account: Account,
+        private val key: KeyProtocol
+    ) : Signer {
+        override var address: String = account.address
+        override var keyIndex: Int = 0
+
+        override suspend fun sign(bytes: ByteArray): ByteArray {
+            val signKey = account.findKeyInAccount().firstOrNull() ?: throw WalletError.EmptySignKey
+            return key.sign(
+                data = bytes,
+                signAlgo = signKey.signingAlgorithm,
+                hashAlgo = signKey.hashingAlgorithm
+            )
+        }
+
+        override suspend fun sign(transaction: Transaction?, bytes: ByteArray): ByteArray {
+            return sign(bytes)
+        }
+    }
 
     override val address: String
         get() = hexAddr
@@ -31,10 +55,12 @@ class COA(
          */
 
         suspend fun createCOA(account: Account): String {
+            val key = account.key ?: throw WalletError.EmptySignKey
+            val signer = AccountSigner(account, key)
             return account.evmManager.createCOAAccount(
                 proposer = FlowAddress(account.address),
                 payer = FlowAddress(account.address),
-                signers = listOf(account)
+                signers = listOf(signer)
             )
         }
 

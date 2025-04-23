@@ -7,6 +7,8 @@ import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
+import wallet.core.jni.CoinType
+import wallet.core.jni.Curve
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.spec.PKCS8EncodedKeySpec
@@ -129,25 +131,26 @@ class PrivateKey(
     override suspend fun sign(data: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): ByteArray {
         return try {
             val hashed = HasherImpl.hash(data, hashAlgo)
-            when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> pk.sign(hashed, CoinType.FLOW)
-                SigningAlgorithm.ECDSA_secp256k1 -> pk.sign(hashed, CoinType.FLOW)
+            val curve = when (signAlgo) {
+                SigningAlgorithm.ECDSA_P256      -> Curve.NIST256P1
+                SigningAlgorithm.ECDSA_secp256k1 -> Curve.SECP256K1
                 else -> throw WalletError.UnsupportedSignatureAlgorithm
             }
+            pk.sign(hashed, curve)
         } catch (e: Exception) {
             Log.e(TAG, "Signing failed", e)
             throw WalletError.SignError
         }
     }
 
-    override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm): Boolean {
+    override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
         return try {
             val publicKey = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1()
                 SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false)
                 else -> return false
             }
-            val hashed = HasherImpl.hash(message, HashingAlgorithm.SHA2_256)
+            val hashed = HasherImpl.hash(message, hashAlgo)
             when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> publicKey.verify(hashed, signature)
                 SigningAlgorithm.ECDSA_secp256k1 -> publicKey.verify(hashed, signature)

@@ -6,16 +6,29 @@ import com.flow.wallet.crypto.ChaChaPolyCipher
 import com.flow.wallet.crypto.HasherImpl
 import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
+import wallet.core.jni.Curve
 import wallet.core.jni.HDWallet
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 import wallet.core.jni.PrivateKey as TWPrivateKey
+
+@Serializable
+private data class KeyData(
+    @SerialName("mnemonic")
+    val mnemonic: String,
+    @SerialName("passphrase")
+    val passphrase: String,
+    @SerialName("path")
+    val path: String
+)
 
 /**
  * Concrete implementation of SeedPhraseKeyProvider
@@ -53,8 +66,8 @@ class SeedPhraseKey(
     }
 
     private val privateKey: PrivateKey = try {
-        val twPrivateKey = hdWallet.getKeyForCoin(CoinType.FLOW)
-        PrivateKey(twPrivateKey, storage)
+        val twPriv = hdWallet.getKeyByCurve(Curve.SECP256K1, derivationPath)
+        PrivateKey(twPriv, storage)
     } catch (e: Exception) {
         Log.e(TAG, "Failed to derive private key", e)
         throw WalletError.InitHDWalletFailed
@@ -84,7 +97,7 @@ class SeedPhraseKey(
 
     private fun deriveKeyPair(path: String): KeyPair {
         try {
-            val derivedPrivateKey = hdWallet.getKeyForCoin(CoinType.FLOW)
+            val derivedPrivateKey = hdWallet.getKeyByCurve(Curve.SECP256K1, path)
             val publicKey = derivedPrivateKey.getPublicKeySecp256k1(false)
             
             val keyFactory = KeyFactory.getInstance("EC")
@@ -156,16 +169,17 @@ class SeedPhraseKey(
         val currentKeyPair = keyPair ?: throw WalletError.EmptySignKey
         
         return try {
-            val privateKey = PrivateKey(currentKeyPair.private.encoded)
-            val hashed = HasherImpl.hash(data, hashAlgo)
-            privateKey.sign(hashed, CoinType.FLOW)
+            val twPrivateKey = TWPrivateKey(currentKeyPair.private.encoded)
+            val privateKey = PrivateKey(twPrivateKey, storage)
+
+            privateKey.sign(data, signAlgo, hashAlgo)
         } catch (e: Exception) {
             Log.e(TAG, "Signing failed", e)
             throw WalletError.SignError
         }
     }
 
-    override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm): Boolean {
+    override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
         if (keyPair == null) return false
         
         return try {
@@ -174,7 +188,7 @@ class SeedPhraseKey(
                 SigningAlgorithm.ECDSA_secp256k1 -> privateKey.pk.getPublicKeySecp256k1(false)
                 else -> return false
             }
-            val hashed = HasherImpl.hash(message, HashingAlgorithm.SHA2_256)
+            val hashed = HasherImpl.hash(message, hashAlgo)
             when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> publicKey.verify(hashed, signature)
                 SigningAlgorithm.ECDSA_secp256k1 -> publicKey.verify(hashed, signature)
@@ -216,12 +230,8 @@ class SeedPhraseKey(
 
     private fun parseKeyData(data: ByteArray): Triple<String, String, String> {
         val json = String(data, Charsets.UTF_8)
-        val map = com.google.gson.Gson().fromJson(json, Map::class.java)
-        return Triple(
-            map["mnemonic"] as String,
-            map["passphrase"] as String,
-            map["path"] as String
-        )
+        val keyData = Json.decodeFromString<KeyData>(json)
+        return Triple(keyData.mnemonic, keyData.passphrase, keyData.path)
     }
 
     private fun encryptData(data: ByteArray, password: String): ByteArray {

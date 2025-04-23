@@ -134,7 +134,7 @@ interface KeyProtocol {
      * @param signAlgo Signature algorithm used
      * @return Whether the signature is valid
      */
-    fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm): Boolean
+    fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean
 
     /**
      * Store the key

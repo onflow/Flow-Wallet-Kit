@@ -30,6 +30,7 @@ class WalletError(
         val RestoreWalletFailed = WalletError(9, "Failed to restore wallet from backup")
         val InvalidSignatureAlgorithm = WalletError(10, "Invalid signature algorithm specified")
         val InvalidEVMAddress = WalletError(11, "Invalid EVM address")
+        val UnsupportedKeyFormat = WalletError(33, "Key format not supported")
 
         // MARK: - Authentication Errors
         val InvalidPassword = WalletError(12, "Invalid password provided")
@@ -59,6 +60,8 @@ class WalletError(
         val InvalidSession = WalletError(28, "Invalid connection session")
         val NetworkNotSupported = WalletError(29, "Network not supported")
         val ConnectionTimeout = WalletError(30, "Connection attempt timed out")
+
+
 
         fun fromCode(code: Int): WalletError {
             return when (code) {
@@ -95,6 +98,7 @@ class WalletError(
                 30 -> ConnectionTimeout
                 31 -> RemoveCacheFailed
                 32 -> FailedPassSecurityCheck
+                33 -> UnsupportedKeyFormat
                 else -> throw IllegalArgumentException("Unknown error code: $code")
             }
         }

@@ -93,7 +93,7 @@ class Account(
     override val cacheId: String
         get() = "Account-${chainID.description}-${account.address}"
 
-    private fun findKeyInAccount(): List<AccountPublicKey> {
+    fun findKeyInAccount(): List<AccountPublicKey> {
         val keyInstance = key ?: return emptyList()
         val keys = mutableListOf<AccountPublicKey>()
 
