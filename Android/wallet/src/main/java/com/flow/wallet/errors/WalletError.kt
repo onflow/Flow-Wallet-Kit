@@ -31,6 +31,7 @@ class WalletError(
         val InvalidSignatureAlgorithm = WalletError(10, "Invalid signature algorithm specified")
         val InvalidEVMAddress = WalletError(11, "Invalid EVM address")
         val UnsupportedKeyFormat = WalletError(33, "Key format not supported")
+        val InvalidMnemonic = WalletError(34, "Invalid mnemonic phrase")
 
         // MARK: - Authentication Errors
         val InvalidPassword = WalletError(12, "Invalid password provided")

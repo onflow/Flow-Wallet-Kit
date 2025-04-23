@@ -2,6 +2,7 @@ package com.flow.wallet.keys
 
 import android.util.Log
 import com.google.common.io.BaseEncoding
+import com.flow.wallet.crypto.BIP39
 import com.flow.wallet.crypto.ChaChaPolyCipher
 import com.flow.wallet.crypto.HasherImpl
 import com.flow.wallet.errors.WalletError
@@ -27,7 +28,9 @@ private data class KeyData(
     @SerialName("passphrase")
     val passphrase: String,
     @SerialName("path")
-    val path: String
+    val path: String,
+    @SerialName("length")
+    val length: BIP39.SeedPhraseLength
 )
 
 /**
@@ -39,7 +42,8 @@ class SeedPhraseKey(
     private val passphrase: String,
     override val derivationPath: String,
     private var keyPair: KeyPair?,
-    override var storage: StorageProtocol
+    override var storage: StorageProtocol,
+    private val seedPhraseLength: BIP39.SeedPhraseLength = BIP39.SeedPhraseLength.TWELVE
 ) : SeedPhraseKeyProvider {
     companion object {
         private const val TAG = "SeedPhraseKey"
@@ -65,16 +69,16 @@ class SeedPhraseKey(
         throw WalletError.InitHDWalletFailed
     }
 
-    private val privateKey: PrivateKey = try {
-        val twPriv = hdWallet.getKeyByCurve(Curve.SECP256K1, derivationPath)
-        PrivateKey(twPriv, storage)
-    } catch (e: Exception) {
-        Log.e(TAG, "Failed to derive private key", e)
-        throw WalletError.InitHDWalletFailed
+    private fun getCurveForAlgorithm(signAlgo: SigningAlgorithm): Curve {
+        return when (signAlgo) {
+            SigningAlgorithm.ECDSA_P256 -> Curve.NIST256P1
+            SigningAlgorithm.ECDSA_secp256k1 -> Curve.SECP256K1
+            else -> throw WalletError.UnsupportedSignatureAlgorithm
+        }
     }
 
     override val key: KeyPair
-        get() = keyPair ?: throw WalletError.EmptyKey
+        get() = throw UnsupportedOperationException("Use publicKey() and privateKey() methods instead")
 
     override val secret: ByteArray = mnemonicString.toByteArray()
     override val advance: Any = Unit
@@ -82,7 +86,7 @@ class SeedPhraseKey(
     override val isHardwareBacked: Boolean = false
 
     override val id: String
-        get() = keyPair?.public?.encoded?.let { 
+        get() = keyPair?.public?.encoded?.let {
             BaseEncoding.base64().encode(it)
         } ?: java.util.UUID.randomUUID().toString()
 
@@ -95,15 +99,22 @@ class SeedPhraseKey(
         return PrivateKey(twPrivateKey, storage)
     }
 
-    private fun deriveKeyPair(path: String): KeyPair {
+    private fun deriveKeyPair(path: String, signAlgo: SigningAlgorithm = SigningAlgorithm.ECDSA_secp256k1): KeyPair {
+        var derivedPrivateKey: wallet.core.jni.PrivateKey? = null
+        var publicKey: wallet.core.jni.PublicKey? = null
         try {
-            val derivedPrivateKey = hdWallet.getKeyByCurve(Curve.SECP256K1, path)
-            val publicKey = derivedPrivateKey.getPublicKeySecp256k1(false)
-            
+            val curve = getCurveForAlgorithm(signAlgo)
+            derivedPrivateKey = hdWallet.getKeyByCurve(curve, path)
+            publicKey = when (signAlgo) {
+                SigningAlgorithm.ECDSA_P256 -> derivedPrivateKey.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_secp256k1 -> derivedPrivateKey.getPublicKeySecp256k1(false)
+                else -> throw WalletError.UnsupportedSignatureAlgorithm
+            }
+
             val keyFactory = KeyFactory.getInstance("EC")
             val privateKeySpec = PKCS8EncodedKeySpec(derivedPrivateKey.data())
             val publicKeySpec = X509EncodedKeySpec(publicKey.data())
-            
+
             return KeyPair(
                 keyFactory.generatePublic(publicKeySpec),
                 keyFactory.generatePrivate(privateKeySpec)
@@ -111,18 +122,23 @@ class SeedPhraseKey(
         } catch (e: Exception) {
             Log.e(TAG, "Key derivation failed", e)
             throw WalletError.InitPrivateKeyFailed
+        } finally {
+            // Secure cleanup
+            derivedPrivateKey = null
+            publicKey = null
         }
     }
 
     override suspend fun create(advance: Any, storage: StorageProtocol): KeyProtocol {
-        val hdWallet = HDWallet(128, "")
-        val mnemonic = hdWallet.mnemonic()
-        val keyPair = deriveKeyPair(DEFAULT_DERIVATION_PATH)
-        return SeedPhraseKey(mnemonic, "", DEFAULT_DERIVATION_PATH, keyPair, storage)
+        val length = if (advance is BIP39.SeedPhraseLength) advance else BIP39.SeedPhraseLength.TWELVE
+        val mnemonic = BIP39.generate(length)
+        // Default to SECP256K1 for backward compatibility
+        val keyPair = deriveKeyPair(DEFAULT_DERIVATION_PATH, SigningAlgorithm.ECDSA_secp256k1)
+        return SeedPhraseKey(mnemonic, "", DEFAULT_DERIVATION_PATH, keyPair, storage, length)
     }
 
     override suspend fun create(storage: StorageProtocol): KeyProtocol {
-        return create(Unit, storage)
+        return create(BIP39.SeedPhraseLength.TWELVE, storage)
     }
 
     override suspend fun createAndStore(id: String, password: String, storage: StorageProtocol): KeyProtocol {
@@ -139,64 +155,104 @@ class SeedPhraseKey(
             Log.e(TAG, "Decryption failed", e)
             throw WalletError.InvalidPassword
         }
-        
-        val (mnemonic, passphrase, path) = try {
+
+        val (mnemonic, passphrase, path, length) = try {
             parseKeyData(decryptedData)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse key data", e)
             throw WalletError.InvalidKeyStoreJSON
         }
-        
+
         val keyPair = deriveKeyPair(path)
-        return SeedPhraseKey(mnemonic, passphrase, path, keyPair, storage)
+        return SeedPhraseKey(mnemonic, passphrase, path, keyPair, storage, length)
     }
 
     override suspend fun restore(secret: ByteArray, storage: StorageProtocol): KeyProtocol {
         val mnemonic = String(secret, Charsets.UTF_8)
+        if (!BIP39.isValid(mnemonic)) {
+            throw WalletError.InvalidMnemonic
+        }
         val keyPair = deriveKeyPair(DEFAULT_DERIVATION_PATH)
         return SeedPhraseKey(mnemonic, "", DEFAULT_DERIVATION_PATH, keyPair, storage)
     }
 
     override fun publicKey(signAlgo: SigningAlgorithm): ByteArray? {
-        return keyPair?.public?.encoded
+        var twPriv: wallet.core.jni.PrivateKey? = null
+        var pubKey: wallet.core.jni.PublicKey? = null
+        try {
+            val curve = getCurveForAlgorithm(signAlgo)
+            twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
+            pubKey = when (signAlgo) {
+                SigningAlgorithm.ECDSA_P256 -> twPriv.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_secp256k1 -> twPriv.getPublicKeySecp256k1(false)
+                else -> null
+            }
+            return pubKey?.data()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get public key", e)
+            return null
+        } finally {
+            // Secure cleanup
+            twPriv = null
+            pubKey = null
+        }
     }
 
     override fun privateKey(signAlgo: SigningAlgorithm): ByteArray? {
-        return keyPair?.private?.encoded
+        var twPriv: wallet.core.jni.PrivateKey? = null
+        try {
+            val curve = getCurveForAlgorithm(signAlgo)
+            twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
+            return twPriv.data()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get private key", e)
+            return null
+        } finally {
+            // Secure cleanup
+            twPriv = null
+        }
     }
 
     override suspend fun sign(data: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): ByteArray {
-        val currentKeyPair = keyPair ?: throw WalletError.EmptySignKey
+        if (keyPair == null) throw WalletError.EmptySignKey
         
-        return try {
-            val twPrivateKey = TWPrivateKey(currentKeyPair.private.encoded)
-            val privateKey = PrivateKey(twPrivateKey, storage)
-
-            privateKey.sign(data, signAlgo, hashAlgo)
+        var twPriv: wallet.core.jni.PrivateKey? = null
+        try {
+            val curve = getCurveForAlgorithm(signAlgo)
+            twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
+            val hashed = HasherImpl.hash(data, hashAlgo)
+            return twPriv.sign(hashed, curve)
         } catch (e: Exception) {
             Log.e(TAG, "Signing failed", e)
             throw WalletError.SignError
+        } finally {
+            // Secure cleanup
+            twPriv = null
         }
     }
 
     override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
         if (keyPair == null) return false
         
-        return try {
-            val publicKey = when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> privateKey.pk.publicKeyNist256p1
-                SigningAlgorithm.ECDSA_secp256k1 -> privateKey.pk.getPublicKeySecp256k1(false)
+        var twPriv: wallet.core.jni.PrivateKey? = null
+        var pubKey: wallet.core.jni.PublicKey? = null
+        try {
+            val curve = getCurveForAlgorithm(signAlgo)
+            twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
+            pubKey = when (signAlgo) {
+                SigningAlgorithm.ECDSA_P256 -> twPriv.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_secp256k1 -> twPriv.getPublicKeySecp256k1(false)
                 else -> return false
             }
             val hashed = HasherImpl.hash(message, hashAlgo)
-            when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> publicKey.verify(hashed, signature)
-                SigningAlgorithm.ECDSA_secp256k1 -> publicKey.verify(hashed, signature)
-                else -> false
-            }
+            return pubKey.verify(hashed, signature)
         } catch (e: Exception) {
             Log.e(TAG, "Signature verification failed", e)
-            false
+            return false
+        } finally {
+            // Secure cleanup
+            twPriv = null
+            pubKey = null
         }
     }
 
@@ -223,15 +279,16 @@ class SeedPhraseKey(
         val data = mapOf(
             "mnemonic" to mnemonicString,
             "passphrase" to passphrase,
-            "path" to derivationPath
+            "path" to derivationPath,
+            "length" to seedPhraseLength
         )
         return Json.encodeToString(data).toByteArray()
     }
 
-    private fun parseKeyData(data: ByteArray): Triple<String, String, String> {
+    private fun parseKeyData(data: ByteArray): Quadruple<String, String, String, BIP39.SeedPhraseLength> {
         val json = String(data, Charsets.UTF_8)
         val keyData = Json.decodeFromString<KeyData>(json)
-        return Triple(keyData.mnemonic, keyData.passphrase, keyData.path)
+        return Quadruple(keyData.mnemonic, keyData.passphrase, keyData.path, keyData.length)
     }
 
     private fun encryptData(data: ByteArray, password: String): ByteArray {
@@ -243,4 +300,12 @@ class SeedPhraseKey(
         val cipher = ChaChaPolyCipher(password)
         return cipher.decrypt(encryptedData)
     }
-} 
+}
+
+// Helper class for returning four values
+private data class Quadruple<A, B, C, D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D
+) 

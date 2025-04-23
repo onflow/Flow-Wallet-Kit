@@ -7,7 +7,6 @@ import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
-import wallet.core.jni.CoinType
 import wallet.core.jni.Curve
 import java.security.KeyFactory
 import java.security.KeyPair

@@ -44,7 +44,7 @@ class SecureElementKey(
             val keyPair = KeyManager.generateKeyWithPrefix("secure_element")
             return SecureElementKey(keyPair, storage)
         } catch (e: Exception) {
-            Log.e(SecureElementKey.TAG, "Failed to create secure element key", e)
+            Log.e(TAG, "Failed to create secure element key", e)
             throw WalletError.InitPrivateKeyFailed
         }
     }
