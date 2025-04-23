@@ -29,6 +29,17 @@ class BaseWalletTest {
         override suspend fun fetchAccountsForNetwork(network: ChainId): List<FlowAccount> {
             return emptyList()
         }
+
+        override suspend fun addAccount(account: Account) {
+            val networkAccounts = accounts.getOrPut(account.chainID) { mutableListOf() }
+            networkAccounts.add(account)
+        }
+
+        override suspend fun removeAccount(address: String) {
+            accounts.values.forEach { accountList ->
+                accountList.removeIf { it.address == address }
+            }
+        }
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.flow.wallet.wallet
 
+import com.flow.wallet.account.Account
+import com.flow.wallet.errors.WalletError
 import com.flow.wallet.keys.PrivateKey
 import com.flow.wallet.storage.InMemoryStorage
 import com.flow.wallet.storage.StorageProtocol
@@ -12,16 +14,19 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.onflow.flow.ChainId
-import org.onflow.flow.models.Account as FlowAccount
+import org.onflow.flow.models.AccountExpandable
+import kotlin.test.assertFailsWith
 
 class KeyWalletTest {
     private val storage: StorageProtocol = InMemoryStorage()
     private val testNetworks = setOf(ChainId.Mainnet, ChainId.Testnet)
-    private val testKey = PrivateKey.generate()
+    private val testAddress = "0x123"
+    private val testKey = PrivateKey.create(storage)
+    private val differentKey = PrivateKey.create(storage)
     
     @Test
     fun testKeyWalletInitialization() = runBlocking {
-        val wallet = KeyWallet(testNetworks, storage, testKey)
+        val wallet = KeyWallet(testKey, testNetworks, storage)
         
         assertEquals(WalletType.KEY, wallet.type)
         assertEquals(testNetworks, wallet.networks)
@@ -31,17 +36,8 @@ class KeyWalletTest {
     }
 
     @Test
-    fun testGetKeyForAccount() = runBlocking {
-        val wallet = KeyWallet(testNetworks, storage, testKey)
-        
-        val key = wallet.getKeyForAccount()
-        assertNotNull(key)
-        assertEquals(testKey, key)
-    }
-
-    @Test
     fun testFetchAccountsForNetwork() = runBlocking {
-        val wallet = KeyWallet(testNetworks, storage, testKey)
+        val wallet = KeyWallet(testKey, testNetworks, storage)
         
         // Test fetching accounts for a network
         val accounts = wallet.fetchAccountsForNetwork(ChainId.Mainnet)
@@ -50,33 +46,59 @@ class KeyWalletTest {
 
     @Test
     fun testAccountManagement() = runBlocking {
-        val wallet = KeyWallet(testNetworks, storage, testKey)
-        val testAccount = FlowAccount(
-            address = "0x123",
-            balance = "0",
-            keys = emptySet(),
-            contracts = emptyMap(),
-            expandable = null,
-            links = null
+        val wallet = KeyWallet(testKey, testNetworks, storage)
+        val testAccount = Account(
+            org.onflow.flow.models.Account(
+                address = testAddress,
+                balance = "0",
+                keys = emptySet(),
+                contracts = emptyMap(),
+                expandable = AccountExpandable(),
+                links = null
+            ),
+            ChainId.Mainnet,
+            testKey
         )
         
         // Test adding account
-        wallet.addAccount(testAccount, ChainId.Mainnet)
+        wallet.addAccount(testAccount)
         assertEquals(1, wallet.accounts[ChainId.Mainnet]?.size)
         
         // Test getting account
-        val retrievedAccount = wallet.getAccount("0x123")
+        val retrievedAccount = wallet.getAccount(testAddress)
         assertNotNull(retrievedAccount)
-        assertEquals("0x123", retrievedAccount.address)
+        assertEquals(testAddress, retrievedAccount?.address)
         
         // Test removing account
-        wallet.removeAccount("0x123")
-        assertNull(wallet.getAccount("0x123"))
+        wallet.removeAccount(testAddress)
+        assertNull(wallet.getAccount(testAddress))
+    }
+
+    @Test
+    fun testAccountKeyValidation(): Unit = runBlocking {
+        val wallet = KeyWallet(testKey, testNetworks, storage)
+        val invalidAccount = Account(
+            org.onflow.flow.models.Account(
+                address = testAddress,
+                balance = "0",
+                keys = emptySet(),
+                contracts = emptyMap(),
+                expandable = AccountExpandable(),
+                links = null
+            ),
+            ChainId.Mainnet,
+            differentKey
+        )
+        
+        // Test that adding an account with a different key fails
+        assertFailsWith<WalletError> {
+            wallet.addAccount(invalidAccount)
+        }
     }
 
     @Test
     fun testLoadingState() = runBlocking {
-        val wallet = KeyWallet(testNetworks, storage, testKey)
+        val wallet = KeyWallet(testKey, testNetworks, storage)
         
         // Test loading state during refresh
         wallet.refreshAccounts()
@@ -85,12 +107,12 @@ class KeyWalletTest {
 
     @Test
     fun testCacheOperations() = runBlocking {
-        val wallet = KeyWallet(testNetworks, storage, testKey)
+        val wallet = KeyWallet(testKey, testNetworks, storage)
         
         // Test cache ID
-        assertEquals("Accounts/KEY", wallet.cacheId)
+        assertTrue(wallet.cacheId.startsWith("key_wallet_"))
         
         // Test cache data
-        assertNull(wallet.cachedData)
+        assertTrue(wallet.cachedData.isEmpty())
     }
 } 

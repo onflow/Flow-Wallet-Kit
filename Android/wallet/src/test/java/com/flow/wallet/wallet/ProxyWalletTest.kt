@@ -31,14 +31,6 @@ class ProxyWalletTest {
     }
 
     @Test
-    fun testGetKeyForAccount() = runBlocking {
-        val wallet = ProxyWallet(testNetworks, storage)
-        
-        // Proxy wallet should not have a key
-        assertNull(wallet.getKeyForAccount())
-    }
-
-    @Test
     fun testFetchAccountsForNetwork() = runBlocking {
         val wallet = ProxyWallet(testNetworks, storage)
         
@@ -52,7 +44,7 @@ class ProxyWalletTest {
         val wallet = ProxyWallet(testNetworks, storage)
         val testAccount = Account(
             org.onflow.flow.models.Account(
-                address = "0x123",
+                address = testAddress,
                 balance = "0",
                 keys = emptySet(),
                 contracts = emptyMap(),
