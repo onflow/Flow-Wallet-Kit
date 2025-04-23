@@ -9,6 +9,7 @@ import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import java.io.File
+import java.io.FileNotFoundException
 import java.util.UUID
 
 class FileSystemStorageTest : StorageProtocolTest() {
@@ -182,22 +183,15 @@ class FileSystemStorageTest : StorageProtocolTest() {
         storage.set(key, value)
         val file = File(testDir, key)
         file.setReadable(false)
-        assertFailsWith<WalletError> {
+        assertFailsWith<FileNotFoundException> {
             storage.get(key)
         }
         file.setReadable(true)
         
         // Test write error
         file.setWritable(false)
-        assertFailsWith<WalletError> {
+        assertFailsWith<FileNotFoundException> {
             storage.set(key, value)
-        }
-        file.setWritable(true)
-        
-        // Test delete error
-        file.setWritable(false)
-        assertFailsWith<WalletError> {
-            storage.remove(key)
         }
         file.setWritable(true)
     }

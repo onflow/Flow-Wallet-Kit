@@ -8,6 +8,7 @@ import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
+import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mock
@@ -22,6 +23,14 @@ import kotlin.test.assertFailsWith
 @RunWith(MockitoJUnitRunner::class)
 class KeyProtocolTest {
 
+//    companion object {
+//        @JvmStatic
+//        @BeforeClass
+//        fun loadNativeLib() {
+//            System.loadLibrary("TrustWalletCore")
+//        }
+//    }
+
     @Mock
     private lateinit var mockStorage: StorageProtocol
 
@@ -31,6 +40,7 @@ class KeyProtocolTest {
 
     @Before
     fun setup() {
+        System.loadLibrary("TrustWalletCore")
         MockitoAnnotations.openMocks(this)
         
         // Initialize different key types
@@ -234,7 +244,7 @@ class KeyProtocolTest {
     }
 
     @Test
-    fun `test error cases`() = runBlocking {
+    fun `test error cases`() : Unit = runBlocking {
         // Test empty key error
         val emptyKey = PrivateKey(TWPrivateKey(), mockStorage)
         assertFailsWith<WalletError> {

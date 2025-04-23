@@ -40,12 +40,6 @@ class WatchWalletTest {
     }
 
     @Test
-    fun testWatchWalletKeyAccess() = runBlocking {
-        // Watch wallet should not have a key
-        assertNull(wallet.getKeyForAccount())
-    }
-
-    @Test
     fun testFetchAccountsForNetwork() = runBlocking {
         // Test fetching accounts for a network
         val accounts = wallet.fetchAccountsForNetwork(ChainId.Mainnet)

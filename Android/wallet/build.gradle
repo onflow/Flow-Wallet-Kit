@@ -80,16 +80,16 @@ dependencies {
     implementation 'com.trustwallet:wallet-core:4.3.2'
     
     // Ktor dependencies
-    implementation "io.ktor:ktor-client-core:2.3.5"
-    implementation "io.ktor:ktor-client-cio:2.3.5"
-    implementation "io.ktor:ktor-client-content-negotiation:2.3.5"
-    implementation "io.ktor:ktor-serialization-kotlinx-json:2.3.5"
-    implementation "io.ktor:ktor-client-logging:2.3.5"
+    implementation "io.ktor:ktor-client-core:2.3.7"
+    implementation "io.ktor:ktor-client-cio:2.3.7"
+    implementation "io.ktor:ktor-client-content-negotiation:2.3.7"
+    implementation "io.ktor:ktor-serialization-kotlinx-json:2.3.7"
+    implementation "io.ktor:ktor-client-logging:2.3.7"
     
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.mockito:mockito-core:5.11.0'
     testImplementation 'org.mockito.kotlin:mockito-kotlin:5.3.1'
-    testImplementation "io.ktor:ktor-client-mock:2.3.5"
+    testImplementation "io.ktor:ktor-client-mock:2.3.7"
     androidTestImplementation 'org.mockito:mockito-core:5.11.0'
     androidTestImplementation 'org.mockito.kotlin:mockito-kotlin:5.3.1'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
