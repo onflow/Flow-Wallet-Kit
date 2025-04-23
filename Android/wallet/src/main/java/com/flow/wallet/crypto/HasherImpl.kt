@@ -9,45 +9,23 @@ import wallet.core.jni.PrivateKey
  * Implementation of hashing functionality using Trust Wallet's core library
  * Provides a unified interface for hashing operations throughout the project
  */
-class HasherImpl {
-    companion object {
-        /**
-         * Hash data using the specified algorithm
-         * @param data Data to hash
-         * @param algorithm Hashing algorithm to use
-         * @return Hashed data
-         * @throws WalletError if hashing fails or algorithm is not supported
-         */
-        fun hash(data: ByteArray, algorithm: HashingAlgorithm): ByteArray {
-            return try {
-                // Create a temporary private key to use Trust Wallet's hashing
-                val tempKey = PrivateKey()
-                when (algorithm) {
-                    HashingAlgorithm.SHA2_256 -> tempKey.hash(data, Hash.SHA256)
-                    HashingAlgorithm.SHA3_256 -> tempKey.hash(data, Hash.SHA3_256)
-                    else -> throw WalletError.UnsupportedHashAlgorithm
-                }
-            } catch (e: Exception) {
-                throw WalletError(WalletError.SignError.code, "Hashing failed: ${e.message}")
-            }
-        }
+object HasherImpl {
 
-        /**
-         * Hash data using SHA2-256
-         * @param data Data to hash
-         * @return SHA2-256 hash of the data
-         */
-        fun sha256(data: ByteArray): ByteArray {
-            return hash(data, HashingAlgorithm.SHA2_256)
+    /**
+     * Hash data with the requested algorithm.
+     * @throws WalletError.UnsupportedHashAlgorithm if the algo isn’t SHA-256 or SHA3-256
+     */
+    fun hash(data: ByteArray, algorithm: HashingAlgorithm): ByteArray = try {
+        when (algorithm) {
+            HashingAlgorithm.SHA2_256 -> Hash.sha256(data)
+            HashingAlgorithm.SHA3_256 -> Hash.sha3256(data)
+            else -> throw WalletError.UnsupportedHashAlgorithm
         }
-
-        /**
-         * Hash data using SHA3-256
-         * @param data Data to hash
-         * @return SHA3-256 hash of the data
-         */
-        fun sha3_256(data: ByteArray): ByteArray {
-            return hash(data, HashingAlgorithm.SHA3_256)
-        }
+    } catch (e: Exception) {
+        throw WalletError(WalletError.SignError.code, "Hashing failed: ${e.message}")
     }
-} 
+
+    /** Convenience wrappers */
+    fun sha256(data: ByteArray)  = hash(data, HashingAlgorithm.SHA2_256)
+    fun sha3_256(data: ByteArray) = hash(data, HashingAlgorithm.SHA3_256)
+}
