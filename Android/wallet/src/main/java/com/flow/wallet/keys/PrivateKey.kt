@@ -15,21 +15,28 @@ import java.security.spec.X509EncodedKeySpec
 import wallet.core.jni.PrivateKey as TWPrivateKey
 /**
  * Implementation of KeyProtocol using raw private keys
- * Uses Trust WalletCore for cryptographic operations
+ * Uses Trust WalletCore for cryptographic operations with enhanced security
  */
 class PrivateKey(
-    internal val pk: TWPrivateKey,
-    override var storage: StorageProtocol
+    internal var pk: TWPrivateKey,
+    override var storage: StorageProtocol,
+    private val keyProperties: Map<String, Any> = emptyMap()
 ) : KeyProtocol, PrivateKeyProvider {
     companion object {
         private const val TAG = "PrivateKey"
+        private const val KEY_SIZE = 256
+        private const val KEY_ALGORITHM = "EC"
 
         /**
          * Create a new private key with storage
          */
         fun create(storage: StorageProtocol): PrivateKey {
             val pk = TWPrivateKey()
-            return PrivateKey(pk, storage)
+            return PrivateKey(pk, storage, mapOf(
+                "createdAt" to System.currentTimeMillis(),
+                "keySize" to KEY_SIZE,
+                "algorithm" to KEY_ALGORITHM
+            ))
         }
 
         /**
@@ -40,6 +47,11 @@ class PrivateKey(
             val cipher = ChaChaPolyCipher(password)
             val encrypted = cipher.encrypt(pk.data())
             storage.set(id, encrypted)
+            storage.set("${id}_metadata", mapOf(
+                "createdAt" to System.currentTimeMillis(),
+                "keySize" to KEY_SIZE,
+                "algorithm" to KEY_ALGORITHM
+            ).toString().toByteArray())
             return PrivateKey(pk, storage)
         }
 
@@ -51,7 +63,9 @@ class PrivateKey(
             val cipher = ChaChaPolyCipher(password)
             val pkData = cipher.decrypt(encryptedData)
             val pk = TWPrivateKey(pkData)
-            return PrivateKey(pk, storage)
+            return PrivateKey(pk, storage, mapOf(
+                "retrievedAt" to System.currentTimeMillis()
+            ))
         }
 
         /**
@@ -59,7 +73,9 @@ class PrivateKey(
          */
         fun restore(secret: ByteArray, storage: StorageProtocol): PrivateKey {
             val pk = TWPrivateKey(secret)
-            return PrivateKey(pk, storage)
+            return PrivateKey(pk, storage, mapOf(
+                "restoredAt" to System.currentTimeMillis()
+            ))
         }
     }
 
@@ -69,14 +85,19 @@ class PrivateKey(
 
     override val key: KeyPair
         get() = try {
-            val publicKey = pk.getPublicKeySecp256k1(false)
-            val keyFactory = KeyFactory.getInstance("EC")
-            val privateKeySpec = PKCS8EncodedKeySpec(pk.data())
-            val publicKeySpec = X509EncodedKeySpec(publicKey.data())
-            KeyPair(
-                keyFactory.generatePublic(publicKeySpec),
-                keyFactory.generatePrivate(privateKeySpec)
-            )
+            var publicKey: wallet.core.jni.PublicKey? = null
+            try {
+                publicKey = pk.getPublicKeySecp256k1(false)
+                val keyFactory = KeyFactory.getInstance("EC")
+                val privateKeySpec = PKCS8EncodedKeySpec(pk.data())
+                val publicKeySpec = X509EncodedKeySpec(publicKey.data())
+                KeyPair(
+                    keyFactory.generatePublic(publicKeySpec),
+                    keyFactory.generatePrivate(privateKeySpec)
+                )
+            } finally {
+                publicKey = null
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create KeyPair", e)
             throw WalletError.InitPrivateKeyFailed
@@ -89,6 +110,18 @@ class PrivateKey(
         get() = key.public.encoded.let { 
             com.google.common.io.BaseEncoding.base64().encode(it)
         }
+
+    /**
+     * Get key properties
+     */
+    fun getKeyProperties(): Map<String, Any> {
+        return buildMap {
+            putAll(keyProperties)
+            put("keySize", KEY_SIZE)
+            put("algorithm", KEY_ALGORITHM)
+            put("isHardwareBacked", isHardwareBacked)
+        }
+    }
 
     override suspend fun create(advance: Any, storage: StorageProtocol): KeyProtocol {
         return create(storage)
@@ -111,15 +144,19 @@ class PrivateKey(
     }
 
     override fun publicKey(signAlgo: SigningAlgorithm): ByteArray? {
-        return try {
-            when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1().data()
-                SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false).data()
+        var publicKey: wallet.core.jni.PublicKey? = null
+        try {
+            publicKey = when (signAlgo) {
+                SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false)
                 else -> null
             }
+            return publicKey?.data()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get public key", e)
-            null
+            return null
+        } finally {
+            publicKey = null
         }
     }
 
@@ -143,8 +180,9 @@ class PrivateKey(
     }
 
     override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
+        var publicKey: wallet.core.jni.PublicKey? = null
         return try {
-            val publicKey = when (signAlgo) {
+            publicKey = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1()
                 SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false)
                 else -> return false
@@ -158,6 +196,8 @@ class PrivateKey(
         } catch (e: Exception) {
             Log.e(TAG, "Signature verification failed", e)
             false
+        } finally {
+            publicKey = null
         }
     }
 
@@ -165,10 +205,12 @@ class PrivateKey(
         val cipher = ChaChaPolyCipher(password)
         val encrypted = cipher.encrypt(pk.data())
         storage.set(id, encrypted)
+        storage.set("${id}_metadata", getKeyProperties().toString().toByteArray())
     }
 
     override suspend fun remove(id: String) {
         storage.remove(id)
+        storage.remove("${id}_metadata")
     }
 
     override fun allKeys(): List<String> {
@@ -202,6 +244,7 @@ class PrivateKey(
                 try {
                     val newPk = TWPrivateKey(data)
                     pk.data().copyInto(newPk.data())
+                    pk = newPk
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to import private key", e)
                     throw WalletError.InvalidPrivateKey
@@ -209,5 +252,12 @@ class PrivateKey(
             }
             else -> throw WalletError.UnsupportedKeyFormat
         }
+    }
+
+    /**
+     * Clean up sensitive data
+     */
+    fun cleanup() {
+        pk = TWPrivateKey()
     }
 } 

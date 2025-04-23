@@ -1,6 +1,8 @@
 package com.flow.wallet.storage
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.util.concurrent.TimeUnit
 
 /**
@@ -39,7 +41,7 @@ interface Cacheable<T> where T : @Serializable Any {
             data = data,
             expiresIn = expiresIn ?: cacheExpiration
         )
-        val json = kotlinx.serialization.json.Json.encodeToString(wrapper)
+        val json = Json.encodeToString(wrapper)
         storage.set(cacheId, json.toByteArray())
     }
 
@@ -51,7 +53,7 @@ interface Cacheable<T> where T : @Serializable Any {
     fun loadCache(ignoreExpiration: Boolean = false): T? {
         val data = storage.get(cacheId) ?: return null
         val json = String(data)
-        val wrapper = kotlinx.serialization.json.Json.decodeFromString<CacheWrapper<T>>(json)
+        val wrapper = Json.decodeFromString<CacheWrapper<T>>(json)
         
         if (!ignoreExpiration && wrapper.isExpired) {
             deleteCache()
