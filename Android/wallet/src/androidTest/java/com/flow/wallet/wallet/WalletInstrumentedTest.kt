@@ -29,6 +29,7 @@ class WalletInstrumentedTest {
 
     @Before
     fun setup() {
+        System.loadLibrary("TrustWalletCore")
         context = ApplicationProvider.getApplicationContext()
         storage = HardwareBackedStorage(context)
         testKey = PrivateKey(wallet.core.jni.PrivateKey(), storage)
@@ -100,7 +101,7 @@ class WalletInstrumentedTest {
     }
 
     @Test
-    fun testWalletSecurity() = runBlocking {
+    fun testWalletSecurity() : Unit = runBlocking {
         val wallet = WalletFactory.createKeyWallet(testKey, testNetworks, storage)
         
         // Test security delegate operations

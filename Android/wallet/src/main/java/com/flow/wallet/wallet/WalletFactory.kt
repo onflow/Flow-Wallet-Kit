@@ -19,7 +19,7 @@ object WalletFactory {
         address: String,
         networks: Set<ChainId> = setOf(ChainId.Mainnet, ChainId.Testnet),
         storage: StorageProtocol
-    ): com.flow.wallet.wallet.Wallet {
+    ): Wallet {
         return com.flow.wallet.wallet.WatchWallet(address, networks, storage)
     }
 
@@ -33,8 +33,8 @@ object WalletFactory {
         key: KeyProtocol,
         networks: Set<ChainId> = setOf(ChainId.Mainnet, ChainId.Testnet),
         storage: StorageProtocol
-    ): com.flow.wallet.wallet.Wallet {
-        return com.flow.wallet.wallet.KeyWallet(key, networks, storage)
+    ): Wallet {
+        return KeyWallet(key, networks, storage)
     }
 
     /**
@@ -47,7 +47,7 @@ object WalletFactory {
         cryptoProvider: CryptoProvider,
         networks: Set<ChainId> = setOf(ChainId.Mainnet, ChainId.Testnet),
         storage: StorageProtocol
-    ): com.flow.wallet.wallet.Wallet {
-        return com.flow.wallet.wallet.ProxyWallet(networks, storage)
+    ): Wallet {
+        return ProxyWallet(networks, storage)
     }
 } 
