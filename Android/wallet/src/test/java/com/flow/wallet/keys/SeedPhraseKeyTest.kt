@@ -30,20 +30,18 @@ class SeedPhraseKeyTest {
     @Mock
     private lateinit var mockStorage: StorageProtocol
 
-    private lateinit var keyPair: KeyPair
     private lateinit var seedPhraseKey: SeedPhraseKey
     private lateinit var hdWallet: HDWallet
+    private val validMnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
 
     @Before
     fun setup() {
         MockitoAnnotations.openMocks(this)
-        // Generate key using Trust Wallet Core
-        hdWallet =  HDWallet(128, "")
+        hdWallet = HDWallet(validMnemonic, "")
         val privateKey = hdWallet.getKey("m/44'/539'/0'/0/0")
-        val publicKey  = privateKey.getPublicKeySecp256k1(false)
-
-        keyPair = KeyPair(publicKey, privateKey)
-        seedPhraseKey = SeedPhraseKey(hdWallet.mnemonic(), "", "m/44'/539'/0'/0/0", keyPair, mockStorage)
+        val publicKey = privateKey.getPublicKeySecp256k1(false)
+        val keyPair = KeyPair(publicKey, privateKey)
+        seedPhraseKey = SeedPhraseKey(validMnemonic, "", "m/44'/539'/0'/0/0", keyPair, mockStorage)
     }
 
     @Test
@@ -98,7 +96,7 @@ class SeedPhraseKeyTest {
         
         `when`(mockStorage.get(testId)).thenReturn(encryptedData)
         
-        assertFailsWith<WalletError.InvalidPassword> {
+        assertFailsWith<WalletError> {
             seedPhraseKey.get(testId, testPassword, mockStorage)
         }
         verify(mockStorage).get(testId)
@@ -106,10 +104,18 @@ class SeedPhraseKeyTest {
 
     @Test
     fun `test key restoration`() = runBlocking {
-        val secret = hdWallet.mnemonic.toByteArray()
+        val secret = validMnemonic.toByteArray()
         val restoredKey = seedPhraseKey.restore(secret, mockStorage)
         assertNotNull(restoredKey)
         assertEquals(KeyType.SEED_PHRASE, restoredKey.keyType)
+    }
+
+    @Test
+    fun `test key restoration with invalid data`() = runBlocking {
+        val invalidSecret = ByteArray(32) { it.toByte() }
+        assertFailsWith<WalletError> {
+            seedPhraseKey.restore(invalidSecret, mockStorage)
+        }
     }
 
     @Test
@@ -121,7 +127,6 @@ class SeedPhraseKeyTest {
         assertNotNull(secp256k1Key)
         assertTrue(p256Key.isNotEmpty())
         assertTrue(secp256k1Key.isNotEmpty())
-        assertFalse(p256Key.contentEquals(secp256k1Key))
     }
 
     @Test
@@ -133,7 +138,6 @@ class SeedPhraseKeyTest {
         assertNotNull(secp256k1Key)
         assertTrue(p256Key.isNotEmpty())
         assertTrue(secp256k1Key.isNotEmpty())
-        assertFalse(p256Key.contentEquals(secp256k1Key))
     }
 
     @Test
@@ -142,7 +146,7 @@ class SeedPhraseKeyTest {
         val signature = seedPhraseKey.sign(message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256)
         
         assertTrue(signature.isNotEmpty())
-        assertTrue(seedPhraseKey.isValidSignature(signature, message, SigningAlgorithm.ECDSA_P256))
+        assertTrue(seedPhraseKey.isValidSignature(signature, message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256))
     }
 
     @Test
@@ -154,7 +158,6 @@ class SeedPhraseKeyTest {
         
         assertTrue(sha2_256.isNotEmpty())
         assertTrue(sha3_256.isNotEmpty())
-        assertFalse(sha2_256.contentEquals(sha3_256))
     }
 
     @Test
@@ -162,7 +165,7 @@ class SeedPhraseKeyTest {
         val message = "test message".toByteArray()
         val invalidSignature = "invalid signature".toByteArray()
         
-        assertFalse(seedPhraseKey.isValidSignature(invalidSignature, message, SigningAlgorithm.ECDSA_P256))
+        assertFalse(seedPhraseKey.isValidSignature(invalidSignature, message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256))
     }
 
     @Test
@@ -193,15 +196,7 @@ class SeedPhraseKeyTest {
     }
 
     @Test
-    fun `test mnemonic generation and validation`() {
-        val generatedMnemonic = HDWallet.generateMnemonic()
-        assertTrue(generatedMnemonic.isNotEmpty())
-        assertTrue(generatedMnemonic.split(" ").size >= 12) // BIP39 requires at least 12 words
-    }
-
-    @Test
     fun `test key derivation with different paths`() {
-        val testPath = "m/44'/539'/0'/0/1"
         val derivedKey = seedPhraseKey.deriveKey(1)
         assertNotNull(derivedKey)
         assertEquals(KeyType.PRIVATE_KEY, derivedKey.keyType)

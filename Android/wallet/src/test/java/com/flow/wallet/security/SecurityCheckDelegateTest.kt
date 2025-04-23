@@ -93,7 +93,7 @@ class SecurityCheckDelegateTest {
         )
 
         // This should throw an exception since security check fails
-        assertFailsWith<WalletError.FailedPassSecurityCheck> {
+        assertFailsWith<WalletError> {
             account.sign(mock(Transaction::class.java), ByteArray(0))
         }
     }

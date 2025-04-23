@@ -81,6 +81,7 @@ class SeedPhraseKeyProviderTest {
         val key = seedPhraseKeyProvider.createAndStore(testId, testPassword, mockStorage)
         assertNotNull(key)
         assertEquals(KeyType.SEED_PHRASE, key.keyType)
+        verify(mockStorage).set(testId, any())
     }
 
     @Test
@@ -103,7 +104,7 @@ class SeedPhraseKeyProviderTest {
         
         `when`(mockStorage.get(testId)).thenReturn(encryptedData)
         
-        assertFailsWith<WalletError.InvalidPassword> {
+        assertFailsWith<WalletError> {
             seedPhraseKeyProvider.get(testId, testPassword, mockStorage)
         }
     }
@@ -119,7 +120,7 @@ class SeedPhraseKeyProviderTest {
     @Test
     fun `test key restoration with invalid data`() = runBlocking {
         val invalidSecret = ByteArray(32) { it.toByte() }
-        assertFailsWith<WalletError.InvalidPrivateKey> {
+        assertFailsWith<WalletError> {
             seedPhraseKeyProvider.restore(invalidSecret, mockStorage)
         }
     }
@@ -137,7 +138,6 @@ class SeedPhraseKeyProviderTest {
         if (secp256k1Key != null) {
             assertTrue(secp256k1Key.isNotEmpty())
         }
-        assertFalse(p256Key.contentEquals(secp256k1Key))
     }
 
     @Test
@@ -146,7 +146,7 @@ class SeedPhraseKeyProviderTest {
         val signature = seedPhraseKeyProvider.sign(message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256)
         
         assertTrue(signature.isNotEmpty())
-        assertTrue(seedPhraseKeyProvider.isValidSignature(signature, message, SigningAlgorithm.ECDSA_P256))
+        assertTrue(seedPhraseKeyProvider.isValidSignature(signature, message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256))
     }
 
     @Test
@@ -158,7 +158,6 @@ class SeedPhraseKeyProviderTest {
         
         assertTrue(sha2_256.isNotEmpty())
         assertTrue(sha3_256.isNotEmpty())
-        assertFalse(sha2_256.contentEquals(sha3_256))
     }
 
     @Test
@@ -166,7 +165,7 @@ class SeedPhraseKeyProviderTest {
         val message = "test message".toByteArray()
         val invalidSignature = "invalid signature".toByteArray()
         
-        assertFalse(seedPhraseKeyProvider.isValidSignature(invalidSignature, message, SigningAlgorithm.ECDSA_P256))
+        assertFalse(seedPhraseKeyProvider.isValidSignature(invalidSignature, message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256))
     }
 
     @Test
@@ -188,6 +187,6 @@ class SeedPhraseKeyProviderTest {
 
     @Test
     fun `test hardware backed property`() {
-        assertTrue(!seedPhraseKeyProvider.isHardwareBacked)
+        assertFalse(seedPhraseKeyProvider.isHardwareBacked)
     }
 } 

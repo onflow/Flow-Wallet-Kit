@@ -1,5 +1,6 @@
 package com.flow.wallet.wallet
 
+import com.flow.wallet.account.Account
 import com.flow.wallet.storage.InMemoryStorage
 import com.flow.wallet.storage.StorageProtocol
 import junit.framework.TestCase.assertEquals
@@ -10,18 +11,17 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.onflow.flow.ChainId
-import org.onflow.flow.models.Account as FlowAccount
+import org.onflow.flow.models.AccountExpandable
 import kotlin.test.assertNotNull
 
 class ProxyWalletTest {
     private val storage: StorageProtocol = InMemoryStorage()
     private val testNetworks = setOf(ChainId.Mainnet, ChainId.Testnet)
     private val testAddress = "0x123"
-    private val testProxyAddress = "0x456"
     
     @Test
     fun testProxyWalletInitialization() = runBlocking {
-        val wallet = ProxyWallet(testNetworks, storage, testAddress, testProxyAddress)
+        val wallet = ProxyWallet(testNetworks, storage)
         
         assertEquals(WalletType.PROXY, wallet.type)
         assertEquals(testNetworks, wallet.networks)
@@ -32,7 +32,7 @@ class ProxyWalletTest {
 
     @Test
     fun testGetKeyForAccount() = runBlocking {
-        val wallet = ProxyWallet(testNetworks, storage, testAddress, testProxyAddress)
+        val wallet = ProxyWallet(testNetworks, storage)
         
         // Proxy wallet should not have a key
         assertNull(wallet.getKeyForAccount())
@@ -40,7 +40,7 @@ class ProxyWalletTest {
 
     @Test
     fun testFetchAccountsForNetwork() = runBlocking {
-        val wallet = ProxyWallet(testNetworks, storage, testAddress, testProxyAddress)
+        val wallet = ProxyWallet(testNetworks, storage)
         
         // Test fetching accounts for a network
         val accounts = wallet.fetchAccountsForNetwork(ChainId.Mainnet)
@@ -49,18 +49,22 @@ class ProxyWalletTest {
 
     @Test
     fun testAccountManagement() = runBlocking {
-        val wallet = ProxyWallet(testNetworks, storage, testAddress, testProxyAddress)
-        val testAccount = FlowAccount(
-            address = testAddress,
-            balance = "0",
-            keys = emptySet(),
-            contracts = emptyMap(),
-            expandable = null,
-            links = null
+        val wallet = ProxyWallet(testNetworks, storage)
+        val testAccount = Account(
+            org.onflow.flow.models.Account(
+                address = "0x123",
+                balance = "0",
+                keys = emptySet(),
+                contracts = emptyMap(),
+                expandable = AccountExpandable(),
+                links = null
+            ),
+            ChainId.Mainnet,
+            null
         )
         
         // Test adding account
-        wallet.addAccount(testAccount, ChainId.Mainnet)
+        wallet.addAccount(testAccount)
         assertEquals(1, wallet.accounts[ChainId.Mainnet]?.size)
         
         // Test getting account
@@ -75,7 +79,7 @@ class ProxyWalletTest {
 
     @Test
     fun testLoadingState() = runBlocking {
-        val wallet = ProxyWallet(testNetworks, storage, testAddress, testProxyAddress)
+        val wallet = ProxyWallet(testNetworks, storage)
         
         // Test loading state during refresh
         wallet.refreshAccounts()
@@ -84,43 +88,12 @@ class ProxyWalletTest {
 
     @Test
     fun testCacheOperations() = runBlocking {
-        val wallet = ProxyWallet(testNetworks, storage, testAddress, testProxyAddress)
+        val wallet = ProxyWallet(testNetworks, storage)
         
         // Test cache ID
         assertEquals("Accounts/PROXY", wallet.cacheId)
         
         // Test cache data
         assertNull(wallet.cachedData)
-    }
-
-    @Test
-    fun testAddressProperties() = runBlocking {
-        val wallet = ProxyWallet(testNetworks, storage, testAddress, testProxyAddress)
-        
-        // Test that both addresses are correctly stored
-        assertEquals(testAddress, wallet.address)
-        assertEquals(testProxyAddress, wallet.proxyAddress)
-    }
-
-    @Test
-    fun testProxyAccountManagement() = runBlocking {
-        val wallet = ProxyWallet(testNetworks, storage, testAddress, testProxyAddress)
-        val testProxyAccount = FlowAccount(
-            address = testProxyAddress,
-            balance = "0",
-            keys = emptySet(),
-            contracts = emptyMap(),
-            expandable = null,
-            links = null
-        )
-        
-        // Test adding proxy account
-        wallet.addAccount(testProxyAccount, ChainId.Mainnet)
-        assertEquals(1, wallet.accounts[ChainId.Mainnet]?.size)
-        
-        // Test getting proxy account
-        val retrievedProxyAccount = wallet.getAccount(testProxyAddress)
-        assertNotNull(retrievedProxyAccount)
-        assertEquals(testProxyAddress, retrievedProxyAccount.address)
     }
 } 

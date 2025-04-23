@@ -6,6 +6,7 @@ import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import org.junit.Test
@@ -13,6 +14,7 @@ import kotlin.test.assertFailsWith
 import java.util.concurrent.TimeUnit
 
 class CacheableTest {
+    @Serializable
     private class TestCacheable(
         override val storage: StorageProtocol,
         override val cacheId: String,
@@ -65,7 +67,7 @@ class CacheableTest {
     fun testCacheWrapperDeserializationError() {
         val invalidJson = """{"invalid": "json"}"""
         assertFailsWith<kotlinx.serialization.SerializationException> {
-            Json.decodeFromString<CacheWrapper<String>>(invalidJson)
+            Json.decodeFromString(CacheWrapper.serializer(String.serializer()), invalidJson)
         }
     }
 

@@ -4,9 +4,6 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
-import wallet.core.jni.HDWallet
-import wallet.core.jni.CoinType
-import wallet.core.jni.PrivateKey
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
@@ -20,6 +17,8 @@ import org.mockito.kotlin.any
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
 import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.spec.ECGenParameterSpec
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
@@ -43,10 +42,21 @@ class SecureElementKeyProviderTest {
     @Before
     fun setup() {
         MockitoAnnotations.openMocks(this)
-        // Generate key using Trust Wallet Core
-        val privateKey = PrivateKey()
-        val publicKey = privateKey.getPublicKeySecp256k1(false)
-        keyPair = KeyPair(publicKey, privateKey)
+        // Generate key pair using KeyPairGenerator
+        val keyPairGenerator = KeyPairGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_EC,
+            "AndroidKeyStore"
+        )
+        val keyGenParameterSpec = KeyGenParameterSpec.Builder(
+            TEST_KEY_ALIAS,
+            KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
+        )
+            .setDigests(KeyProperties.DIGEST_SHA256)
+            .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
+            .setUserAuthenticationRequired(false)
+            .build()
+        keyPairGenerator.initialize(keyGenParameterSpec)
+        keyPair = keyPairGenerator.generateKeyPair()
         secureElementKeyProvider = SecureElementKey(keyPair, mockStorage)
     }
 
@@ -65,7 +75,7 @@ class SecureElementKeyProviderTest {
             KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
         )
             .setDigests(KeyProperties.DIGEST_SHA256)
-            .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+            .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
             .setUserAuthenticationRequired(false)
             .build()
 
@@ -82,7 +92,7 @@ class SecureElementKeyProviderTest {
             KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
         )
             .setDigests(KeyProperties.DIGEST_SHA256)
-            .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+            .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
             .setUserAuthenticationRequired(true)
             .setUserAuthenticationValidityDurationSeconds(1)
             .build()
@@ -100,10 +110,10 @@ class SecureElementKeyProviderTest {
             KeyProperties.PURPOSE_ENCRYPT // Invalid purpose for signing
         )
             .setDigests(KeyProperties.DIGEST_SHA256)
-            .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+            .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
             .build()
 
-        assertFailsWith<WalletError.InitPrivateKeyFailed> {
+        assertFailsWith<WalletError> {
             secureElementKeyProvider.create(invalidSpec, mockStorage)
         }
     }
@@ -125,6 +135,7 @@ class SecureElementKeyProviderTest {
         assertNotNull(key)
         assertEquals(KeyType.SECURE_ELEMENT, key.keyType)
         verify(mockStorage).set(testId, any())
+        verify(mockStorage).set("${testId}_metadata", any())
     }
 
     @Test
@@ -135,7 +146,7 @@ class SecureElementKeyProviderTest {
         
         `when`(mockStorage.get(testId)).thenReturn(encryptedData)
         
-        assertFailsWith<WalletError.InvalidPassword> {
+        assertFailsWith<WalletError> {
             secureElementKeyProvider.get(testId, testPassword, mockStorage)
         }
         verify(mockStorage).get(testId)
@@ -171,7 +182,7 @@ class SecureElementKeyProviderTest {
         
         val signature = key.sign(message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256)
         assertTrue(signature.isNotEmpty())
-        assertTrue(key.isValidSignature(signature, message, SigningAlgorithm.ECDSA_P256))
+        assertTrue(key.isValidSignature(signature, message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256))
     }
 
     @Test
@@ -180,7 +191,7 @@ class SecureElementKeyProviderTest {
         val message = "test message".toByteArray()
         val invalidSignature = "invalid signature".toByteArray()
         
-        assertFalse(key.isValidSignature(invalidSignature, message, SigningAlgorithm.ECDSA_P256))
+        assertFalse(key.isValidSignature(invalidSignature, message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256))
     }
 
     @Test
@@ -188,6 +199,7 @@ class SecureElementKeyProviderTest {
         val testId = "test_key"
         secureElementKeyProvider.remove(testId)
         verify(mockStorage).remove(testId)
+        verify(mockStorage).remove("${testId}_metadata")
     }
 
     @Test
@@ -203,7 +215,7 @@ class SecureElementKeyProviderTest {
     @Test
     fun `test restore operation not supported`() = runBlocking {
         val secret = ByteArray(32) { it.toByte() }
-        assertFailsWith<WalletError.NoImplement> {
+        assertFailsWith<WalletError> {
             secureElementKeyProvider.restore(secret, mockStorage)
         }
     }

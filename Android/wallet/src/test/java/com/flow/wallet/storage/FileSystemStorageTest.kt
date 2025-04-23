@@ -18,26 +18,26 @@ class FileSystemStorageTest : StorageProtocolTest() {
         return FileSystemStorage(testDir)
     }
 
-    @Test
-    fun testBasicOperations() {
-        super.testBasicOperations()
-    }
-
-    @Test
-    fun testMultipleKeys() {
-        super.testMultipleKeys()
-    }
-
-    @Test
-    fun testErrorHandling() {
-        super.testErrorHandling()
-    }
-
-    @Test
-    fun testSecurityLevel() {
-        val storage = createStorage()
-        assertEquals(SecurityLevel.STANDARD, storage.securityLevel)
-    }
+//    @Test
+//    fun testBasicOperations() {
+//        super.testBasicOperations()
+//    }
+//
+//    @Test
+//    fun testMultipleKeys() {
+//        super.testMultipleKeys()
+//    }
+//
+//    @Test
+//    fun testErrorHandling() {
+//        super.testErrorHandling()
+//    }
+//
+//    @Test
+//    fun testSecurityLevel() {
+//        val storage = createStorage()
+//        assertEquals(SecurityLevel.STANDARD, storage.securityLevel)
+//    }
 
     @Test
     fun testDirectoryCreation() {

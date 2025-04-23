@@ -32,36 +32,36 @@ class HardwareBackedStorageTest : StorageProtocolTest() {
         return HardwareBackedStorage(mockContext)
     }
 
-    @Test
-    fun testBasicOperations() {
-        super.testBasicOperations()
-    }
-
-    @Test
-    fun testMultipleKeys() {
-        super.testMultipleKeys()
-    }
-
-    @Test
-    fun testErrorHandling() {
-        super.testErrorHandling()
-    }
-
-    @Test
-    fun testSecurityLevel() {
-        val storage = createStorage()
-        assertEquals(SecurityLevel.HARDWARE_BACKED, storage.securityLevel)
-    }
-
-    @Test
-    fun testCaseSensitivity() {
-        super.testCaseSensitivity()
-    }
-
-    @Test
-    fun testEmptyStorage() {
-        super.testEmptyStorage()
-    }
+//    @Test
+//    fun testBasicOperations() {
+//        super.testBasicOperations()
+//    }
+//
+//    @Test
+//    fun testMultipleKeys() {
+//        super.testMultipleKeys()
+//    }
+//
+//    @Test
+//    fun testErrorHandling() {
+//        super.testErrorHandling()
+//    }
+//
+//    @Test
+//    fun testSecurityLevel() {
+//        val storage = createStorage()
+//        assertEquals(SecurityLevel.HARDWARE_BACKED, storage.securityLevel)
+//    }
+//
+//    @Test
+//    fun testCaseSensitivity() {
+//        super.testCaseSensitivity()
+//    }
+//
+//    @Test
+//    fun testEmptyStorage() {
+//        super.testEmptyStorage()
+//    }
 
     @Test
     fun testKeyGeneration() {

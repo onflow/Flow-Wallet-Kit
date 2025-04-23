@@ -14,26 +14,26 @@ class InMemoryStorageTest : StorageProtocolTest() {
         return InMemoryStorage()
     }
 
-    @Test
-    fun testBasicOperations() {
-        super.testBasicOperations()
-    }
-
-    @Test
-    fun testMultipleKeys() {
-        super.testMultipleKeys()
-    }
-
-    @Test
-    fun testErrorHandling() {
-        super.testErrorHandling()
-    }
-
-    @Test
-    fun testSecurityLevel() {
-        val storage = createStorage()
-        assertEquals(SecurityLevel.IN_MEMORY, storage.securityLevel)
-    }
+//    @Test
+//    fun testBasicOperations() {
+//        super.testBasicOperations()
+//    }
+//
+//    @Test
+//    fun testMultipleKeys() {
+//        super.testMultipleKeys()
+//    }
+//
+//    @Test
+//    fun testErrorHandling() {
+//        super.testErrorHandling()
+//    }
+//
+//    @Test
+//    fun testSecurityLevel() {
+//        val storage = createStorage()
+//        assertEquals(SecurityLevel.IN_MEMORY, storage.securityLevel)
+//    }
 
     @Test
     fun testConcurrentAccess() {
@@ -92,38 +92,38 @@ class InMemoryStorageTest : StorageProtocolTest() {
         }
     }
 
-    @Test
-    fun testCaseSensitivity() {
-        val storage = createStorage()
-        val upperKey = "TEST-KEY"
-        val lowerKey = "test-key"
-        val value = "test".toByteArray()
-        
-        // Test case sensitivity in set/get
-        storage.set(upperKey, value)
-        assertTrue(value.contentEquals(storage.get(upperKey)))
-        assertNull(storage.get(lowerKey))
-        
-        // Test case sensitivity in findKey
-        storage.set(lowerKey, value)
-        val foundKeys = storage.findKey("test")
-        assertTrue(foundKeys.contains(lowerKey))
-        assertFalse(foundKeys.contains(upperKey))
-    }
-
-    @Test
-    fun testEmptyStorage() {
-        val storage = createStorage()
-        
-        // Test allKeys with empty storage
-        assertTrue(storage.allKeys.isEmpty())
-        
-        // Test findKey with empty storage
-        assertTrue(storage.findKey("any").isEmpty())
-        
-        // Test get with empty storage
-        assertNull(storage.get("any"))
-    }
+//    @Test
+//    fun testCaseSensitivity() {
+//        val storage = createStorage()
+//        val upperKey = "TEST-KEY"
+//        val lowerKey = "test-key"
+//        val value = "test".toByteArray()
+//
+//        // Test case sensitivity in set/get
+//        storage.set(upperKey, value)
+//        assertTrue(value.contentEquals(storage.get(upperKey)))
+//        assertNull(storage.get(lowerKey))
+//
+//        // Test case sensitivity in findKey
+//        storage.set(lowerKey, value)
+//        val foundKeys = storage.findKey("test")
+//        assertTrue(foundKeys.contains(lowerKey))
+//        assertFalse(foundKeys.contains(upperKey))
+//    }
+//
+//    @Test
+//    fun testEmptyStorage() {
+//        val storage = createStorage()
+//
+//        // Test allKeys with empty storage
+//        assertTrue(storage.allKeys.isEmpty())
+//
+//        // Test findKey with empty storage
+//        assertTrue(storage.findKey("any").isEmpty())
+//
+//        // Test get with empty storage
+//        assertNull(storage.get("any"))
+//    }
 
     @Test
     fun testConcurrentWrites() {

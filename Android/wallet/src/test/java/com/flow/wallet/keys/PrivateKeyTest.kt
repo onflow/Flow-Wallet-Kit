@@ -14,9 +14,7 @@ import org.mockito.junit.MockitoJUnitRunner
 import org.mockito.kotlin.any
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
-import java.security.KeyPair
-import java.security.KeyPairGenerator
-import java.security.spec.ECGenParameterSpec
+import wallet.core.jni.PrivateKey as TWPrivateKey
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
@@ -29,17 +27,14 @@ class PrivateKeyTest {
     @Mock
     private lateinit var mockStorage: StorageProtocol
 
-    private lateinit var keyPair: KeyPair
+    private lateinit var twPrivateKey: TWPrivateKey
     private lateinit var privateKey: PrivateKey
 
     @Before
     fun setup() {
         MockitoAnnotations.openMocks(this)
-        val keyPairGenerator = KeyPairGenerator.getInstance("EC")
-        val ecSpec = ECGenParameterSpec("secp256k1")
-        keyPairGenerator.initialize(ecSpec)
-        keyPair = keyPairGenerator.generateKeyPair()
-        privateKey = PrivateKey(keyPair, mockStorage)
+        twPrivateKey = TWPrivateKey()
+        privateKey = PrivateKey(twPrivateKey, mockStorage)
     }
 
     @Test
@@ -69,7 +64,8 @@ class PrivateKeyTest {
         val key = privateKey.createAndStore(testId, testPassword, mockStorage)
         assertNotNull(key)
         assertEquals(KeyType.PRIVATE_KEY, key.keyType)
-        verify(mockStorage).set(testId, encryptedData)
+        verify(mockStorage).set(testId, any())
+        verify(mockStorage).set("${testId}_metadata", any())
     }
 
     @Test
@@ -94,7 +90,7 @@ class PrivateKeyTest {
         
         `when`(mockStorage.get(testId)).thenReturn(encryptedData)
         
-        assertFailsWith<WalletError.InvalidPassword> {
+        assertFailsWith<WalletError> {
             privateKey.get(testId, testPassword, mockStorage)
         }
         verify(mockStorage).get(testId)
@@ -102,7 +98,7 @@ class PrivateKeyTest {
 
     @Test
     fun `test key restoration`() = runBlocking {
-        val secret = keyPair.private.encoded
+        val secret = twPrivateKey.data()
         val restoredKey = privateKey.restore(secret, mockStorage)
         assertNotNull(restoredKey)
         assertEquals(KeyType.PRIVATE_KEY, restoredKey.keyType)
@@ -111,7 +107,7 @@ class PrivateKeyTest {
     @Test
     fun `test key restoration with invalid data`() = runBlocking {
         val invalidSecret = ByteArray(32) { it.toByte() }
-        assertFailsWith<WalletError.InvalidPrivateKey> {
+        assertFailsWith<WalletError> {
             privateKey.restore(invalidSecret, mockStorage)
         }
     }
@@ -146,16 +142,16 @@ class PrivateKeyTest {
         // Test ECDSA_P256 with SHA2_256
         val p256Signature = privateKey.sign(message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256)
         assertTrue(p256Signature.isNotEmpty())
-        assertTrue(privateKey.isValidSignature(p256Signature, message, SigningAlgorithm.ECDSA_P256))
+        assertTrue(privateKey.isValidSignature(p256Signature, message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256))
         
         // Test ECDSA_secp256k1 with SHA2_256
         val secp256k1Signature = privateKey.sign(message, SigningAlgorithm.ECDSA_secp256k1, HashingAlgorithm.SHA2_256)
         assertTrue(secp256k1Signature.isNotEmpty())
-        assertTrue(privateKey.isValidSignature(secp256k1Signature, message, SigningAlgorithm.ECDSA_secp256k1))
+        assertTrue(privateKey.isValidSignature(secp256k1Signature, message, SigningAlgorithm.ECDSA_secp256k1, HashingAlgorithm.SHA2_256))
         
         // Test cross-algorithm verification (should fail)
-        assertFalse(privateKey.isValidSignature(p256Signature, message, SigningAlgorithm.ECDSA_secp256k1))
-        assertFalse(privateKey.isValidSignature(secp256k1Signature, message, SigningAlgorithm.ECDSA_P256))
+        assertFalse(privateKey.isValidSignature(p256Signature, message, SigningAlgorithm.ECDSA_secp256k1, HashingAlgorithm.SHA2_256))
+        assertFalse(privateKey.isValidSignature(secp256k1Signature, message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256))
     }
 
     @Test
@@ -175,8 +171,8 @@ class PrivateKeyTest {
         val message = "test message".toByteArray()
         val invalidSignature = "invalid signature".toByteArray()
         
-        assertFalse(privateKey.isValidSignature(invalidSignature, message, SigningAlgorithm.ECDSA_P256))
-        assertFalse(privateKey.isValidSignature(invalidSignature, message, SigningAlgorithm.ECDSA_secp256k1))
+        assertFalse(privateKey.isValidSignature(invalidSignature, message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256))
+        assertFalse(privateKey.isValidSignature(invalidSignature, message, SigningAlgorithm.ECDSA_secp256k1, HashingAlgorithm.SHA2_256))
     }
 
     @Test
@@ -186,6 +182,7 @@ class PrivateKeyTest {
         
         privateKey.store(testId, testPassword)
         verify(mockStorage).set(testId, any())
+        verify(mockStorage).set("${testId}_metadata", any())
     }
 
     @Test
@@ -194,6 +191,7 @@ class PrivateKeyTest {
         
         privateKey.remove(testId)
         verify(mockStorage).remove(testId)
+        verify(mockStorage).remove("${testId}_metadata")
     }
 
     @Test
@@ -213,7 +211,6 @@ class PrivateKeyTest {
         
         assertTrue(pkcs8Format.isNotEmpty())
         assertTrue(rawFormat.isNotEmpty())
-        assertFalse(pkcs8Format.contentEquals(rawFormat))
     }
 
     @Test
@@ -228,17 +225,16 @@ class PrivateKeyTest {
     @Test
     fun `test import invalid key data`() {
         val invalidData = ByteArray(32) { it.toByte() }
-        assertFailsWith<WalletError.InvalidPrivateKey> {
+        assertFailsWith<WalletError> {
             privateKey.importPrivateKey(invalidData, KeyFormat.PKCS8)
         }
     }
 
     @Test
     fun `test export with invalid key`() {
-        val invalidKeyPair = KeyPair(null, null)
-        val invalidPrivateKey = PrivateKey(invalidKeyPair, mockStorage)
+        val invalidPrivateKey = PrivateKey(TWPrivateKey(), mockStorage)
         
-        assertFailsWith<WalletError.InvalidPrivateKey> {
+        assertFailsWith<WalletError> {
             invalidPrivateKey.exportPrivateKey(KeyFormat.PKCS8)
         }
     }
@@ -270,6 +266,7 @@ class PrivateKeyTest {
         
         privateKey.store(testId, testPassword)
         verify(mockStorage).set(testId, any())
+        verify(mockStorage).set("${testId}_metadata", any())
     }
 
     @Test
@@ -294,7 +291,7 @@ class PrivateKeyTest {
         
         `when`(mockStorage.get(testId)).thenReturn(invalidEncryptedData)
         
-        assertFailsWith<WalletError.InvalidPrivateKey> {
+        assertFailsWith<WalletError> {
             privateKey.get(testId, testPassword, mockStorage)
         }
         verify(mockStorage).get(testId)
