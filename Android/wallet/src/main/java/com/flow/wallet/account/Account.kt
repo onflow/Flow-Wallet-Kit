@@ -44,7 +44,7 @@ class Account(
     private val _tokenBalances = MutableStateFlow<List<TokenBalance>>(emptyList())
     val tokenBalances: StateFlow<List<TokenBalance>> = _tokenBalances.asStateFlow()
 
-    private val evmManager = EVMManager(chainID)
+    val evmManager = EVMManager(chainID)
 
     init {
         // Initialize account by fetching linked accounts

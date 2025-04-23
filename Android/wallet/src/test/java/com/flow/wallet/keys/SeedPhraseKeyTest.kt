@@ -2,9 +2,9 @@ package com.flow.wallet.keys
 
 import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
-import com.trustwallet.wallet.core.CoinType
-import com.trustwallet.wallet.core.HDWallet
-import com.trustwallet.wallet.core.PrivateKey
+import wallet.core.jni.HDWallet
+import wallet.core.jni.CoinType
+import wallet.core.jni.PrivateKey
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
@@ -38,11 +38,12 @@ class SeedPhraseKeyTest {
     fun setup() {
         MockitoAnnotations.openMocks(this)
         // Generate key using Trust Wallet Core
-        hdWallet = HDWallet.generate()
-        val privateKey = hdWallet.getKeyForCoin(CoinType.FLOW)
-        val publicKey = privateKey.getPublicKeySecp256k1(false)
+        hdWallet =  HDWallet(128, "")
+        val privateKey = hdWallet.getKey("m/44'/539'/0'/0/0")
+        val publicKey  = privateKey.getPublicKeySecp256k1(false)
+
         keyPair = KeyPair(publicKey, privateKey)
-        seedPhraseKey = SeedPhraseKey(hdWallet.mnemonic, "", "m/44'/539'/0'/0/0", keyPair, mockStorage)
+        seedPhraseKey = SeedPhraseKey(hdWallet.mnemonic(), "", "m/44'/539'/0'/0/0", keyPair, mockStorage)
     }
 
     @Test

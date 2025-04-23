@@ -4,15 +4,15 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.serialization' version '1.8.0'
 }
 
-Properties properties = new Properties()
-File localProps = new File(rootDir.absolutePath, "local.properties")
-if (localProps.exists()) {
-    properties.load(localProps.newDataInputStream())
-    println "Authenticating user: " + properties.getProperty("gpr.user")
-} else {
-    println "local.properties not found, please create it next to build.gradle and set gpr.user and gpr.key (Create a GitHub package read only + non expiration token at https://github.com/settings/tokens)\n" +
-            "Or set GITHUB_USER and GITHUB_TOKEN environment variables"
-}
+//Properties properties = new Properties()
+//File localProps = new File(rootDir.absolutePath, "local.properties")
+//if (localProps.exists()) {
+//    properties.load(localProps.newDataInputStream())
+//    println "Authenticating user: " + properties.getProperty("gpr.user")
+//} else {
+//    println "local.properties not found, please create it next to build.gradle and set gpr.user and gpr.key (Create a GitHub package read only + non expiration token at https://github.com/settings/tokens)\n" +
+//            "Or set GITHUB_USER and GITHUB_TOKEN environment variables"
+//}
 
 android {
     namespace 'com.flow.wallet'
@@ -53,8 +53,8 @@ repositories {
     maven {
         url = uri("https://maven.pkg.github.com/trustwallet/wallet-core")
         credentials {
-            username = properties.getProperty("gpr.user") as String?: System.getenv("GITHUB_USER")
-            password = properties.getProperty("gpr.key") as String?: System.getenv("GITHUB_TOKEN")
+            username = findProperty("gpr.user") ?: System.getenv("GITHUB_USER")
+            password = findProperty("gpr.key")  ?: System.getenv("GITHUB_TOKEN")
         }
     }
 }
@@ -77,7 +77,7 @@ dependencies {
     implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
     
     // HD Wallet implementation
-    implementation 'com.trustwallet:wallet-core:4.3.1'
+    implementation 'com.trustwallet:wallet-core:4.3.2'
     
     // Ktor dependencies
     implementation "io.ktor:ktor-client-core:2.3.5"

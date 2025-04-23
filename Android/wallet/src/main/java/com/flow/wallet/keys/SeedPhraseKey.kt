@@ -10,14 +10,12 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
-import com.trustwallet.wallet.core.CoinType
-import com.trustwallet.wallet.core.HDWallet
-import com.trustwallet.wallet.core.PrivateKey
-import com.trustwallet.wallet.core.PublicKey
+import wallet.core.jni.HDWallet
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
+import wallet.core.jni.PrivateKey as TWPrivateKey
 
 /**
  * Concrete implementation of SeedPhraseKeyProvider
@@ -55,7 +53,8 @@ class SeedPhraseKey(
     }
 
     private val privateKey: PrivateKey = try {
-        hdWallet.getKeyForCoin(CoinType.FLOW)
+        val twPrivateKey = hdWallet.getKeyForCoin(CoinType.FLOW)
+        PrivateKey(twPrivateKey, storage)
     } catch (e: Exception) {
         Log.e(TAG, "Failed to derive private key", e)
         throw WalletError.InitHDWalletFailed
@@ -79,7 +78,8 @@ class SeedPhraseKey(
     override fun deriveKey(index: Int): KeyProtocol {
         val newPath = derivationPath.replaceAfterLast("/", index.toString())
         val derivedKeyPair = deriveKeyPair(newPath)
-        return PrivateKey(derivedKeyPair, storage)
+        val twPrivateKey = TWPrivateKey(derivedKeyPair.private.encoded)
+        return PrivateKey(twPrivateKey, storage)
     }
 
     private fun deriveKeyPair(path: String): KeyPair {
@@ -102,7 +102,8 @@ class SeedPhraseKey(
     }
 
     override suspend fun create(advance: Any, storage: StorageProtocol): KeyProtocol {
-        val mnemonic = HDWallet.generateMnemonic()
+        val hdWallet = HDWallet(128, "")
+        val mnemonic = hdWallet.mnemonic()
         val keyPair = deriveKeyPair(DEFAULT_DERIVATION_PATH)
         return SeedPhraseKey(mnemonic, "", DEFAULT_DERIVATION_PATH, keyPair, storage)
     }
@@ -164,16 +165,16 @@ class SeedPhraseKey(
         }
     }
 
-    fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
+    override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm): Boolean {
         if (keyPair == null) return false
         
         return try {
             val publicKey = when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> privateKey.getPublicKeyNist256p1()
-                SigningAlgorithm.ECDSA_secp256k1 -> privateKey.getPublicKeySecp256k1(false)
+                SigningAlgorithm.ECDSA_P256 -> privateKey.pk.publicKeyNist256p1
+                SigningAlgorithm.ECDSA_secp256k1 -> privateKey.pk.getPublicKeySecp256k1(false)
                 else -> return false
             }
-            val hashed = HasherImpl.hash(message, hashAlgo)
+            val hashed = HasherImpl.hash(message, HashingAlgorithm.SHA2_256)
             when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> publicKey.verify(hashed, signature)
                 SigningAlgorithm.ECDSA_secp256k1 -> publicKey.verify(hashed, signature)

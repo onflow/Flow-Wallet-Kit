@@ -4,8 +4,9 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
-import com.trustwallet.wallet.core.CoinType
-import com.trustwallet.wallet.core.PrivateKey
+import wallet.core.jni.HDWallet
+import wallet.core.jni.CoinType
+import wallet.core.jni.PrivateKey
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test

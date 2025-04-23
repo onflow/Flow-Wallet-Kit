@@ -5,21 +5,19 @@ import com.flow.wallet.crypto.ChaChaPolyCipher
 import com.flow.wallet.crypto.HasherImpl
 import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
-import com.trustwallet.wallet.core.CoinType
-import com.trustwallet.wallet.core.PrivateKey as TWPrivateKey
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
 import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
-
+import wallet.core.jni.PrivateKey as TWPrivateKey
 /**
  * Implementation of KeyProtocol using raw private keys
  * Uses Trust WalletCore for cryptographic operations
  */
 class PrivateKey(
-    private val pk: TWPrivateKey,
+    internal val pk: TWPrivateKey,
     override var storage: StorageProtocol
 ) : KeyProtocol, PrivateKeyProvider {
     companion object {
@@ -142,14 +140,14 @@ class PrivateKey(
         }
     }
 
-    fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
+    override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm): Boolean {
         return try {
             val publicKey = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1()
                 SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false)
                 else -> return false
             }
-            val hashed = HasherImpl.hash(message, hashAlgo)
+            val hashed = HasherImpl.hash(message, HashingAlgorithm.SHA2_256)
             when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> publicKey.verify(hashed, signature)
                 SigningAlgorithm.ECDSA_secp256k1 -> publicKey.verify(hashed, signature)
