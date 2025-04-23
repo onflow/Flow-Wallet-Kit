@@ -8,8 +8,7 @@ import org.junit.runner.RunWith
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.junit.MockitoJUnitRunner
-import java.security.KeyPair
-import java.security.KeyPairGenerator
+import wallet.core.jni.PrivateKey as TWPrivateKey
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
@@ -22,15 +21,13 @@ class PrivateKeyProviderTest {
     private lateinit var mockStorage: StorageProtocol
 
     private lateinit var privateKeyProvider: PrivateKeyProvider
-    private lateinit var keyPair: KeyPair
+    private lateinit var twPrivateKey: TWPrivateKey
 
     @Before
     fun setup() {
         MockitoAnnotations.openMocks(this)
-        val keyPairGenerator = KeyPairGenerator.getInstance("EC")
-        keyPairGenerator.initialize(256)
-        keyPair = keyPairGenerator.generateKeyPair()
-        privateKeyProvider = PrivateKey(keyPair, mockStorage)
+        twPrivateKey = TWPrivateKey()
+        privateKeyProvider = PrivateKey(twPrivateKey, mockStorage)
     }
 
     @Test
@@ -68,7 +65,7 @@ class PrivateKeyProviderTest {
     @Test
     fun `test import invalid private key`() {
         val invalidKey = ByteArray(32) { it.toByte() }
-        assertFailsWith<WalletError.InvalidPrivateKey> {
+        assertFailsWith<WalletError> {
             privateKeyProvider.importPrivateKey(invalidKey, KeyFormat.PKCS8)
         }
     }

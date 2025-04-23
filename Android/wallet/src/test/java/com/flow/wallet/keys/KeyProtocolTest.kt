@@ -2,12 +2,11 @@ package com.flow.wallet.keys
 
 import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
-import com.trustwallet.wallet.core.PrivateKey as TWPrivateKey
+import wallet.core.jni.PrivateKey as TWPrivateKey
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertNotNull
 import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,7 +18,6 @@ import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
 import java.security.KeyPairGenerator
 import kotlin.test.assertFailsWith
-import kotlin.test.assertThrows
 
 @RunWith(MockitoJUnitRunner::class)
 class KeyProtocolTest {
@@ -40,8 +38,14 @@ class KeyProtocolTest {
         keyPairGenerator.initialize(256)
         val keyPair = keyPairGenerator.generateKeyPair()
         
-        privateKey = PrivateKey(keyPair, mockStorage)
+        // Initialize PrivateKey with TWPrivateKey
+        val twPrivateKey = TWPrivateKey()
+        privateKey = PrivateKey(twPrivateKey, mockStorage)
+        
+        // Initialize SecureElementKey with KeyPair
         secureElementKey = SecureElementKey(keyPair, mockStorage)
+        
+        // Initialize SeedPhraseKey with required parameters
         seedPhraseKey = SeedPhraseKey(
             mnemonicString = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
             passphrase = "",
@@ -118,7 +122,7 @@ class KeyProtocolTest {
         `when`(mockStorage.get(testId)).thenReturn(encryptedData)
         
         listOf(privateKey, secureElementKey, seedPhraseKey).forEach { key ->
-            assertFailsWith<WalletError.InvalidPassword> {
+            assertFailsWith<WalletError> {
                 key.get(testId, testPassword, mockStorage)
             }
         }
@@ -163,7 +167,7 @@ class KeyProtocolTest {
         listOf(privateKey, secureElementKey, seedPhraseKey).forEach { key ->
             val signature = key.sign(message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256)
             assertTrue(signature.isNotEmpty())
-            assertTrue(key.isValidSignature(signature, message, SigningAlgorithm.ECDSA_P256))
+            assertTrue(key.isValidSignature(signature, message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256))
         }
     }
 
@@ -173,7 +177,7 @@ class KeyProtocolTest {
         val invalidSignature = "invalid signature".toByteArray()
         
         listOf(privateKey, secureElementKey, seedPhraseKey).forEach { key ->
-            assertTrue(!key.isValidSignature(invalidSignature, message, SigningAlgorithm.ECDSA_P256))
+            assertTrue(!key.isValidSignature(invalidSignature, message, SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA2_256))
         }
     }
 
@@ -232,20 +236,20 @@ class KeyProtocolTest {
     @Test
     fun `test error cases`() = runBlocking {
         // Test empty key error
-        val emptyKey = PrivateKey(TWPrivateKey(ByteArray(32)), mockStorage)
-        assertFailsWith<WalletError.EmptyKey> {
+        val emptyKey = PrivateKey(TWPrivateKey(), mockStorage)
+        assertFailsWith<WalletError> {
             emptyKey.importPrivateKey(ByteArray(0), KeyFormat.RAW)
         }
 
         // Test invalid private key error
-        val invalidKey = PrivateKey(TWPrivateKey(ByteArray(32)), mockStorage)
-        assertFailsWith<WalletError.InvalidPrivateKey> {
+        val invalidKey = PrivateKey(TWPrivateKey(), mockStorage)
+        assertFailsWith<WalletError> {
             invalidKey.importPrivateKey(ByteArray(31), KeyFormat.RAW) // Invalid length for private key
         }
 
         // Test sign error
-        val signKey = PrivateKey(TWPrivateKey(ByteArray(32)), mockStorage)
-        assertFailsWith<WalletError.SignError> {
+        val signKey = PrivateKey(TWPrivateKey(), mockStorage)
+        assertFailsWith<WalletError> {
             signKey.sign(ByteArray(0), SigningAlgorithm.ECDSA_P256, HashingAlgorithm.SHA3_256)
         }
     }

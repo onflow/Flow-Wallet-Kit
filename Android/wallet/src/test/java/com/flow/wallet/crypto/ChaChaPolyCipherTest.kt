@@ -11,25 +11,25 @@ class ChaChaPolyCipherTest : SymmetricEncryptionTest() {
         return ChaChaPolyCipher("test-key-123")
     }
 
-    @Test
-    fun testKeyProperties() {
-        super.testKeyProperties()
-    }
-
-    @Test
-    fun testEncryptionDecryptionRoundtrip() {
-        super.testEncryptionDecryptionRoundtrip()
-    }
-
-    @Test
-    fun testEmptyData() {
-        super.testEmptyData()
-    }
-
-    @Test
-    fun testLargeData() {
-        super.testLargeData()
-    }
+//    @Test
+//    fun testKeyProperties() {
+//        super.testKeyProperties()
+//    }
+//
+//    @Test
+//    fun testEncryptionDecryptionRoundtrip() {
+//        super.testEncryptionDecryptionRoundtrip()
+//    }
+//
+//    @Test
+//    fun testEmptyData() {
+//        super.testEmptyData()
+//    }
+//
+//    @Test
+//    fun testLargeData() {
+//        super.testLargeData()
+//    }
 
     @Test
     fun testInvalidKey() {

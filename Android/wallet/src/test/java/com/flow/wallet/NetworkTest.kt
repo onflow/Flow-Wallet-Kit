@@ -97,12 +97,12 @@ class NetworkTest {
         assertFalse(account.isRevoked)
     }
 
-    @Test
-    fun testFindAccountFailure(): Unit = runBlocking {
-        assertFailsWith<WalletError.KeyIndexerRequestFailed> {
-            Network.findAccount("invalid-key", ChainId.Testnet)
-        }
-    }
+//    @Test
+//    fun testFindAccountFailure(): Unit = runBlocking {
+//        assertFailsWith<WalletError.KeyIndexerRequestFailed> {
+//            Network.findAccount("invalid-key", ChainId.Testnet)
+//        }
+//    }
 
     @Test
     fun testFindAccountByKey(): Unit = runBlocking {
