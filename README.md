@@ -26,7 +26,9 @@ Here's what's been built and what's coming next:
 
 ## 📚 Documentation
 
-Check out platform-specific guides here:
+Visit our comprehensive documentation at [flow-wallet-kit.vercel.app/docs](https://flow-wallet-kit.vercel.app/docs)
+
+Platform-specific guides are also available here:
 - 📱 [iOS Documentation](iOS/README.md)
 - 🤖 [Android Documentation](Android/README.md)
 
@@ -118,4 +120,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Found a bug? Need help?  
 Please open an issue in the repo or contact the maintainers.
-
