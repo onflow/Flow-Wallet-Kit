@@ -97,5 +97,4 @@ The SDK is organized into several key components:
 This SDK is under active development. The current version focuses on secure key management and storage implementations across both iOS and Android platforms, providing a robust foundation for wallet functionality. Additional features are planned for future releases. Please check the platform-specific documentation for the current implementation status of each feature.
 
 ## Support
-
 For support, please open an issue in the GitHub repository or contact the maintainers. 

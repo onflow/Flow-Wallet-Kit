@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <Button
+            android:id="@+id/btnGenerateKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:text="Generate Key Pair" />
+
+        <TextView
+            android:id="@+id/tvPublicKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:text="Public Key: Not generated"
+            android:textAppearance="?attr/textAppearanceBody1" />
+
+        <Button
+            android:id="@+id/btnFindAccount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:text="Find Account" />
+
+        <TextView
+            android:id="@+id/tvAccountInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:text="Account Info: Not found"
+            android:textAppearance="?attr/textAppearanceBody1" />
+
+        <Button
+            android:id="@+id/btnLoadLinkedAccounts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:text="Load Linked Accounts" />
+
+        <TextView
+            android:id="@+id/tvLinkedAccounts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Linked Accounts: Not loaded"
+            android:textAppearance="?attr/textAppearanceBody1" />
+
+    </LinearLayout>
+</ScrollView> 

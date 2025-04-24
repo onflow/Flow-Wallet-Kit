@@ -1,67 +1,99 @@
 plugins {
-    id("com.android.library")
-    id("org.jetbrains.kotlin.android")
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.8.0'
 }
 
+//Properties properties = new Properties()
+//File localProps = new File(rootDir.absolutePath, "local.properties")
+//if (localProps.exists()) {
+//    properties.load(localProps.newDataInputStream())
+//    println "Authenticating user: " + properties.getProperty("gpr.user")
+//} else {
+//    println "local.properties not found, please create it next to build.gradle and set gpr.user and gpr.key (Create a GitHub package read only + non expiration token at https://github.com/settings/tokens)\n" +
+//            "Or set GITHUB_USER and GITHUB_TOKEN environment variables"
+//}
+
 android {
-    namespace 'io.outblock.wallet'
+    namespace 'com.flow.wallet'
     compileSdk 33
 
     defaultConfig {
-        minSdk 26
+        minSdk 24
         targetSdk 33
+        versionCode 1
+        versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles "consumer-rules.pro"
     }
 
     buildTypes {
-        debug {
-            minifyEnabled false
-            debuggable true
-        }
-
-        releaseDebug {
-            minifyEnabled false
-            debuggable true
-        }
-
-        dev {
-            minifyEnabled false
-        }
-
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
+    
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '11'
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+    maven { url "https://jitpack.io" }
+    maven { url "https://maven.google.com" }
+
+    maven {
+        url = uri("https://maven.pkg.github.com/trustwallet/wallet-core")
+        credentials {
+            username = findProperty("gpr.user") ?: System.getenv("GITHUB_USER")
+            password = findProperty("gpr.key")  ?: System.getenv("GITHUB_TOKEN")
+        }
     }
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0"
-    implementation 'com.google.guava:guava:32.0.1-jre'
-    implementation 'com.github.onflow.flow-kmm:flow:0.0.2-gh-workflow'
-    implementation 'org.bouncycastle:bcprov-jdk18on:1.77'
-    implementation 'androidx.core:core-ktx:1.7.0'
-    implementation 'androidx.appcompat:appcompat:1.4.0'
-    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'androidx.core:core-ktx:1.9.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.8.0'
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    implementation('com.google.apis:google-api-services-drive:v3-rev20220815-2.0.0') {
+        exclude group: 'org.apache.httpcomponents'
+    }
     
-    // Network dependencies
-    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
-    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
-    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
-    implementation 'com.squareup.okhttp3:logging-interceptor:4.9.3'
+    // Flow SDK dependencies
+    implementation 'com.github.onflow.flow-kmm:flow:0.0.3-new'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0'
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
+    
+    // HD Wallet implementation
+    implementation 'com.trustwallet:wallet-core:4.3.2'
+    
+    // Ktor dependencies
+    implementation "io.ktor:ktor-client-core:2.3.7"
+    implementation "io.ktor:ktor-client-cio:2.3.7"
+    implementation "io.ktor:ktor-client-content-negotiation:2.3.7"
+    implementation "io.ktor:ktor-serialization-kotlinx-json:2.3.7"
+    implementation "io.ktor:ktor-client-logging:2.3.7"
     
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:5.11.0'
+    testImplementation 'org.mockito.kotlin:mockito-kotlin:5.3.1'
+    testImplementation "io.ktor:ktor-client-mock:2.3.7"
+    androidTestImplementation 'org.mockito:mockito-core:5.11.0'
+    androidTestImplementation 'org.mockito.kotlin:mockito-kotlin:5.3.1'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1"
+    androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
+    implementation "org.jetbrains.kotlin:kotlin-test:2.0.21"
 }
