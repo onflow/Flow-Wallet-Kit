@@ -75,29 +75,6 @@ The example app demonstrates three main features of the Flow Wallet Kit SDK:
    - The app will load and display any linked accounts
    - Shows both child accounts and COA information if available
 
-## Troubleshooting
-
-### Common Issues
-
-1. **Build Errors**
-   - Make sure you have the correct Android SDK version installed
-   - Ensure all dependencies are properly synced
-   - Try cleaning and rebuilding the project
-
-2. **Network Issues**
-   - The app uses the Flow Testnet by default
-   - Ensure your device has an active internet connection
-   - Check if the Flow Testnet is accessible
-
-3. **Key Generation Issues**
-   - Some devices may have restrictions on key generation
-   - Try using a different device or emulator
-   - Check device logs for specific error messages
-
-## Contributing
-
-Feel free to submit issues and enhancement requests.
-
 ## License
 
 This example is provided under the same license as the Flow Wallet Kit SDK.
