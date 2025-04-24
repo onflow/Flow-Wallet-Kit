@@ -38,7 +38,7 @@ jobs:
             --github_url https://github.com/onflow/flow-wallet-kit \
             --github-file-prefix https://github.com/onflow/flow-wallet-kittree/${RELEASE_VERSION} \
             --module-version ${RELEASE_VERSION} \
-            --source-directory iOS/FlowWalletKit/Sources
+            --source-directory FlowWalletKit/Sources
         working-directory: master
       
       - name: Checkout doc
