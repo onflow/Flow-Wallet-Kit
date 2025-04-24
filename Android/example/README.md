@@ -8,6 +8,31 @@ This example app demonstrates how to use the Flow Wallet Kit SDK for Android. It
 - Android SDK with API level 24 or higher
 - Kotlin 1.8 or higher
 - Gradle 7.0 or higher
+- GitHub account with access to Trust Wallet packages
+
+## Trust Wallet Configuration
+
+The SDK depends on the Trust Wallet Core library, which requires GitHub authentication. You need to set up your GitHub credentials in one of two ways:
+
+### Option 1: Using local.properties
+1. Create or edit the `local.properties` file in the root directory
+2. Add your GitHub credentials:
+```properties
+gpr.user=your_github_username
+gpr.key=your_github_personal_access_token
+```
+
+### Option 2: Using Environment Variables
+```bash
+export GITHUB_USER=your_github_username
+export GITHUB_TOKEN=your_github_personal_access_token
+```
+
+### Getting GitHub Credentials
+1. Go to GitHub Settings > Developer Settings > Personal Access Tokens
+2. Generate a new token with `read:packages` scope
+3. Make sure the token doesn't expire
+4. Use this token as your `gpr.key` or `GITHUB_TOKEN`
 
 ## Setup
 
@@ -74,6 +99,35 @@ The example app demonstrates three main features of the Flow Wallet Kit SDK:
    - Tap the "Load Linked Accounts" button
    - The app will load and display any linked accounts
    - Shows both child accounts and COA information if available
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Build Errors**
+   - Make sure you have the correct Android SDK version installed
+   - Ensure all dependencies are properly synced
+   - Try cleaning and rebuilding the project
+   - Verify your GitHub credentials are correctly set up
+
+2. **Network Issues**
+   - The app uses the Flow Testnet by default
+   - Ensure your device has an active internet connection
+   - Check if the Flow Testnet is accessible
+
+3. **Key Generation Issues**
+   - Some devices may have restrictions on key generation
+   - Try using a different device or emulator
+   - Check device logs for specific error messages
+
+4. **Trust Wallet Authentication Issues**
+   - Verify your GitHub token has the correct permissions
+   - Check if the token has expired
+   - Ensure the credentials are correctly set in local.properties or environment variables
+
+## Contributing
+
+Feel free to submit issues and enhancement requests.
 
 ## License
 
