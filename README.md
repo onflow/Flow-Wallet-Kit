@@ -36,7 +36,6 @@ A cross-platform SDK for integrating Flow blockchain wallet functionality into i
 - **Watch Wallet**: Initialize with address only
 - **Key Wallet**: Initialize with private key or seed phrase
     - Integration with the Key Indexer API
-- **Proxy Wallet**: Backed by external devices
 
 ### Account Management
 - **Multi-Account Support**: Manage accounts across different networks
@@ -48,8 +47,10 @@ A cross-platform SDK for integrating Flow blockchain wallet functionality into i
 ### Balances
 - Query token balances for an account's FTs and NFTs
 
-### Enhanced Security
-- Enhanced backup solutions
+### Proxy Wallet Support
+- Backed by external devices (e.g. Ledger)
+
+### Enhanced Backup Support
 - Cloud backup provider integration
 
 ### Integration Support
