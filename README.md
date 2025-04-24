@@ -1,100 +1,121 @@
-# Flow Wallet Kit
+![logo](./assets/logo.png)
+# 🚀 Flow Wallet Kit
 
-A cross-platform SDK for integrating Flow blockchain wallet functionality into iOS and Android applications. This SDK provides a secure interface for managing Flow accounts and handling transactions on the Flow blockchain.
+A cross-platform SDK for integrating **Flow blockchain wallet** functionality into iOS and Android applications. This SDK provides a **secure interface** for managing Flow accounts and handling transactions across networks.
 
-## Current Features
+---
 
-### Security & Storage
-- **Secure Storage Protocol**: Platform-agnostic storage interface with multiple implementations:
-  - iOS:
-    - KeychainStorage: Secure key storage using Keychain
-    - FileSystemStorage: Encrypted file-based storage
-  - Android:
-    - HardwareBackedStorage: Hardware-backed secure storage using Android Keystore
-    - FileSystemStorage: Encrypted file-based storage
-    - InMemoryStorage: Volatile in-memory storage
-  - Common Features:
-    - Cacheable interface for efficient data access
-    - Encrypted storage for sensitive data
-    - Hardware-backed storage where available
-- **Key Management Protocol**: Unified interface for different key types:
-  - Private Key Provider: Direct key management with support for ECDSA P-256 and secp256k1
-  - Secure Element Provider: Hardware-backed key storage (Secure Enclave on iOS, Android Keystore)
-  - Seed Phrase Provider: BIP-39 mnemonic support with HD wallet derivation
-- **Backup**: Basic backup functionality with platform-specific secure storage
+## 🗺️ Roadmap
 
-### Cryptographic Operations
-- **Symmetric Encryption**:
-  - AES-GCM: Authenticated encryption with associated data
-  - ChaCha20-Poly1305: High-performance authenticated encryption
-- **Key Derivation**:
-  - BIP-39: Mnemonic phrase generation and validation
-  - HD Wallet: Hierarchical deterministic wallet support
-- **Hashing**: Secure hash functions for data integrity
+Here's what's been built and what's coming next:
 
-### Core Wallet Types
-- **Watch Wallet**: Initialize with address only
-- **Key Wallet**: Initialize with private key or seed phrase
-    - Integration with the Key Indexer API
+### ✅ Done
+- [x] 🔐 Create and store private key
+- [x] 🔑 Support multiple private key types
+- [x] 🌐 Handle Flow accounts across networks
+- [x] 🧩 Manage COA (Cadence Owned Account)
+- [x] 👶 Manage child accounts
 
-### Account Management
-- **Multi-Account Support**: Manage accounts across different networks
-- **Child Accounts**: Manage child accounts with metadata
-- **Flow-EVM Integration**: Support for EVM accounts and addresses
+### 🔜 To Do
+- [ ] 💰 Token balance querying
+- [ ] ☁️ All-type backup support (e.g. cloud)
+- [ ] 🌐 WalletConnect integration
+- [ ] 🔄 FCL (Flow Client Library) support
+- [ ] ⛓️ Multi-chain support for other blockchains
+---
 
-## Planned Features
+## 📚 Documentation
 
-### Balances
-- Query token balances for an account's FTs and NFTs
+Check out platform-specific guides here:
+- 📱 [iOS Documentation](iOS/README.md)
+- 🤖 [Android Documentation](Android/README.md)
 
-### Proxy Wallet Support
-- Backed by external devices (e.g. Ledger)
+---
 
-### Enhanced Backup Support
-- Cloud backup provider integration
+## 🔐 Hardware-Backed Key Security
 
-### Integration Support
-- FCL integration
-- WalletConnect support
+We prioritize **secure private key handling** using platform-native secure hardware modules:
 
-## Documentation
+- 🧱 **Secure Enclave (iOS)**: Flow private keys can be securely generated and stored in the Secure Enclave using the `SecureElementProvider`.
+- 🛡️ **Android Keystore (Android)**: Private keys are protected with hardware-backed Android Keystore using the `HardwareBackedStorage` implementation.
 
-For detailed implementation guides and examples, please refer to:
-- [iOS Documentation](iOS/README.md)
-- [Android Documentation](Android/README.md)
+These solutions help prevent private key extraction and elevate the security standard for mobile Flow wallets.
 
-## Architecture
+---
 
-The SDK is organized into several key components:
+## 🏗️ Architecture
 
-### Core Components
-- **Storage Protocol**: Platform-agnostic interface for secure data storage
-  - iOS:
-    - KeychainStorage: Secure key storage using Keychain
-    - FileSystemStorage: Encrypted file-based storage
-  - Android:
-    - HardwareBackedStorage: Hardware-backed secure storage
-    - FileSystemStorage: Encrypted file-based storage
-    - InMemoryStorage: Volatile in-memory storage
-  - Common Features:
-    - Cacheable interface for efficient data access
-    - Encrypted storage for sensitive data
-- **Key Protocol**: Unified interface for key management
-  - Private Key Provider: Direct key management with multiple algorithms
-  - Secure Element Provider: Hardware-backed key storage
-  - Seed Phrase Provider: BIP-39 mnemonic and HD wallet support
-- **Crypto**: Cryptographic operations
-  - Symmetric encryption with multiple algorithms
-  - Key derivation and HD wallet support
-  - Secure hashing
-- **Wallet**: Core wallet functionality with multiple wallet types
-- **Account**: Account management, child accounts, and EVM integration
-- **Security**: Cryptographic operations and key management
-- **Network**: Interaction with the key indexer API
+Check out the full docs in here: [Architecture](./docs/architecture.md)
 
-## Development Status
+### 🧱 Core Components
+- **Storage Protocol**: Secure data storage across platforms
+- **Key Protocol**: Consistent key management
+- **Crypto**: Secure encryption, derivation, hashing
+- **Wallet**: Modular wallet handling
+- **Account**: Multi-network and child account management
+- **Security**: Hardware + software crypto implementations
+- **Network**: Key Indexer API integration
 
-This SDK is under active development. The current version focuses on secure key management and storage implementations across both iOS and Android platforms, providing a robust foundation for wallet functionality. Additional features are planned for future releases. Please check the platform-specific documentation for the current implementation status of each feature.
+---
 
-## Support
-For support, please open an issue in the GitHub repository or contact the maintainers. 
+## ✅ Features
+
+### 🔐 Security & Storage
+- **Secure Storage Protocol** (platform-agnostic)
+  - **iOS**:
+    - 🔑 `KeychainStorage`: Secure key storage via Keychain
+    - 📁 `FileSystemStorage`: Encrypted file-based storage
+  - **Android**:
+    - 🛡️ `HardwareBackedStorage`: Uses Android Keystore
+    - 📁 `FileSystemStorage`: Encrypted file-based storage
+    - 🧠 `InMemoryStorage`: Volatile, memory-only storage
+  - ✨ Common:
+    - Cacheable interfaces
+    - Encrypted storage
+    - Hardware-backed protection (when available)
+
+- **Key Management Protocol**
+  - 🔐 `PrivateKeyProvider`: Supports ECDSA P-256 & secp256k1
+  - 🧱 `SecureElementProvider`: Secure Enclave / Keystore
+  - 🌱 `SeedPhraseProvider`: BIP-39 + HD Wallet
+
+- **Backup**
+  - 🔒 Platform-specific basic secure backups
+
+### 🔒 Cryptographic Operations
+- **Encryption**
+  - AES-GCM & ChaCha20-Poly1305
+- **Key Derivation**
+  - BIP-39 & HD Wallet support
+- **Hashing**
+  - Secure data integrity functions
+
+### 👛 Core Wallet Types
+- **Watch Wallet**: Address-only
+- **Key Wallet**: Private key or seed phrase + 🔍 Key Indexer API integration
+
+### 👥 Account Management
+- Multi-account, cross-network support
+- Child account management
+- 🔁 Flow-EVM account compatibility
+
+---
+
+## 🧪 Development Status
+
+This SDK is **under active development**! 🛠️  
+We're focused on robust cross-platform key and account management. More features like balance queries and WalletConnect are on the way!
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 💬 Support
+
+Found a bug? Need help?  
+Please open an issue in the repo or contact the maintainers.
+
