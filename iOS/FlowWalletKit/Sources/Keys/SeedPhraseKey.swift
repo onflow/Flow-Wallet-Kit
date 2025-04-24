@@ -86,10 +86,10 @@ public class SeedPhraseKey: KeyProtocol {
     ///   - advance: Advanced creation options
     ///   - storage: Storage implementation
     /// - Returns: New seed phrase key
-    /// - Throws: WalletError if HD wallet creation fails
+    /// - Throws: FWKError if HD wallet creation fails
     public static func create(_ advance: AdvanceOption, storage: any StorageProtocol) throws -> SeedPhraseKey {
         guard let hdWallet = HDWallet(strength: advance.seedPhraseLength.strength, passphrase: advance.passphrase) else {
-            throw WalletError.initHDWalletFailed
+            throw FWKError.initHDWalletFailed
         }
 
         let key = SeedPhraseKey(hdWallet: hdWallet,
@@ -104,13 +104,13 @@ public class SeedPhraseKey: KeyProtocol {
     ///   - seedphrase: Seed Phrase
     ///   - storage: Storage implementation
     /// - Returns: New seed phrase key
-    /// - Throws: WalletError if HD wallet creation fails
+    /// - Throws: FWKError if HD wallet creation fails
     public static func create(_ seedphrase: String,
                               derivationPath: String = SeedPhraseKey.derivationPath,
                               passphrase: String = SeedPhraseKey.passphrase,
                               storage: any StorageProtocol) throws -> SeedPhraseKey {
         guard let hdWallet = HDWallet(mnemonic: seedphrase, passphrase: passphrase) else {
-            throw WalletError.initHDWalletFailed
+            throw FWKError.initHDWalletFailed
         }
         
         let key = SeedPhraseKey(hdWallet: hdWallet,
@@ -123,10 +123,10 @@ public class SeedPhraseKey: KeyProtocol {
     /// Create a new key with default options
     /// - Parameter storage: Storage implementation
     /// - Returns: New seed phrase key
-    /// - Throws: WalletError if HD wallet creation fails
+    /// - Throws: FWKError if HD wallet creation fails
     public static func create(storage: any StorageProtocol) throws -> SeedPhraseKey {
         guard let hdWallet = HDWallet(strength: SeedPhraseKey.defaultSeedPhraseLength.strength, passphrase: "") else {
-            throw WalletError.initHDWalletFailed
+            throw FWKError.initHDWalletFailed
         }
         return SeedPhraseKey(hdWallet: hdWallet, storage: storage)
     }
@@ -137,10 +137,10 @@ public class SeedPhraseKey: KeyProtocol {
     ///   - password: Password for encrypting the key
     ///   - storage: Storage implementation
     /// - Returns: New seed phrase key
-    /// - Throws: WalletError if creation or storage fails
+    /// - Throws: FWKError if creation or storage fails
     public static func createAndStore(id: String, password: String, storage: any StorageProtocol) throws -> SeedPhraseKey {
         guard let hdWallet = HDWallet(strength: SeedPhraseKey.defaultSeedPhraseLength.strength, passphrase: "") else {
-            throw WalletError.initHDWalletFailed
+            throw FWKError.initHDWalletFailed
         }
         let key = SeedPhraseKey(hdWallet: hdWallet, storage: storage)
         try key.store(id: id, password: password)
@@ -155,21 +155,21 @@ public class SeedPhraseKey: KeyProtocol {
     ///   - password: Password for decrypting the key
     ///   - storage: Storage implementation
     /// - Returns: Retrieved seed phrase key
-    /// - Throws: WalletError if retrieval fails
+    /// - Throws: FWKError if retrieval fails
     public static func get(id: String, password: String, storage: any StorageProtocol) throws -> SeedPhraseKey {
         guard let data = try storage.get(id) else {
-            throw WalletError.emptyKeychain
+            throw FWKError.emptyKeychain
         }
 
         guard let cipher = ChaChaPolyCipher(key: password) else {
-            throw WalletError.initChaChapolyFailed
+            throw FWKError.initChaChapolyFailed
         }
 
         let entropyData = try cipher.decrypt(combinedData: data)
         let model = try JSONDecoder().decode(KeyData.self, from: entropyData)
 
         guard let hdWallet = HDWallet(mnemonic: model.mnemonic, passphrase: model.passphrase) else {
-            throw WalletError.initHDWalletFailed
+            throw FWKError.initHDWalletFailed
         }
         
         return SeedPhraseKey(hdWallet: hdWallet, storage: storage, derivationPath: model.derivationPath, passphrase: model.passphrase)
@@ -194,10 +194,10 @@ public class SeedPhraseKey: KeyProtocol {
     /// - Parameters:
     ///   - id: Unique identifier for the key
     ///   - password: Password for encrypting the key
-    /// - Throws: WalletError if storage fails
+    /// - Throws: FWKError if storage fails
     public func store(id: String, password: String) throws {
         guard let cipher = ChaChaPolyCipher(key: password) else {
-            throw WalletError.initChaChapolyFailed
+            throw FWKError.initChaChapolyFailed
         }
         let model = KeyData(mnemonic: hdWallet.mnemonic,
                             derivationPath: SeedPhraseKey.derivationPath,
@@ -212,10 +212,10 @@ public class SeedPhraseKey: KeyProtocol {
     ///   - secret: Secret key data
     ///   - storage: Storage implementation
     /// - Returns: Restored seed phrase key
-    /// - Throws: WalletError if restoration fails
+    /// - Throws: FWKError if restoration fails
     public static func restore(secret: KeyData, storage: any StorageProtocol) throws -> SeedPhraseKey {
         guard let wallet = HDWallet(mnemonic: secret.mnemonic, passphrase: secret.passphrase) else {
-            throw WalletError.restoreWalletFailed
+            throw FWKError.restoreWalletFailed
         }
 
         let key = SeedPhraseKey(hdWallet: wallet, storage: storage,
@@ -251,18 +251,18 @@ public class SeedPhraseKey: KeyProtocol {
     ///   - signAlgo: Signature algorithm
     ///   - hashAlgo: Hash algorithm
     /// - Returns: Signature data
-    /// - Throws: WalletError if signing fails
+    /// - Throws: FWKError if signing fails
     public func sign(data: Data, signAlgo: Flow.SignatureAlgorithm, hashAlgo: Flow.HashAlgorithm) throws -> Data {
         let hashed = try hashAlgo.hash(data: data)
 
         guard let curve = signAlgo.WCCurve else {
-            throw WalletError.unsupportSignatureAlgorithm
+            throw FWKError.unsupportSignatureAlgorithm
         }
 
         var pk = hdWallet.getKeyByCurve(curve: curve, derivationPath: SeedPhraseKey.derivationPath)
         defer { pk = WalletCore.PrivateKey() }
         guard let signature = pk.sign(digest: hashed, curve: curve) else {
-            throw WalletError.signError
+            throw FWKError.signError
         }
         return signature.dropLast()
     }
@@ -272,10 +272,10 @@ public class SeedPhraseKey: KeyProtocol {
     /// Get the public key implementation for a signature algorithm
     /// - Parameter signAlgo: Signature algorithm
     /// - Returns: Public key implementation
-    /// - Throws: WalletError if algorithm is not supported
+    /// - Throws: FWKError if algorithm is not supported
     private func getPublicKey(signAlgo: Flow.SignatureAlgorithm) throws -> PublicKey {
         guard let pubKey = hdWallet.getPublicKey(signAlgo: signAlgo) else {
-            throw WalletError.unsupportSignatureAlgorithm
+            throw FWKError.unsupportSignatureAlgorithm
         }
         return pubKey
     }

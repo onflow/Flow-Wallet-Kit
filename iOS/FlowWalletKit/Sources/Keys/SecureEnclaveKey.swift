@@ -67,10 +67,10 @@ public class SecureEnclaveKey: KeyProtocol {
     ///   - password: Password for encrypting the key data
     ///   - storage: Storage implementation
     /// - Returns: New Secure Enclave key instance
-    /// - Throws: WalletError if encryption or storage fails
+    /// - Throws: FWKError if encryption or storage fails
     public static func createAndStore(id: String, password: String, storage: any StorageProtocol) throws -> SecureEnclaveKey {
         guard let cipher = ChaChaPolyCipher(key: password) else {
-            throw WalletError.initChaChapolyFailed
+            throw FWKError.initChaChapolyFailed
         }
         let key = try SecureEnclave.P256.Signing.PrivateKey()
         let encrypted = try cipher.encrypt(data: key.dataRepresentation)
@@ -86,14 +86,14 @@ public class SecureEnclaveKey: KeyProtocol {
     ///   - password: Password for decrypting the key data
     ///   - storage: Storage implementation
     /// - Returns: Retrieved Secure Enclave key instance
-    /// - Throws: WalletError if retrieval or decryption fails
+    /// - Throws: FWKError if retrieval or decryption fails
     public static func get(id: String, password: String, storage: any StorageProtocol) throws -> SecureEnclaveKey {
         guard let data = try storage.get(id) else {
-            throw WalletError.emptyKeychain
+            throw FWKError.emptyKeychain
         }
 
         guard let cipher = ChaChaPolyCipher(key: password) else {
-            throw WalletError.initChaChapolyFailed
+            throw FWKError.initChaChapolyFailed
         }
 
         let pk = try cipher.decrypt(combinedData: data)
@@ -118,10 +118,10 @@ public class SecureEnclaveKey: KeyProtocol {
     /// - Parameters:
     ///   - id: Unique identifier for the key
     ///   - password: Password for encrypting the key data
-    /// - Throws: WalletError if encryption or storage fails
+    /// - Throws: FWKError if encryption or storage fails
     public func store(id: String, password: String) throws {
         guard let cipher = ChaChaPolyCipher(key: password) else {
-            throw WalletError.initChaChapolyFailed
+            throw FWKError.initChaChapolyFailed
         }
         let encrypted = try cipher.encrypt(data: key.dataRepresentation)
         try storage.set(id, value: encrypted)

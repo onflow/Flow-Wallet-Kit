@@ -37,7 +37,7 @@ import Foundation
 /// - `Error`: For Swift error handling
 /// - `CaseIterable`: To enumerate all possible errors
 /// - `CustomStringConvertible`: For human-readable error messages
-public enum WalletError: String, Error, CaseIterable, CustomStringConvertible {
+public enum FWKError: String, Error, CaseIterable, CustomStringConvertible {
     // MARK: - General Errors
     
     /// Operation or feature not implemented
@@ -124,13 +124,16 @@ public enum WalletError: String, Error, CaseIterable, CustomStringConvertible {
     /// Thrown when attempting an operation not supported by the wallet type
     case invaildWalletType
     
-    
     case cacheDecodeFailed
+    
+    case emptyCreatedAddress
+    
+    case noImplementError
 
     /// Returns the numeric error code for the error case
     /// This can be used for error tracking and analytics
     var errorCode: Int {
-        WalletError.allCases.firstIndex(of: self) ?? -1
+        FWKError.allCases.firstIndex(of: self) ?? -1
     }
 
     /// Returns a human-readable description of the error

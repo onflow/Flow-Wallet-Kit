@@ -90,16 +90,16 @@ public enum Network {
     ///   - publicKey: The public key to search for
     ///   - chainID: The Flow network to search on
     /// - Returns: Key indexer response containing account information
-    /// - Throws: WalletError if the request fails
+    /// - Throws: FWKError if the request fails
     public static func findAccount(publicKey: String, chainID: Flow.ChainID) async throws -> KeyIndexerResponse {
         guard let url = chainID.keyIndexer(with: publicKey) else {
-            throw WalletError.incorrectKeyIndexerURL
+            throw FWKError.incorrectKeyIndexerURL
         }
         let urlRequest = URLRequest(url: url)
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw WalletError.keyIndexerRequestFailed
+            throw FWKError.keyIndexerRequestFailed
         }
 
         return try JSONDecoder().decode(KeyIndexerResponse.self, from: data)

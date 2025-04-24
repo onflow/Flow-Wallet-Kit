@@ -19,12 +19,12 @@ public class Account: ObservableObject {
         !(childs?.isEmpty ?? true)
     }
     
+    /// Whether this account has any linked accounts (child accounts or COA)
     public var hasLinkedAccounts: Bool {
         hasChild || hasCOA
     }
 
-    /// Virtual machine accounts associated with this account
-//    public var vm: [any FlowVMProtocol]?
+    /// Chain-Owned Account (COA) associated with this account
     @Published
     public var coa: COA?
 
@@ -41,14 +41,17 @@ public class Account: ObservableObject {
     /// The underlying Flow account
     public let account: Flow.Account
     
+    /// Delegate for handling security checks before signing operations
     public var securityDelegate: SecurityCheckDelegate?
     
+    /// Indicates whether the account is currently loading data
     @Published
     public var isLoading: Bool = false
     
-    /// Storage mechanism used for caching
+    /// Storage mechanism used for caching account data
     private(set) var cacheStorage: StorageProtocol = FileSystemStorage()
     
+    /// The account address in hexadecimal format
     public var hexAddr: String {
         address.hex
     }
@@ -57,10 +60,11 @@ public class Account: ObservableObject {
     
     /// Structure representing cacheable account data
     public struct AccountCache: Codable {
+        /// Child accounts associated with this account
         let childs: [ChildAccount]?
+        /// Chain-Owned Account associated with this account
         let coa: COA?
     }
-    
     
     // MARK: - Full Weight Key
     
@@ -82,6 +86,7 @@ public class Account: ObservableObject {
     /// Cryptographic key for signing
     public let key: (any KeyProtocol)?
     
+    /// The Flow chain ID this account belongs to
     public let chainID: Flow.ChainID
 
     // MARK: - Initialization
@@ -89,7 +94,9 @@ public class Account: ObservableObject {
     /// Initialize an account
     /// - Parameters:
     ///   - account: Flow account data
-    ///   - key: Optional signing key
+    ///   - chainID: The Flow chain ID this account belongs to
+    ///   - key: Optional signing key for transaction signing
+    ///   - securityDelegate: Optional delegate for handling security checks before signing
     init(account: Flow.Account,
          chainID: Flow.ChainID,
          key: (any KeyProtocol)? = nil,
@@ -100,6 +107,12 @@ public class Account: ObservableObject {
         self.securityDelegate = securityDelegate
     }
     
+    /// Fetch and update account data including linked accounts
+    /// This method will:
+    /// 1. Load cached data if available
+    /// 2. Fetch fresh data for linked accounts
+    /// 3. Update the cache with new data
+    /// - Throws: Error if fetching or caching fails
     public func fetchAccount() async throws {
         do {
             if let cached = try loadCache() {
@@ -139,6 +152,8 @@ public class Account: ObservableObject {
     // MARK: - Account Relationships
     
     /// Load all linked accounts (VM and child accounts) in parallel
+    /// - Returns: Tuple containing the fetched COA and child accounts
+    /// - Throws: Error if fetching fails
     @discardableResult
     public func loadLinkedAccounts() async throws -> (vms: COA?, childs: [ChildAccount]) {
         isLoading = true
@@ -151,14 +166,16 @@ public class Account: ObservableObject {
         return try await (vmFetch, childFetch)
     }
     
-    /// Fetch child accounts
-    /// - Note: Implementation pending
+    /// Fetch child accounts associated with this account
+    /// - Returns: Array of child accounts
+    /// - Throws: Error if fetching fails
     @discardableResult
     public func fetchChild() async throws -> [ChildAccount] {
         let childs = try await flow.getChildMetadata(address: account.address)
         let childAccounts = childs.compactMap { (addr, metadata) in
             ChildAccount(address: .init(addr),
                          network: chainID,
+                         parentAddress: address,
                          name: metadata.name,
                          description: metadata.description,
                          icon: metadata.thumbnail?.url)
@@ -167,8 +184,9 @@ public class Account: ObservableObject {
         return childAccounts
     }
 
-    /// Fetch virtual machine accounts
-    /// - Note: Implementation pending
+    /// Fetch the Chain-Owned Account (COA) associated with this account
+    /// - Returns: COA instance if available, nil if no COA exists
+    /// - Throws: FWKError.invaildEVMAddress if the EVM address is invalid
     @discardableResult
     public func fetchVM() async throws -> COA? {
         guard let address = try await flow.getEVMAddress(address: account.address) else {
@@ -177,7 +195,7 @@ public class Account: ObservableObject {
         }
 
         guard let coa = COA(address, network: chainID) else {
-            throw WalletError.invaildEVMAddress
+            throw FWKError.invaildEVMAddress
         }
         
         self.coa = coa
@@ -185,7 +203,14 @@ public class Account: ObservableObject {
     }
 }
 
+// MARK: - Equatable Implementation
+
 extension Account: Equatable {
+    /// Compare two accounts for equality based on their addresses
+    /// - Parameters:
+    ///   - lhs: Left-hand side account
+    ///   - rhs: Right-hand side account
+    /// - Returns: True if the accounts have the same address
     public static func == (lhs: Account, rhs: Account) -> Bool {
         lhs.address == rhs.address
     }
@@ -204,22 +229,22 @@ extension Account: FlowSigner {
         findKeyInAccount()?.first?.index ?? 0
     }
 
-    /// Sign a Flow transaction
+    /// Sign a Flow transaction or data
     /// - Parameters:
-    ///   - transaction: Transaction to sign (unused)
     ///   - signableData: Data to sign
+    ///   - transaction: Optional transaction context
     /// - Returns: Signed data
-    /// - Throws: WalletError if signing key is not available
-    public func sign(transaction _: Flow.Transaction, signableData: Data) async throws -> Data {
+    /// - Throws: FWKError if signing key is not available or security check fails
+    public func sign(signableData: Data, transaction: Flow.Transaction? = nil) async throws -> Data {
         guard let key, let signKey = findKeyInAccount()?.first else {
-            throw WalletError.emptySignKey
+            throw FWKError.emptySignKey
         }
         
         /// If there is securityDelegate, check if it's passed the security check
         if let delegate = securityDelegate {
             let result = try await delegate.verify()
             if !result {
-                throw WalletError.failedPassSecurityCheck
+                throw FWKError.failedPassSecurityCheck
             }
         }
 
