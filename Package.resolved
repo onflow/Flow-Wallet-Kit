@@ -6,8 +6,8 @@
         "repositoryURL": "https://github.com/attaswift/BigInt.git",
         "state": {
           "branch": null,
-          "revision": "0ed110f7555c34ff468e72e1686e59721f2b0da6",
-          "version": "5.3.0"
+          "revision": "114343a705df4725dfe7ab8a2a326b8883cfd79c",
+          "version": "5.5.1"
         }
       },
       {
@@ -15,7 +15,7 @@
         "repositoryURL": "https://github.com/Outblock/flow-swift",
         "state": {
           "branch": null,
-          "revision": "e7a1764953777a76858bdb373e2ae4f207bf5191",
+          "revision": "489177ca2f3fee133cf3c1ce7d6c0cc2892c34ef",
           "version": null
         }
       },
@@ -30,11 +30,11 @@
       },
       {
         "package": "WalletCore",
-        "repositoryURL": "https://github.com/Outblock/wallet-core",
+        "repositoryURL": "https://github.com/trustwallet/wallet-core",
         "state": {
-          "branch": "master",
-          "revision": "24497b1e6f34f171ad421dae8699758bda09e78d",
-          "version": null
+          "branch": null,
+          "revision": "a75b1f1e159ca0300814c34a881872d8574c78ba",
+          "version": "4.3.2"
         }
       }
     ]
