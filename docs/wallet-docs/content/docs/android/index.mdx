@@ -1,0 +1,67 @@
+---
+title: Android SDK
+description: Flow Wallet Kit Android Documentation
+---
+
+# Flow Wallet Kit Android Documentation
+
+Welcome to the Flow Wallet Kit Android documentation. This SDK provides a comprehensive solution for integrating Flow blockchain wallet functionality into your Android applications.
+
+## Core Components
+
+- [Account Management](./account.mdx)
+- [Wallet Management](./wallet.mdx)
+- [Key Management](./keys.mdx)
+- [Storage](./storage.mdx)
+- [Security](./security.mdx)
+- [Cryptography](./crypto.mdx)
+- [Network](./network.mdx)
+- [dApp Integration](./dapp.mdx)
+- [Backup & Recovery](./backup.mdx)
+- [Error Handling](./errors.mdx)
+
+## Getting Started
+
+### Installation
+
+Add Flow Wallet Kit to your project using Gradle:
+
+```groovy
+dependencies {
+    implementation 'io.outblock:flow-wallet-kit:1.0.0'
+}
+```
+
+### Basic Usage
+
+```kotlin
+import io.outblock.flowwalletkit.FlowWallet
+
+// Initialize a wallet
+val wallet = FlowWallet.create()
+
+// Create an account
+val account = wallet.createAccount()
+
+// Sign a transaction
+val signature = wallet.sign("Hello, Flow!")
+```
+
+## Requirements
+
+- Android API level 21+ (Android 5.0 Lollipop)
+- Kotlin 1.5+
+- Android Studio Arctic Fox (2020.3.1) or newer
+
+## Architecture
+
+The SDK is built with a modular architecture that separates concerns into distinct components:
+
+1. **Account Layer**: Handles Flow account management
+2. **Wallet Layer**: Manages wallet operations and state
+3. **Key Management**: Handles cryptographic key operations
+4. **Storage Layer**: Provides secure data persistence
+5. **Security Layer**: Implements platform security features
+6. **Network Layer**: Handles blockchain interaction
+
+Each component is designed to work independently while maintaining seamless integration with the rest of the SDK. Check out each component's documentation for detailed information about its functionality and usage. 

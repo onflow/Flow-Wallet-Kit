@@ -1,0 +1,153 @@
+---
+title: Network
+description: Network layer documentation for Flow Wallet Kit iOS SDK
+---
+
+# Network
+
+The Flow Wallet Kit for iOS provides a robust networking layer for interacting with the Flow blockchain and related services.
+
+# Network Layer
+
+The Flow Wallet Kit network layer handles communication with the Flow blockchain and key indexer services. This documentation covers the network operations and data structures used for blockchain interactions.
+
+## Key Indexer Service
+
+The key indexer service helps locate Flow accounts associated with specific public keys. This is essential for account recovery and key management.
+
+### KeyIndexerResponse
+
+The main response structure from the Flow key indexer service:
+
+```swift
+public struct KeyIndexerResponse: Codable {
+    public let publicKey: String
+    public let accounts: [Account]
+}
+```
+
+#### Account Structure
+
+Each account in the response contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `address` | `String` | Flow address in hex format |
+| `keyId` | `Int` | Key index in the account |
+| `weight` | `Int` | Key weight (determines signing authority) |
+| `sigAlgo` | `Int` | Signature algorithm identifier |
+| `hashAlgo` | `Int` | Hash algorithm identifier |
+| `signing` | `Flow.SignatureAlgorithm` | Signature algorithm used |
+| `hashing` | `Flow.HashAlgorithm` | Hash algorithm used |
+| `isRevoked` | `Bool` | Whether the key has been revoked |
+
+## Network Operations
+
+### Finding Accounts
+
+There are three main methods for finding accounts:
+
+#### 1. Find Raw Account Information
+
+```swift
+try await Network.findAccount(
+    publicKey: "public-key-hex",
+    chainID: .mainnet
+)
+```
+
+Returns the raw `KeyIndexerResponse` containing all account information.
+
+#### 2. Find Account Details
+
+```swift
+try await Network.findAccountByKey(
+    publicKey: "public-key-hex",
+    chainID: .mainnet
+)
+```
+
+Returns an array of `KeyIndexerResponse.Account` objects.
+
+#### 3. Find Flow Accounts
+
+```swift
+try await Network.findFlowAccountByKey(
+    publicKey: "public-key-hex",
+    chainID: .mainnet
+)
+```
+
+Returns an array of `Flow.Account` objects, which are the native Flow account representations.
+
+## Error Handling
+
+The network layer can throw several specific errors:
+
+- `FWKError.incorrectKeyIndexerURL`: Invalid key indexer service URL
+- `FWKError.keyIndexerRequestFailed`: Failed to communicate with key indexer
+- `FWKError.decodeKeyIndexerFailed`: Failed to decode the response
+
+Example error handling:
+
+```swift
+do {
+    let accounts = try await Network.findFlowAccountByKey(
+        publicKey: publicKey,
+        chainID: .mainnet
+    )
+    // Handle found accounts
+} catch FWKError.incorrectKeyIndexerURL {
+    // Handle invalid URL
+} catch FWKError.keyIndexerRequestFailed {
+    // Handle network failure
+} catch {
+    // Handle other errors
+}
+```
+
+## Response Transformations
+
+The network layer automatically transforms key indexer responses into Flow account objects. This transformation:
+
+1. Aggregates keys by account address
+2. Converts hex addresses to Flow.Address types
+3. Creates proper Flow.AccountKey objects
+4. Maintains all key properties (weight, algorithms, revocation status)
+
+## Best Practices
+
+1. **Chain ID Selection**: Always use the appropriate chain ID for your environment:
+   - `.mainnet` for production
+   - `.testnet` for testing
+   - `.emulator` for local development
+
+2. **Error Handling**: Implement proper error handling for network operations
+
+3. **Response Processing**: Consider caching responses for frequently accessed accounts
+
+4. **Key Management**: Verify key status (revoked, weight) before using accounts
+
+## Example Usage
+
+Here's a complete example of finding and processing Flow accounts:
+
+```swift
+func findUserAccounts(publicKey: String) async throws -> [Flow.Account] {
+    do {
+        // Find accounts on mainnet
+        let accounts = try await Network.findFlowAccountByKey(
+            publicKey: publicKey,
+            chainID: .mainnet
+        )
+        
+        // Filter out accounts with revoked keys
+        return accounts.filter { account in
+            !account.keys.allSatisfy(\.revoked)
+        }
+    } catch {
+        print("Error finding accounts: \(error)")
+        throw error
+    }
+}
+``` 

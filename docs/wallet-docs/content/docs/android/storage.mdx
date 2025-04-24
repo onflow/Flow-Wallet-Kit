@@ -1,0 +1,174 @@
+---
+title: Storage
+description: Storage system documentation for Flow Wallet Kit Android SDK
+---
+
+# Storage
+
+The Flow Wallet Kit for Android implements a secure and efficient storage system for managing wallet data and user preferences.
+
+## Overview
+
+The storage system is built on top of Android's security best practices, utilizing:
+- Android Keystore System for cryptographic key storage
+- EncryptedSharedPreferences for secure data persistence
+- Room database for structured data storage
+- File-based encryption for larger data sets
+
+## Usage
+
+### Basic Storage Operations
+
+```kotlin
+import io.outblock.flowwalletkit.storage.WalletStorage
+
+// Initialize storage
+val storage = WalletStorage.getInstance(context)
+
+// Store data
+storage.saveString("key", "value")
+storage.saveEncrypted("sensitive_key", "sensitive_value")
+
+// Retrieve data
+val value = storage.getString("key")
+val sensitiveValue = storage.getEncrypted("sensitive_key")
+
+// Remove data
+storage.remove("key")
+```
+
+### Storing Wallet Data
+
+```kotlin
+import io.outblock.flowwalletkit.storage.WalletData
+
+// Store wallet information
+val walletData = WalletData(
+    address = "0x1234...",
+    publicKey = "abc...",
+    encryptedPrivateKey = "encrypted..."
+)
+storage.saveWallet(walletData)
+
+// Retrieve wallet information
+val wallet = storage.getWallet()
+```
+
+## Security Features
+
+### Encryption
+
+All sensitive data is encrypted using:
+- AES-256 for data encryption
+- RSA for key encryption
+- SHA-256 for hashing
+
+### Key Protection
+
+Private keys are:
+1. Encrypted before storage
+2. Never stored in plaintext
+3. Protected by Android Keystore
+4. Accessible only by your app
+
+## Data Types
+
+The storage system supports various data types:
+
+- Strings
+- Numbers
+- Boolean values
+- Binary data
+- JSON objects
+- Custom serializable objects
+
+## Best Practices
+
+1. **Always encrypt sensitive data**
+   ```kotlin
+   // Do this
+   storage.saveEncrypted("private_key", privateKey)
+   
+   // Don't do this
+   storage.saveString("private_key", privateKey)
+   ```
+
+2. **Use appropriate storage methods**
+   ```kotlin
+   // For small data
+   storage.saveString("preference", "value")
+   
+   // For structured data
+   storage.saveObject("user", userObject)
+   
+   // For large datasets
+   storage.saveToDatabase(data)
+   ```
+
+3. **Handle errors appropriately**
+   ```kotlin
+   try {
+       storage.saveEncrypted("key", "value")
+   } catch (e: StorageException) {
+       // Handle storage errors
+       Log.e("Storage", "Failed to save data", e)
+   }
+   ```
+
+## Migration
+
+The storage system supports data migration between versions:
+
+```kotlin
+storage.migrate { oldVersion, newVersion ->
+    when (oldVersion) {
+        1 -> migrateFromV1ToV2()
+        2 -> migrateFromV2ToV3()
+    }
+}
+```
+
+## Backup & Recovery
+
+The storage system includes backup and recovery features:
+
+```kotlin
+// Create backup
+val backup = storage.createBackup()
+
+// Restore from backup
+storage.restoreFromBackup(backup)
+```
+
+## Thread Safety
+
+The storage implementation is thread-safe and can be accessed from multiple threads:
+
+```kotlin
+// Safe to use from any thread
+coroutineScope.launch {
+    storage.saveAsync("key", "value")
+}
+```
+
+## Error Handling
+
+```kotlin
+sealed class StorageError : Exception() {
+    class EncryptionError : StorageError()
+    class DataNotFound : StorageError()
+    class InvalidData : StorageError()
+    class StorageUnavailable : StorageError()
+}
+
+try {
+    storage.getEncrypted("key")
+} catch (e: StorageError) {
+    when (e) {
+        is StorageError.DataNotFound -> // Handle missing data
+        is StorageError.EncryptionError -> // Handle encryption issues
+        is StorageError.InvalidData -> // Handle corrupted data
+        is StorageError.StorageUnavailable -> // Handle storage unavailability
+    }
+}
+``` 
