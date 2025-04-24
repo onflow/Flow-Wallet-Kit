@@ -44,21 +44,6 @@ android {
     }
 }
 
-repositories {
-    google()
-    mavenCentral()
-    maven { url "https://jitpack.io" }
-    maven { url "https://maven.google.com" }
-
-    maven {
-        url = uri("https://maven.pkg.github.com/trustwallet/wallet-core")
-        credentials {
-            username = findProperty("gpr.user") ?: System.getenv("GITHUB_USER")
-            password = findProperty("gpr.key")  ?: System.getenv("GITHUB_TOKEN")
-        }
-    }
-}
-
 dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'

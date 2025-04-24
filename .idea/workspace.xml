@@ -5,8 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="36d305c9-996a-4f9f-9286-138f26da5f8d" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Android/wallet/src/main/java/io/outblock/wallet/WalletCoreSigner.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Android/wallet/src/main/java/io/outblock/wallet/WalletCoreSigner.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Android/example/app/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/Android/example/app/build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Android/example/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/Android/example/build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Android/example/gradle.properties" beforeDir="false" afterPath="$PROJECT_DIR$/Android/example/gradle.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Android/example/settings.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/Android/example/settings.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Android/wallet/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/Android/wallet/build.gradle" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -48,7 +52,7 @@
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
-    "git-widget-placeholder": "flow-kmm",
+    "git-widget-placeholder": "accounts",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "/Users/lealobanov/Desktop/Projects/Flow-Wallet-Kit",
     "node.js.detected.package.eslint": "true",

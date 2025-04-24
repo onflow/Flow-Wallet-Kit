@@ -7,3 +7,9 @@
 **/gradle/wrapper/gradle-wrapper.properties
 **/gradlew
 **/gradlew.bat
+
+# Example Gradle files
+example/.gradle/
+example/build/
+example/*.iml
+example/local.properties
