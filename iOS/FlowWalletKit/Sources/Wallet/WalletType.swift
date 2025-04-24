@@ -14,9 +14,12 @@ import Flow
 public enum WalletType {
     /// A wallet backed by a cryptographic key (e.g., Secure Enclave, Seed Phrase, Private Key)
     case key(any KeyProtocol)
+    
+    // TODO: Replace it with FWAddress, support both flow and evm address
     /// A watch-only wallet that can only observe an address without signing capability
     case watch(Flow.Address)
     
+    // TODO: Add hardware support eg. Ledger
 //    case proxy()
 
     /// Prefix used for wallet identification in storage

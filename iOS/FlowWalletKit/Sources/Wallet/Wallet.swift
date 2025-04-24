@@ -55,13 +55,13 @@ public class Wallet: ObservableObject {
     /// This property stores the underlying Flow.Account objects
     public var flowAccounts: [Flow.ChainID: [Flow.Account]]?
     
-    // MARK: - Cacheable Protocol Implementation
-    
-    /// Storage mechanism used for caching
+    /// Storage mechanism used for caching wallet data
     private(set) var cacheStorage: StorageProtocol = FileSystemStorage()
     
+    /// Delegate for handling security checks before signing operations
     public var securityDelegate: SecurityCheckDelegate?
     
+    /// Indicates whether the wallet is currently loading data
     @Published
     public var isLoading: Bool = false
 
@@ -71,6 +71,7 @@ public class Wallet: ObservableObject {
     /// - Parameters:
     ///   - type: The type of wallet (key or watch)
     ///   - networks: Set of networks to manage (defaults to mainnet and testnet)
+    ///   - cacheStorage: Optional custom storage mechanism for caching
     /// Example:
     /// ```swift
     /// // Create a key-based wallet for mainnet only
@@ -84,6 +85,13 @@ public class Wallet: ObservableObject {
         if let cacheStorage {
             self.cacheStorage = cacheStorage
         }
+    }
+    
+    /// Create a new account on the Flow blockchain
+    /// - Throws: FWKError.noImplementError as this feature is not yet implemented
+    public func createAccount() async throws {
+        // TODO: Implement me
+        throw FWKError.noImplementError
     }
 
     // MARK: - Public Methods
@@ -104,12 +112,32 @@ public class Wallet: ObservableObject {
                     }
                 }
             }
-        } catch WalletError.cacheDecodeFailed{
+        } catch FWKError.cacheDecodeFailed {
             //TODO: Handle no cache log
             try? deleteCache()
         }
         try await _ = fetchAllNetworkAccounts()
         try cache()
+    }
+    
+    /// Fetch accounts created by a specific transaction
+    /// - Parameters:
+    ///   - txId: Transaction ID that created the account
+    ///   - network: Network where the transaction was executed
+    /// - Throws: FWKError.emptyCreatedAddress if no account was created in the transaction
+    public func fetchAccountsByCreationTxId(txId: Flow.ID, network: Flow.ChainID) async throws {
+        if !networks.contains(network) {
+            addNetwork(network)
+        }
+        flow.configure(chainID: network)
+        let result = try await flow.accessAPI.getTransactionResultById(id: txId)
+        guard let address = result.getCreatedAddress() else {
+            throw FWKError.emptyCreatedAddress
+        }
+        let account = try await flow.accessAPI.getAccountAtLatestBlock(address: .init(address))
+        
+        accounts = [network: [Account(account: account, chainID: network, key: type.key)]]
+        self.flowAccounts = [network: [account]]
     }
 
     /// Add a new network to manage
@@ -128,6 +156,7 @@ public class Wallet: ObservableObject {
     /// - Combining results as they arrive
     /// - Updating both raw and processed account data
     /// - Returns: Dictionary mapping networks to their accounts
+    /// - Throws: Error if fetching fails
     public func fetchAllNetworkAccounts() async throws -> [Flow.ChainID: [Account]] {
         var flowAccounts = [Flow.ChainID: [Flow.Account]]()
         var networkAccounts = [Flow.ChainID: [Account]]()
@@ -167,7 +196,7 @@ public class Wallet: ObservableObject {
     /// - Parameters:
     ///   - chainID: The network to fetch accounts from
     /// - Returns: Array of Flow accounts
-    /// - Throws: WalletError.invaildWalletType if wallet type is invalid
+    /// - Throws: FWKError.invaildWalletType if wallet type is invalid
     ///
     /// For key-based wallets, this method:
     /// - Fetches accounts associated with both P256 and SECP256k1 public keys
@@ -180,7 +209,7 @@ public class Wallet: ObservableObject {
             if case let .watch(address) = type {
                 return [try await flow.getAccountAtLatestBlock(address: address)]
             }
-            throw WalletError.invaildWalletType
+            throw FWKError.invaildWalletType
         }
 
         // Parallel fetch for P256 accounts
@@ -202,5 +231,4 @@ public class Wallet: ObservableObject {
         // Combine results from both parallel operations
         return try await p256KeyAccounts + secp256k1KeyAccounts
     }
-
 }

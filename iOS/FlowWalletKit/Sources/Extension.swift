@@ -46,7 +46,7 @@ extension Flow.HashAlgorithm {
         case .SHA3_256:
             return Hash.sha3_256(data: data)
         default:
-            throw WalletError.unsupportHashAlgorithm
+            throw FWKError.unsupportHashAlgorithm
         }
     }
 }

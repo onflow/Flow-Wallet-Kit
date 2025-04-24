@@ -131,6 +131,6 @@ public extension KeyProtocol {
 
     /// Default implementation for advanced key creation
     static func create(_: Advance, storage _: any StorageProtocol) throws -> Key {
-        throw WalletError.noImplement
+        throw FWKError.noImplement
     }
 }
