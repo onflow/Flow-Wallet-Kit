@@ -4,14 +4,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="36d305c9-996a-4f9f-9286-138f26da5f8d" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Android/example/app/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/Android/example/app/build.gradle" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Android/example/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/Android/example/build.gradle" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Android/example/gradle.properties" beforeDir="false" afterPath="$PROJECT_DIR$/Android/example/gradle.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Android/example/settings.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/Android/example/settings.gradle" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Android/wallet/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/Android/wallet/build.gradle" afterDir="false" />
-    </list>
+    <list default="true" id="36d305c9-996a-4f9f-9286-138f26da5f8d" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -39,6 +32,9 @@
   &quot;associatedIndex&quot;: 3
 }</component>
   <component name="ProjectId" id="2uXwSz4ISHndnn6QnjPDSLwFn3z" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="1" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
