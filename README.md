@@ -30,6 +30,8 @@ Here's what's been built and what's coming next:
 
 Visit our comprehensive documentation at [flow-wallet-kit.vercel.app/docs](https://flow-wallet-kit.vercel.app/docs)
 
+Or visit Deepwiki at [deepwiki.com/onflow/Flow-Wallet-Kit](https://deepwiki.com/onflow/Flow-Wallet-Kit)
+
 Platform-specific guides are also available here:
 - 📱 [iOS Documentation](iOS/README.md)
 - 🤖 [Android Documentation](Android/README.md)
