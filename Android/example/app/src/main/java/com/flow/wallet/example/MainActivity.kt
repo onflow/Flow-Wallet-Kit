@@ -12,11 +12,11 @@ import com.flow.wallet.example.databinding.ActivityMainBinding
 import com.flow.wallet.toFormatString
 import kotlinx.coroutines.launch
 import org.onflow.flow.ChainId
-import org.onflow.flow.FlowApi
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var flowAccount: Account? = null
+    private val predefinedPublicKey = "046fbd46016912fde73c70ae7ed4beade32d6e384539d889e226d2c3a30dfd2e783aa6459e96f011565d33aca5a510fe3435e4554c54ee96735f073ce383c71f"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,17 +53,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun findAccount() {
-        val publicKey = binding.tvPublicKey.text.toString().removePrefix("Public Key: ")
-        if (publicKey.isEmpty()) {
-            Toast.makeText(this, "Please generate a key pair first", Toast.LENGTH_SHORT).show()
-            return
-        }
-
+        // Use the predefined public key for lookup
+        binding.tvPublicKey.text = "Public Key: $predefinedPublicKey"
+        
         lifecycleScope.launch {
             try {
-                val accounts = Network.findAccountByKey(publicKey, ChainId.Testnet)
+                Log.d("FindAccount", "Starting account search for key: $predefinedPublicKey")
+                val accounts = Network.findAccountByKey(predefinedPublicKey, ChainId.Testnet)
+                Log.d("FindAccount", "Found ${accounts.size} accounts")
+                
                 if (accounts.isNotEmpty()) {
                     val account = accounts.first()
+                    Log.d("FindAccount", "First account details - Address: ${account.address}, KeyId: ${account.keyId}, Weight: ${account.weight}")
+                    
                     binding.tvAccountInfo.text = """
                         Address: ${account.address}
                         Key ID: ${account.keyId}
@@ -71,16 +73,28 @@ class MainActivity : AppCompatActivity() {
                     """.trimIndent()
                     
                     // Create Account instance
-                    val flowApi = FlowApi(ChainId.Testnet)
-                    val flowAccountModel = Network.findFlowAccountByKey(publicKey, ChainId.Testnet).first()
-                    flowAccount = Account(flowAccountModel, ChainId.Testnet, null)
+                    Log.d("FindAccount", "Searching for Flow accounts")
+                    val flowAccounts = Network.findFlowAccountByKey(predefinedPublicKey, ChainId.Testnet)
+                    Log.d("FindAccount", "Found ${flowAccounts.size} Flow accounts")
                     
-                    Toast.makeText(this@MainActivity, "Account found successfully", Toast.LENGTH_SHORT).show()
+                    if (flowAccounts.isNotEmpty()) {
+                        val flowAccountModel = flowAccounts.first()
+                        Log.d("FindAccount", "Creating Account instance with Flow account: ${flowAccountModel.address}")
+                        flowAccount = Account(flowAccountModel, ChainId.Testnet, null)
+                        Toast.makeText(this@MainActivity, "Account found successfully", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Log.d("FindAccount", "No Flow accounts found")
+                        flowAccount = null
+                        Toast.makeText(this@MainActivity, "No Flow accounts found for this key", Toast.LENGTH_SHORT).show()
+                    }
                 } else {
+                    Log.d("FindAccount", "No accounts found")
+                    flowAccount = null
                     Toast.makeText(this@MainActivity, "No accounts found for this key", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Log.println(Log.WARN, "FindAccount", e.message!!)
+                Log.e("FindAccount", "Error finding account", e)
+                flowAccount = null
                 Toast.makeText(this@MainActivity, "Error finding account: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }

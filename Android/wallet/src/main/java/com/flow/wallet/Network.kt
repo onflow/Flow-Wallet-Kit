@@ -1,6 +1,9 @@
 package com.flow.wallet
 
+import android.util.Log
 import com.flow.wallet.errors.WalletError
+import com.flow.wallet.models.SerializableHashingAlgorithm
+import com.flow.wallet.models.SerializableSigningAlgorithm
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
@@ -13,6 +16,7 @@ import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.AccountExpandable
 import org.onflow.flow.models.AccountPublicKey
@@ -30,7 +34,10 @@ object Network {
     private val ktorClient: HttpClient
         get() = _ktorClient ?: HttpClient(CIO) {
             install(ContentNegotiation) {
-                json()
+                json(Json {
+                    ignoreUnknownKeys = true
+                    isLenient = true
+                })
             }
             install(Logging) {
                 level = LogLevel.ALL
@@ -78,9 +85,9 @@ object Network {
             @SerialName("hashAlgo")
             val hashAlgo: Int,
             @SerialName("signing")
-            val signing: SigningAlgorithm,
+            val signing: SerializableSigningAlgorithm,
             @SerialName("hashing")
-            val hashing: HashingAlgorithm,
+            val hashing: SerializableHashingAlgorithm,
             @SerialName("isRevoked")
             val isRevoked: Boolean
         )
@@ -102,8 +109,8 @@ object Network {
                             AccountPublicKey(
                                 index = account.keyId.toString(),
                                 publicKey = publicKey,
-                                signingAlgorithm = account.signing,
-                                hashingAlgorithm = account.hashing,
+                                signingAlgorithm = account.signing.toFlowSigningAlgorithm(),
+                                hashingAlgorithm = account.hashing.toFlowHashingAlgorithm(),
                                 weight = account.weight.toString(),
                                 revoked = account.isRevoked,
                                 sequenceNumber = "0"
@@ -119,8 +126,8 @@ object Network {
                                     AccountPublicKey(
                                         index = account.keyId.toString(),
                                         publicKey = publicKey,
-                                        signingAlgorithm = account.signing,
-                                        hashingAlgorithm = account.hashing,
+                                        signingAlgorithm = account.signing.toFlowSigningAlgorithm(),
+                                        hashingAlgorithm = account.hashing.toFlowHashingAlgorithm(),
                                         weight = account.weight.toString(),
                                         revoked = account.isRevoked,
                                         sequenceNumber = "0"
@@ -147,7 +154,9 @@ object Network {
      */
     suspend fun findAccount(publicKey: String, chainId: ChainId): KeyIndexerResponse {
         val url = chainId.keyIndexerUrl(publicKey) ?: throw WalletError.IncorrectKeyIndexerURL
-        
+
+        Log.println(Log.WARN, "KEY_INDEXER", "Making request to URL: $url")
+
         try {
             val response = ktorClient.get(url) {
                 headers {
@@ -155,15 +164,19 @@ object Network {
                 }
             }
 
+            Log.println(Log.WARN, "KEY_INDEXER", "Response status: ${response.status}")
+            Log.println(Log.WARN, "KEY_INDEXER", "Response body: ${response.body<String>()}")
+
             if (!response.status.isSuccess()) {
                 throw WalletError.KeyIndexerRequestFailed
             }
 
             return response.body()
         } catch (e: Exception) {
+            Log.e("KEY_INDEXER", "Error during request", e)
             when (e) {
                 is WalletError -> throw e
-                else -> throw WalletError(19, e.message ?: "Unknown network error")
+                else -> throw WalletError(19, "Network error: ${e.javaClass.simpleName} - ${e.message}")
             }
         }
     }
@@ -197,7 +210,9 @@ object Network {
             else -> return null
         }
         return try {
-            URL("$baseUrl/key?publicKey=$publicKey")
+            // Remove 0x prefix if present and encode the public key
+            val cleanKey = publicKey.removePrefix("0x")
+            URL("$baseUrl/key/$cleanKey")
         } catch (e: Exception) {
             null
         }

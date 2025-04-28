@@ -6,7 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="36d305c9-996a-4f9f-9286-138f26da5f8d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Android/example/app/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/Android/example/app/build.gradle" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Android/example/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/Android/example/app/src/main/AndroidManifest.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Android/example/app/src/main/java/com/flow/wallet/example/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/Android/example/app/src/main/java/com/flow/wallet/example/MainActivity.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Android/wallet/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/Android/wallet/build.gradle" afterDir="false" />
