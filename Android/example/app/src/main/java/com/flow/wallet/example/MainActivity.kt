@@ -10,6 +10,8 @@ import com.flow.wallet.account.Account
 import com.flow.wallet.example.databinding.ActivityMainBinding
 import com.flow.wallet.toFormatString
 import kotlinx.coroutines.launch
+import org.onflow.flow.ChainId
+import org.onflow.flow.FlowApi
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding

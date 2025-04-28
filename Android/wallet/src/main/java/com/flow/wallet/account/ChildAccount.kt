@@ -2,7 +2,6 @@ package com.flow.wallet.account
 
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.FlowAddress
-import org.onflow.flow.FlowApi
 
 /**
  * Represents a child account associated with a parent Flow account
