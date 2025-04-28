@@ -59,7 +59,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 Log.d("FindAccount", "Starting account search for key: $predefinedPublicKey")
-                val accounts = Network.findAccountByKey(predefinedPublicKey, ChainId.Testnet)
+                val accounts = Network.findAccountByKey(predefinedPublicKey, ChainId.Mainnet)
                 Log.d("FindAccount", "Found ${accounts.size} accounts")
                 
                 if (accounts.isNotEmpty()) {
@@ -74,13 +74,13 @@ class MainActivity : AppCompatActivity() {
                     
                     // Create Account instance
                     Log.d("FindAccount", "Searching for Flow accounts")
-                    val flowAccounts = Network.findFlowAccountByKey(predefinedPublicKey, ChainId.Testnet)
+                    val flowAccounts = Network.findFlowAccountByKey(predefinedPublicKey, ChainId.Mainnet)
                     Log.d("FindAccount", "Found ${flowAccounts.size} Flow accounts")
                     
                     if (flowAccounts.isNotEmpty()) {
                         val flowAccountModel = flowAccounts.first()
                         Log.d("FindAccount", "Creating Account instance with Flow account: ${flowAccountModel.address}")
-                        flowAccount = Account(flowAccountModel, ChainId.Testnet, null)
+                        flowAccount = Account(flowAccountModel, ChainId.Mainnet, null)
                         Toast.makeText(this@MainActivity, "Account found successfully", Toast.LENGTH_SHORT).show()
                     } else {
                         Log.d("FindAccount", "No Flow accounts found")
