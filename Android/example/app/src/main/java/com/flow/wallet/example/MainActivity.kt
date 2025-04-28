@@ -1,6 +1,7 @@
 package com.flow.wallet.example
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -79,6 +80,7 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this@MainActivity, "No accounts found for this key", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
+                Log.println(Log.WARN, "FindAccount", e.message!!)
                 Toast.makeText(this@MainActivity, "Error finding account: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }

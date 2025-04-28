@@ -5,6 +5,8 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.http.isSuccess
@@ -29,6 +31,9 @@ object Network {
         get() = _ktorClient ?: HttpClient(CIO) {
             install(ContentNegotiation) {
                 json()
+            }
+            install(Logging) {
+                level = LogLevel.ALL
             }
         }
 
@@ -142,17 +147,25 @@ object Network {
      */
     suspend fun findAccount(publicKey: String, chainId: ChainId): KeyIndexerResponse {
         val url = chainId.keyIndexerUrl(publicKey) ?: throw WalletError.IncorrectKeyIndexerURL
-        val response = ktorClient.get(url) {
-            headers {
-                append("Accept", "application/json")
+        
+        try {
+            val response = ktorClient.get(url) {
+                headers {
+                    append("Accept", "application/json")
+                }
+            }
+
+            if (!response.status.isSuccess()) {
+                throw WalletError.KeyIndexerRequestFailed
+            }
+
+            return response.body()
+        } catch (e: Exception) {
+            when (e) {
+                is WalletError -> throw e
+                else -> throw WalletError.NetworkError(e.message ?: "Unknown network error")
             }
         }
-
-        if (!response.status.isSuccess()) {
-            throw WalletError.KeyIndexerRequestFailed
-        }
-
-        return response.body()
     }
 
     /**
@@ -177,12 +190,16 @@ object Network {
         return model.accountResponse
     }
 
-    fun ChainId.keyIndexerUrl(publicKey: String): URL {
+    fun ChainId.keyIndexerUrl(publicKey: String): URL? {
         val baseUrl = when (this) {
             ChainId.Mainnet -> "https://production.key-indexer.flow.com"
             ChainId.Testnet -> "https://staging.key-indexer.flow.com"
-            else -> {throw Exception("Chain not supported")}
+            else -> return null
         }
-        return URL("$baseUrl/key?$publicKey")
+        return try {
+            URL("$baseUrl/key?publicKey=$publicKey")
+        } catch (e: Exception) {
+            null
+        }
     }
 } 

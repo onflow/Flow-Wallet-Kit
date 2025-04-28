@@ -1,6 +1,8 @@
 apply plugin: 'com.android.application'
 apply plugin: 'org.jetbrains.kotlin.android'
 
+ext.ktorVersion = "3.0.1"
+
 android {
     namespace 'com.flow.wallet.example'
     compileSdk 34
@@ -47,7 +49,26 @@ dependencies {
     implementation 'com.github.onflow.flow-kmm:flow:0.0.3-new'
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0'
     
+    // Ktor dependencies
+    implementation "io.ktor:ktor-client-core:$ktorVersion"
+    implementation "io.ktor:ktor-client-cio:$ktorVersion"
+    implementation "io.ktor:ktor-client-content-negotiation:$ktorVersion"
+    implementation "io.ktor:ktor-serialization-kotlinx-json:$ktorVersion"
+    implementation "io.ktor:ktor-client-logging:$ktorVersion"
+    
+    // SLF4J implementation
+    implementation "org.slf4j:slf4j-android:1.7.36"
+    
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-} 
+}
+
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "io.ktor") {
+            useVersion(ktorVersion)
+            because("Force Ktor version to 3.0.1")
+        }
+    }
+}
