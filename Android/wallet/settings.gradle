@@ -19,6 +19,8 @@ dependencyResolutionManagement {
     }
 
     maven {
+        mavenCentral()
+        google()
         url = uri("https://maven.pkg.github.com/trustwallet/wallet-core")
         credentials {
             username = properties.getProperty("gpr.user")?: System.getenv("GITHUB_USER")
