@@ -163,7 +163,7 @@ object Network {
         } catch (e: Exception) {
             when (e) {
                 is WalletError -> throw e
-                else -> throw WalletError.NetworkError(e.message ?: "Unknown network error")
+                else -> throw WalletError(19, e.message ?: "Unknown network error")
             }
         }
     }
