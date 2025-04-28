@@ -5,14 +5,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.flow.wallet.Network
-import com.flow.wallet.WalletKeyManager
+import com.flow.wallet.KeyManager
 import com.flow.wallet.account.Account
-import com.flow.wallet.errors.WalletError
 import com.flow.wallet.example.databinding.ActivityMainBinding
+import com.flow.wallet.toFormatString
 import kotlinx.coroutines.launch
-import org.onflow.flow.ChainId
-import org.onflow.flow.FlowApi
-import org.onflow.flow.models.Account as FlowAccount
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -42,7 +39,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun generateKeyPair() {
         try {
-            val keyPair = WalletKeyManager.generateKeyWithPrefix("example_key")
+            val keyPair = KeyManager.generateKeyWithPrefix("example_key")
             val publicKey = keyPair.public.toFormatString()
             
             binding.tvPublicKey.text = "Public Key: $publicKey"
