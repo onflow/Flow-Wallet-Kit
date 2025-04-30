@@ -89,7 +89,7 @@ class KeyWallet(
         }
     }
 
-    override fun getKeyForAccount(): KeyProtocol = key
+    public override fun getKeyForAccount(): KeyProtocol = key
 
     override suspend fun addAccount(account: Account) {
         println("Attempting to add account: ${account.address}")
