@@ -2,7 +2,6 @@ package com.flow.wallet.account
 
 import com.flow.wallet.account.vm.COA
 import com.flow.wallet.storage.StorageProtocol
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.Contextual
@@ -10,8 +9,8 @@ import kotlinx.serialization.Contextual
 /**
  * Structure representing cacheable account data
  */
-@Serializable
 data class AccountCache(
+    @Contextual
     val childs: List<ChildAccount>?,
     @Contextual
     val coa: COA?

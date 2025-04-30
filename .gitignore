@@ -3,7 +3,47 @@
 /.build
 
 # Gradle
-**/gradle/wrapper/gradle-wrapper.jar
-**/gradle/wrapper/gradle-wrapper.properties
+**/.gradle/
+**/gradle/
 **/gradlew
 **/gradlew.bat
+
+# Example Gradle files
+example/.gradle/
+example/build/
+example/*.iml
+example/local.properties
+
+# Android Studio
+**/.idea/
+**/*.iml
+**/.idea_modules/
+**/.idea/workspace.xml
+**/.idea/tasks.xml
+**/.idea/gradle.xml
+**/.idea/assetWizardSettings.xml
+**/.idea/dictionaries
+**/.idea/libraries
+**/.idea/caches
+
+# Local configuration
+**/local.properties
+**/gradle.properties
+
+# Android
+**/*.apk
+**/*.aab
+**/*.dex
+**/*.class
+**/bin/
+**/gen/
+**/out/
+
+# System
+Thumbs.db
+
+# Build
+**/build/
+**/app/build/
+**/app/release/
+**/app/debug/
