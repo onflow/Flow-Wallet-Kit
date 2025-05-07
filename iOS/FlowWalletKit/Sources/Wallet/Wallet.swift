@@ -228,7 +228,14 @@ public class Wallet: ObservableObject {
             return []
         }()
 
+        let accountList = try await p256KeyAccounts + secp256k1KeyAccounts
         // Combine results from both parallel operations
-        return try await p256KeyAccounts + secp256k1KeyAccounts
+        return accountList.filter{ $0.keys.hasFullWeightKey }
+    }
+}
+
+extension Array where Element == Flow.AccountKey {
+    var hasFullWeightKey: Bool {
+        filter{ !$0.revoked }.compactMap{ $0.weight }.reduce(0, +) > 1000
     }
 }
