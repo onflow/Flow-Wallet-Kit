@@ -34,6 +34,8 @@ import Foundation
 /// - Caching account information
 /// - Supporting both key-based and watch-only wallets
 public class Wallet: ObservableObject {
+    
+    static let fullWeightThreshold = 1000
 
     // MARK: - Properties
     
@@ -230,12 +232,6 @@ public class Wallet: ObservableObject {
 
         let accountList = try await p256KeyAccounts + secp256k1KeyAccounts
         // Combine results from both parallel operations
-        return accountList.filter{ $0.keys.hasFullWeightKey }
-    }
-}
-
-extension Array where Element == Flow.AccountKey {
-    var hasFullWeightKey: Bool {
-        filter{ !$0.revoked }.compactMap{ $0.weight }.reduce(0, +) > 1000
+        return accountList.filter{ $0.keys.hasSignleFullWeightKey }
     }
 }

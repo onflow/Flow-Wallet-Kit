@@ -99,3 +99,13 @@ public extension WalletCore.PublicKey {
         uncompressed.data.hexValue.dropPrefix("04")
     }
 }
+
+extension Array where Element == Flow.AccountKey {
+    var hasFullWeightKey: Bool {
+        filter{ !$0.revoked }.compactMap{ $0.weight }.reduce(0, +) > Wallet.fullWeightThreshold
+    }
+    
+    var hasSignleFullWeightKey: Bool {
+        filter{ !$0.revoked && $0.weight >= Wallet.fullWeightThreshold }.count > 0
+    }
+}
