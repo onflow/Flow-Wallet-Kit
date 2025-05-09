@@ -105,24 +105,30 @@ public class Account: ObservableObject {
         self.key = key
         self.chainID = chainID
         self.securityDelegate = securityDelegate
+        
+        try? loadCachedAccount()
     }
     
-    /// Fetch and update account data including linked accounts
-    /// This method will:
-    /// 1. Load cached data if available
-    /// 2. Fetch fresh data for linked accounts
-    /// 3. Update the cache with new data
-    /// - Throws: Error if fetching or caching fails
-    public func fetchAccount() async throws {
+    /// Load cached  account data including linked accounts if available
+    public func loadCachedAccount() throws {
         do {
             if let cached = try loadCache() {
                 self.childs = cached.childs
                 self.coa = cached.coa
             }
-        } catch {
+        } catch FWKError.cacheDecodeFailed {
             //TODO: Handle no cache log
-            print("\(error.localizedDescription)")
+            try? deleteCache()
+            throw FWKError.cacheDecodeFailed
         }
+    }
+    
+    /// Fetch and update account data including linked accounts
+    /// This method will:
+    /// 1. Fetch fresh data for linked accounts
+    /// 2. Update the cache with new data
+    /// - Throws: Error if fetching or caching fails
+    public func fetchAccount() async throws {
         try await _ = loadLinkedAccounts()
         try cache()
     }
