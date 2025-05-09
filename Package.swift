@@ -16,7 +16,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/kishikawakatsumi/KeychainAccess", from: "4.2.2"),
-        .package(url: "https://github.com/Outblock/flow-swift", .revisionItem("acaab87cfc6e1a1a5a70c41c4fc698ab0d6e8ea3")),
+        .package(url: "https://github.com/Outblock/flow-swift", .revisionItem("abeb65af3efc683d797c1e3ce9d8eb4e633c31ce")),
         .package(url: "https://github.com/trustwallet/wallet-core", .upToNextMajor(from: "4.3.2")),
     ],
     targets: [
