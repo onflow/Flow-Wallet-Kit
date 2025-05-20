@@ -141,7 +141,9 @@ class KeyWallet(
                 
                 // Get public keys for both supported signature algorithms
                 val p256PublicKey = key.publicKey(SigningAlgorithm.ECDSA_P256)
+                println(p256PublicKey)
                 val secp256k1PublicKey = key.publicKey(SigningAlgorithm.ECDSA_secp256k1)
+                println(secp256k1PublicKey)
 
                 if (p256PublicKey == null && secp256k1PublicKey == null) {
                     println("No valid public keys found for key indexer lookup on network $network")

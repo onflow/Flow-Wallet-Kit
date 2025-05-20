@@ -8,10 +8,6 @@ import com.flow.wallet.storage.StorageProtocol
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
 import wallet.core.jni.Curve
-import java.security.KeyFactory
-import java.security.KeyPair
-import java.security.spec.PKCS8EncodedKeySpec
-import java.security.spec.X509EncodedKeySpec
 import wallet.core.jni.PrivateKey as TWPrivateKey
 /**
  * Implementation of KeyProtocol using raw private keys
@@ -83,33 +79,16 @@ class PrivateKey(
     override val isHardwareBacked: Boolean = false
     override val advance: Any = Unit
 
-    override val key: KeyPair
-        get() = try {
-            var publicKey: wallet.core.jni.PublicKey? = null
-            try {
-                publicKey = pk.getPublicKeySecp256k1(false)
-                val keyFactory = KeyFactory.getInstance("EC")
-                val privateKeySpec = PKCS8EncodedKeySpec(pk.data())
-                val publicKeySpec = X509EncodedKeySpec(publicKey.data())
-                KeyPair(
-                    keyFactory.generatePublic(publicKeySpec),
-                    keyFactory.generatePrivate(privateKeySpec)
-                )
-            } finally {
-                publicKey = null
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to create KeyPair", e)
-            throw WalletError.InitPrivateKeyFailed
-        }
+    override val key: Any
+        get() = pk
 
     override val secret: ByteArray
         get() = pk.data()
 
     override val id: String
-        get() = key.public.encoded.let { 
+        get() = publicKey(SigningAlgorithm.ECDSA_P256)?.let {
             com.google.common.io.BaseEncoding.base64().encode(it)
-        }
+        } ?: throw WalletError.InitPrivateKeyFailed
 
     /**
      * Get key properties
@@ -236,6 +215,7 @@ class PrivateKey(
      * @param format Import format
      */
     override fun importPrivateKey(data: ByteArray, format: KeyFormat) {
+        println("Importing private key")
         when (format) {
             KeyFormat.PKCS8, KeyFormat.RAW -> {
                 if (data.isEmpty()) {
