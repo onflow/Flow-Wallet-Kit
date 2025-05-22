@@ -174,6 +174,7 @@ object Network {
      */
     suspend fun findFlowAccountByKey(publicKey: String, chainId: ChainId): List<FlowAccount> {
         val model = findAccount(publicKey, chainId)
+        println("Key indexer response: " + model.accountResponse)
         return model.accountResponse
     }
 
@@ -183,6 +184,6 @@ object Network {
             ChainId.Testnet -> "https://staging.key-indexer.flow.com"
             else -> {throw Exception("Chain not supported")}
         }
-        return URL("$baseUrl/key?$publicKey")
+        return URL("$baseUrl/key/$publicKey")
     }
 } 

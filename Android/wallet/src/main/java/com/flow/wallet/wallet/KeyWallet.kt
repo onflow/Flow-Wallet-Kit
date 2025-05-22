@@ -126,6 +126,17 @@ class KeyWallet(
         }
     }
 
+    private fun ByteArray.toFlowIndexerHex(): String {
+        val raw = when (this[0]) {
+            0x04.toByte(),       // uncompressed header
+            0x02.toByte(),       // compressed   (even y)
+            0x03.toByte()        // compressed   (odd y)
+                -> copyOfRange(1, size)
+            else -> this         // already a raw coordinate blob
+        }
+        return BaseEncoding.base16().lowerCase().encode(raw)
+    }
+
     /// Fetch accounts for a specific network
     /// - Parameters:
     ///   - chainID: The network to fetch accounts from
@@ -148,9 +159,7 @@ class KeyWallet(
                 
                 // Get public keys for both supported signature algorithms
                 val p256PublicKey = key.publicKey(SigningAlgorithm.ECDSA_P256)
-                println(p256PublicKey)
                 val secp256k1PublicKey = key.publicKey(SigningAlgorithm.ECDSA_secp256k1)
-                println(secp256k1PublicKey)
 
                 if (p256PublicKey == null && secp256k1PublicKey == null) {
                     println("No valid public keys found for key indexer lookup on network $network")
@@ -164,7 +173,12 @@ class KeyWallet(
                 val p256Accounts = async {
                     p256PublicKey?.let { publicKey ->
                         try {
-                            val encodedKey = BaseEncoding.base16().lowerCase().encode(publicKey)
+                            val encodedKey = publicKey.toFlowIndexerHex()
+                            println("==== Public Key Debug Info ====")
+                            println("Algorithm: P256")
+                            println("Raw publicKey bytes: ${publicKey.joinToString("") { "%02x".format(it) }}")
+                            println("Encoded (hex, lower): $encodedKey")
+                            println("==============================")
                             println("Looking up P256 accounts for key: $encodedKey on network $network")
                             val accounts = Network.findFlowAccountByKey(encodedKey, network)
                             println("Found ${accounts.size} P256 accounts on network $network")
@@ -183,7 +197,13 @@ class KeyWallet(
                 val secp256k1Accounts = async {
                     secp256k1PublicKey?.let { publicKey ->
                         try {
-                            val encodedKey = BaseEncoding.base16().lowerCase().encode(publicKey)
+                            println("Raw publicKey before encoding: ${publicKey}")
+                            val encodedKey = publicKey.toFlowIndexerHex()
+                            println("==== Public Key Debug Info ====")
+                            println("Algorithm: SECP256k1")
+                            println("Raw publicKey bytes: ${publicKey.joinToString("") { "%02x".format(it) }}")
+                            println("Encoded (hex, lower): $encodedKey")
+                            println("==============================")
                             println("Looking up SECP256k1 accounts for key: $encodedKey on network $network")
                             val accounts = Network.findFlowAccountByKey(encodedKey, network)
                             println("Found ${accounts.size} SECP256k1 accounts on network $network")
