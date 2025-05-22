@@ -28,7 +28,6 @@ class ProxyWallet(
     }
 
     override suspend fun awaitFirstAccount() {
-        // we already launch the fetch in `init` – just wait for it
         while (accounts.isEmpty()) {
             kotlinx.coroutines.delay(50)
         }

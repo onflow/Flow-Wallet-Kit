@@ -216,18 +216,15 @@ object Network {
             throw WalletError.KeyIndexerRequestFailed
         }
         
-        // Get the raw response text for debugging
         val responseText = response.bodyAsText()
-        println("Raw response from $url: $responseText")
-        
+
         try {
-            // Try our custom manual parsing approach first
             return parseKeyIndexerResponse(responseText, publicKey)
         } catch (e: Exception) {
-            println("Manual parsing failed: ${e.message}")
+            println("Parsing failed: ${e.message}")
             e.printStackTrace()
             
-            // Try the automatic deserialization as a fallback
+            // Try automatic deserialization as a fallback
             try {
                 return json.decodeFromString<KeyIndexerResponse>(responseText)
             } catch (e: Exception) {

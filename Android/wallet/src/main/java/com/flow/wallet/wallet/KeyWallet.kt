@@ -90,7 +90,6 @@ class KeyWallet(
     }
 
     override suspend fun awaitFirstAccount() {
-        // we already launch the fetch in `init` – just wait for it
         while (accounts.isEmpty()) {
             kotlinx.coroutines.delay(50)
         }
@@ -174,12 +173,6 @@ class KeyWallet(
                     p256PublicKey?.let { publicKey ->
                         try {
                             val encodedKey = publicKey.toFlowIndexerHex()
-                            println("==== Public Key Debug Info ====")
-                            println("Algorithm: P256")
-                            println("Raw publicKey bytes: ${publicKey.joinToString("") { "%02x".format(it) }}")
-                            println("Encoded (hex, lower): $encodedKey")
-                            println("==============================")
-                            println("Looking up P256 accounts for key: $encodedKey on network $network")
                             val accounts = Network.findFlowAccountByKey(encodedKey, network)
                             println("Found ${accounts.size} P256 accounts on network $network")
                             accounts.forEach { account ->
@@ -197,14 +190,7 @@ class KeyWallet(
                 val secp256k1Accounts = async {
                     secp256k1PublicKey?.let { publicKey ->
                         try {
-                            println("Raw publicKey before encoding: ${publicKey}")
                             val encodedKey = publicKey.toFlowIndexerHex()
-                            println("==== Public Key Debug Info ====")
-                            println("Algorithm: SECP256k1")
-                            println("Raw publicKey bytes: ${publicKey.joinToString("") { "%02x".format(it) }}")
-                            println("Encoded (hex, lower): $encodedKey")
-                            println("==============================")
-                            println("Looking up SECP256k1 accounts for key: $encodedKey on network $network")
                             val accounts = Network.findFlowAccountByKey(encodedKey, network)
                             println("Found ${accounts.size} SECP256k1 accounts on network $network")
                             accounts.forEach { account ->
