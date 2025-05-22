@@ -27,6 +27,13 @@ class ProxyWallet(
         networkAccounts.add(account)
     }
 
+    override suspend fun awaitFirstAccount() {
+        // we already launch the fetch in `init` – just wait for it
+        while (accounts.isEmpty()) {
+            kotlinx.coroutines.delay(50)
+        }
+    }
+
     override suspend fun removeAccount(address: String) {
         accounts.values.forEach { accountList ->
             accountList.removeIf { it.address == address }

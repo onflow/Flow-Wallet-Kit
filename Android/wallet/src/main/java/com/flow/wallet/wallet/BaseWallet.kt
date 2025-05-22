@@ -33,6 +33,7 @@ interface Wallet {
     suspend fun refreshAccounts()
     suspend fun fetchAccounts()
     suspend fun fetchAccountsForNetwork(network: ChainId): List<FlowAccount>
+    suspend fun awaitFirstAccount()
 }
 
 /**
