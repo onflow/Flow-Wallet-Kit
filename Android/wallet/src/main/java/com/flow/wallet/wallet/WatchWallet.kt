@@ -44,8 +44,14 @@ class WatchWallet(
     }
 
     override suspend fun removeAccount(address: String) {
-        accounts.values.forEach { accountList ->
-            accountList.removeIf { it.address == address }
+        var removed = false
+        _accounts.values.forEach { accountList ->
+            if (accountList.removeIf { it.address == address }) {
+                removed = true
+            }
+        }
+        if (removed) {
+            _accountsFlow.value = _accounts.toMap()
         }
     }
 
