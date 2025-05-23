@@ -143,6 +143,7 @@ class KeyWallet(
         val accounts = mutableListOf<FlowAccount>()
         var retryCount = 0
         val maxRetries = 3
+        val baseTimeout = 5000L // 5 seconds base timeout
 
         while (retryCount < maxRetries) {
             try {
@@ -159,12 +160,13 @@ class KeyWallet(
 
                 Log.d(TAG, "Found ${if (p256PublicKey != null) "P256" else "no"} and ${if (secp256k1PublicKey != null) "SECP256k1" else "no"} keys for lookup")
 
-                // Fetch accounts for both signature algorithms in parallel
+                // Fetch accounts for both signature algorithms in parallel with timeout
                 Log.d(TAG, "Starting parallel account fetch for both key types")
                 val p256Accounts = async {
                     p256PublicKey?.let { publicKey ->
                         try {
                             val encodedKey = publicKey.toFlowIndexerHex()
+                            Log.d(TAG, "Fetching P256 accounts for key: ${encodedKey.take(10)}...")
                             val accounts = Network.findFlowAccountByKey(encodedKey, network)
                             Log.d(TAG, "Found ${accounts.size} P256 accounts on network $network")
                             accounts.forEach { account ->
@@ -172,7 +174,14 @@ class KeyWallet(
                             }
                             accounts
                         } catch (e: Exception) {
-                            Log.e(TAG, "Error looking up P256 accounts on network $network", e)
+                            when (e) {
+                                is io.ktor.client.network.sockets.ConnectTimeoutException -> {
+                                    Log.e(TAG, "Timeout while fetching P256 accounts on network $network", e)
+                                }
+                                else -> {
+                                    Log.e(TAG, "Error looking up P256 accounts on network $network", e)
+                                }
+                            }
                             emptyList()
                         }
                     } ?: emptyList()
@@ -182,6 +191,7 @@ class KeyWallet(
                     secp256k1PublicKey?.let { publicKey ->
                         try {
                             val encodedKey = publicKey.toFlowIndexerHex()
+                            Log.d(TAG, "Fetching SECP256k1 accounts for key: ${encodedKey.take(10)}...")
                             val accounts = Network.findFlowAccountByKey(encodedKey, network)
                             Log.d(TAG, "Found ${accounts.size} SECP256k1 accounts on network $network")
                             accounts.forEach { account ->
@@ -189,7 +199,14 @@ class KeyWallet(
                             }
                             accounts
                         } catch (e: Exception) {
-                            Log.e(TAG, "Error looking up SECP256k1 accounts on network $network", e)
+                            when (e) {
+                                is io.ktor.client.network.sockets.ConnectTimeoutException -> {
+                                    Log.e(TAG, "Timeout while fetching SECP256k1 accounts on network $network", e)
+                                }
+                                else -> {
+                                    Log.e(TAG, "Error looking up SECP256k1 accounts on network $network", e)
+                                }
+                            }
                             emptyList()
                         }
                     } ?: emptyList()
@@ -214,7 +231,7 @@ class KeyWallet(
                     Log.e(TAG, "Failed to fetch accounts for network $network after $maxRetries attempts", e)
                     throw e
                 }
-                val backoffTime = 1000L * (1 shl retryCount)
+                val backoffTime = baseTimeout * (1 shl retryCount)
                 Log.d(TAG, "Retry attempt $retryCount of $maxRetries for network $network. Waiting ${backoffTime}ms before retry")
                 kotlinx.coroutines.delay(backoffTime)
             }
