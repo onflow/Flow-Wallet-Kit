@@ -123,7 +123,7 @@ class PrivateKey(
     }
 
     override fun publicKey(signAlgo: SigningAlgorithm): ByteArray? {
-        var publicKey: wallet.core.jni.PublicKey? = null
+        val publicKey: wallet.core.jni.PublicKey?
         try {
             publicKey = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1()
@@ -135,7 +135,6 @@ class PrivateKey(
             Log.e(TAG, "Failed to get public key", e)
             return null
         } finally {
-            publicKey = null
         }
     }
 
@@ -159,7 +158,7 @@ class PrivateKey(
     }
 
     override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
-        var publicKey: wallet.core.jni.PublicKey? = null
+        var publicKey: wallet.core.jni.PublicKey?
         return try {
             publicKey = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1()
@@ -176,7 +175,6 @@ class PrivateKey(
             Log.e(TAG, "Signature verification failed", e)
             false
         } finally {
-            publicKey = null
         }
     }
 
@@ -215,7 +213,6 @@ class PrivateKey(
      * @param format Import format
      */
     override fun importPrivateKey(data: ByteArray, format: KeyFormat) {
-        println("Importing private key")
         when (format) {
             KeyFormat.PKCS8, KeyFormat.RAW -> {
                 if (data.isEmpty()) {

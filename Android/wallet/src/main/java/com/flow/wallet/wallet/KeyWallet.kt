@@ -17,6 +17,9 @@ import kotlinx.coroutines.launch
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.Account as FlowAccount
 import org.onflow.flow.models.SigningAlgorithm
+import android.util.Log
+import com.flow.wallet.keys.PrivateKey
+import com.flow.wallet.keys.toFlowIndexerHex
 
 /**
  * Key Wallet implementation
@@ -30,110 +33,99 @@ class KeyWallet(
 ) : BaseWallet(WalletType.KEY, networks.toMutableSet(), storage, securityDelegate), Cacheable<Map<ChainId, List<FlowAccount>>> {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    override val accounts: MutableMap<ChainId, MutableList<Account>> = mutableMapOf()
+    private val TAG = KeyWallet::class.java.simpleName
 
     override val cacheId: String
         get() = "key_wallet_${key.publicKey(SigningAlgorithm.ECDSA_P256)?.let { BaseEncoding.base16().lowerCase().encode(it) } ?: ""}"
 
     override val cachedData: Map<ChainId, List<FlowAccount>>
-        get() = accounts.mapValues { (_, list) -> list.map { it.account } }
+        get() = _accounts.mapValues { (_, list) -> list.map { it.account } }
 
     init {
-        println("Initializing KeyWallet with networks: ${networks.joinToString()}")
+        Log.d(TAG, "Initializing KeyWallet with networks: ${networks.joinToString()}")
         // Initialize wallet by fetching accounts
         scope.launch {
             try {
-                println("Starting initial account fetch")
+                Log.d(TAG, "Starting initial account fetch")
                 // Try to load from cache first
                 try {
-                    println("Attempting to load accounts from cache")
+                    Log.d(TAG, "Attempting to load accounts from cache")
                     val cachedAccounts = loadCache()
                     if (cachedAccounts != null) {
-                        println("Successfully loaded ${cachedAccounts.size} accounts from cache")
-                        accounts.clear()
+                        Log.d(TAG, "Successfully loaded ${cachedAccounts.size} accounts from cache")
                         for ((network, acc) in cachedAccounts) {
-                            accounts[network] = acc.map { account ->
+                            val accountList = acc.map { account ->
                                 Account(account, network, key, securityDelegate)
-                            }.toMutableList()
+                            }
+                            accountList.forEach { account ->
+                                addAccount(account)
+                            }
                         }
                     } else {
-                        println("No cached accounts found")
+                        Log.d(TAG, "No cached accounts found")
                     }
                 } catch (e: Exception) {
-                    println("Failed to load accounts from cache: ${e.message}")
-                    e.printStackTrace()
+                    Log.e(TAG, "Failed to load accounts from cache", e)
                     // Clear cache on failure
                     try {
-                        println("Clearing invalid cache")
+                        Log.d(TAG, "Clearing invalid cache")
                         deleteCache()
                     } catch (e: Exception) {
-                        println("Failed to clear cache: ${e.message}")
+                        Log.e(TAG, "Failed to clear cache", e)
                     }
                 }
                 
                 fetchAccounts()
-                println("Initial account fetch completed successfully")
+                Log.d(TAG, "Initial account fetch completed successfully")
                 
                 // Cache the results
                 try {
-                    println("Caching fetched accounts")
+                    Log.d(TAG, "Caching fetched accounts")
                     cache()
-                    println("Successfully cached accounts")
+                    Log.d(TAG, "Successfully cached accounts")
                 } catch (e: Exception) {
-                    println("Failed to cache accounts: ${e.message}")
+                    Log.e(TAG, "Failed to cache accounts", e)
                 }
             } catch (e: Exception) {
-                println("Error initializing wallet: ${e.message}")
-                e.printStackTrace()
+                Log.e(TAG, "Error initializing wallet", e)
             }
-        }
-    }
-
-    override suspend fun awaitFirstAccount() {
-        while (accounts.isEmpty()) {
-            kotlinx.coroutines.delay(50)
         }
     }
 
     override fun getKeyForAccount(): KeyProtocol = key
 
     override suspend fun addAccount(account: Account) {
-        println("Attempting to add account: ${account.address}")
+        Log.d(TAG, "Attempting to add account: ${account.address}")
         if (account.key != key) {
-            println("Account key mismatch - rejecting account addition")
+            Log.d(TAG, "Account key mismatch - rejecting account addition")
             throw WalletError.InvalidWalletType
         }
-        val networkAccounts = accounts.getOrPut(account.chainID) { mutableListOf() }
-        networkAccounts.add(account)
-        println("Successfully added account ${account.address} to network ${account.chainID}")
-        cache() // Persist changes to cache
+        val networkAccounts = _accounts.getOrPut(account.chainID) { mutableListOf() }
+        if (!networkAccounts.contains(account)) {
+            networkAccounts.add(account)
+            _accountsFlow.value = _accounts.toMap()
+            Log.d(TAG, "Successfully added account ${account.address} to network ${account.chainID}")
+            cache() // Persist changes to cache
+        } else {
+            Log.d(TAG, "Account ${account.address} already exists in network ${account.chainID}")
+        }
     }
 
     override suspend fun removeAccount(address: String) {
-        println("Attempting to remove account: $address")
+        Log.d(TAG, "Attempting to remove account: $address")
         var removed = false
-        accounts.values.forEach { accountList ->
+        _accounts.values.forEach { accountList ->
             if (accountList.removeIf { it.address == address }) {
                 removed = true
             }
         }
         if (removed) {
-            println("Successfully removed account: $address")
+            _accountsFlow.value = _accounts.toMap()
+            Log.d(TAG, "Successfully removed account: $address")
             cache() // Persist changes to cache
         } else {
-            println("Account not found for removal: $address")
+            Log.d(TAG, "Account not found for removal: $address")
         }
-    }
-
-    private fun ByteArray.toFlowIndexerHex(): String {
-        val raw = when (this[0]) {
-            0x04.toByte(),       // uncompressed header
-            0x02.toByte(),       // compressed   (even y)
-            0x03.toByte()        // compressed   (odd y)
-                -> copyOfRange(1, size)
-            else -> this         // already a raw coordinate blob
-        }
-        return BaseEncoding.base16().lowerCase().encode(raw)
     }
 
     /// Fetch accounts for a specific network
@@ -147,41 +139,40 @@ class KeyWallet(
     /// - Implements retry logic for failed requests
     /// - Uses key indexer API to find all related on-chain accounts
     override suspend fun fetchAccountsForNetwork(network: ChainId): List<FlowAccount> = coroutineScope {
-        println("Starting account fetch for network: $network")
+        Log.d(TAG, "Starting account fetch for network: $network")
         val accounts = mutableListOf<FlowAccount>()
         var retryCount = 0
         val maxRetries = 3
 
         while (retryCount < maxRetries) {
             try {
-                println("Fetch attempt ${retryCount + 1} of $maxRetries for network $network")
+                Log.d(TAG, "Fetch attempt ${retryCount + 1} of $maxRetries for network $network")
                 
                 // Get public keys for both supported signature algorithms
                 val p256PublicKey = key.publicKey(SigningAlgorithm.ECDSA_P256)
                 val secp256k1PublicKey = key.publicKey(SigningAlgorithm.ECDSA_secp256k1)
 
                 if (p256PublicKey == null && secp256k1PublicKey == null) {
-                    println("No valid public keys found for key indexer lookup on network $network")
+                    Log.d(TAG, "No valid public keys found for key indexer lookup on network $network")
                     break
                 }
 
-                println("Found ${if (p256PublicKey != null) "P256" else "no"} and ${if (secp256k1PublicKey != null) "SECP256k1" else "no"} keys for lookup")
+                Log.d(TAG, "Found ${if (p256PublicKey != null) "P256" else "no"} and ${if (secp256k1PublicKey != null) "SECP256k1" else "no"} keys for lookup")
 
                 // Fetch accounts for both signature algorithms in parallel
-                println("Starting parallel account fetch for both key types")
+                Log.d(TAG, "Starting parallel account fetch for both key types")
                 val p256Accounts = async {
                     p256PublicKey?.let { publicKey ->
                         try {
                             val encodedKey = publicKey.toFlowIndexerHex()
                             val accounts = Network.findFlowAccountByKey(encodedKey, network)
-                            println("Found ${accounts.size} P256 accounts on network $network")
+                            Log.d(TAG, "Found ${accounts.size} P256 accounts on network $network")
                             accounts.forEach { account ->
-                                println("P256 Account ${account.address} with ${account.keys?.size ?: 0} keys")
+                                Log.d(TAG, "P256 Account ${account.address} with ${account.keys?.size ?: 0} keys")
                             }
                             accounts
                         } catch (e: Exception) {
-                            println("Error looking up P256 accounts on network $network: ${e.message}")
-                            e.printStackTrace()
+                            Log.e(TAG, "Error looking up P256 accounts on network $network", e)
                             emptyList()
                         }
                     } ?: emptyList()
@@ -192,20 +183,19 @@ class KeyWallet(
                         try {
                             val encodedKey = publicKey.toFlowIndexerHex()
                             val accounts = Network.findFlowAccountByKey(encodedKey, network)
-                            println("Found ${accounts.size} SECP256k1 accounts on network $network")
+                            Log.d(TAG, "Found ${accounts.size} SECP256k1 accounts on network $network")
                             accounts.forEach { account ->
-                                println("SECP256k1 Account ${account.address} with ${account.keys?.size ?: 0} keys")
+                                Log.d(TAG, "SECP256k1 Account ${account.address} with ${account.keys?.size ?: 0} keys")
                             }
                             accounts
                         } catch (e: Exception) {
-                            println("Error looking up SECP256k1 accounts on network $network: ${e.message}")
-                            e.printStackTrace()
+                            Log.e(TAG, "Error looking up SECP256k1 accounts on network $network", e)
                             emptyList()
                         }
                     } ?: emptyList()
                 }
 
-                println("Waiting for parallel account fetches to complete")
+                Log.d(TAG, "Waiting for parallel account fetches to complete")
                 // Wait for both fetches to complete and combine results
                 val p256Results = p256Accounts.await()
                 val secp256k1Results = secp256k1Accounts.await()
@@ -213,30 +203,29 @@ class KeyWallet(
                 accounts.addAll(p256Results)
                 accounts.addAll(secp256k1Results)
                 
-                println("Successfully fetched accounts for network $network: ${accounts.size} total accounts found")
+                Log.d(TAG, "Successfully fetched accounts for network $network: ${accounts.size} total accounts found")
                 accounts.forEach { account ->
-                    println("Final Account ${account.address} with ${account.keys?.size ?: 0} keys")
+                    Log.d(TAG, "Final Account ${account.address} with ${account.keys?.size ?: 0} keys")
                 }
                 break
             } catch (e: Exception) {
                 retryCount++
                 if (retryCount == maxRetries) {
-                    println("Failed to fetch accounts for network $network after $maxRetries attempts: ${e.message}")
-                    e.printStackTrace()
+                    Log.e(TAG, "Failed to fetch accounts for network $network after $maxRetries attempts", e)
                     throw e
                 }
                 val backoffTime = 1000L * (1 shl retryCount)
-                println("Retry attempt $retryCount of $maxRetries for network $network. Waiting ${backoffTime}ms before retry")
+                Log.d(TAG, "Retry attempt $retryCount of $maxRetries for network $network. Waiting ${backoffTime}ms before retry")
                 kotlinx.coroutines.delay(backoffTime)
             }
         }
 
         if (accounts.isEmpty()) {
-            println("No accounts found for any public key on network $network")
+            Log.d(TAG, "No accounts found for any public key on network $network")
         } else {
-            println("Found ${accounts.size} accounts on network $network")
+            Log.d(TAG, "Found ${accounts.size} accounts on network $network")
             accounts.forEach { account ->
-                println("Account ${account.address} with ${account.keys?.size ?: 0} keys")
+                Log.d(TAG, "Account ${account.address} with ${account.keys?.size ?: 0} keys")
             }
         }
 

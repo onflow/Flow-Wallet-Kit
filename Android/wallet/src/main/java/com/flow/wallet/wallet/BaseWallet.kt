@@ -20,6 +20,7 @@ import org.onflow.flow.models.Account as FlowAccount
 interface Wallet {
     val type: WalletType
     val accounts: Map<ChainId, List<Account>>
+    val accountsFlow: StateFlow<Map<ChainId, List<Account>>>
     val networks: Set<ChainId>
     val storage: StorageProtocol
     val isLoading: StateFlow<Boolean>
@@ -33,7 +34,6 @@ interface Wallet {
     suspend fun refreshAccounts()
     suspend fun fetchAccounts()
     suspend fun fetchAccountsForNetwork(network: ChainId): List<FlowAccount>
-    suspend fun awaitFirstAccount()
 }
 
 /**
@@ -78,7 +78,16 @@ abstract class BaseWallet(
     // Raw Flow accounts data, used for caching
     private var flowAccounts: Map<ChainId, List<FlowAccount>>? = null
 
-    override val accounts: MutableMap<ChainId, MutableList<Account>> = mutableMapOf()
+    // Accounts as mutable map
+    internal val _accounts: MutableMap<ChainId, MutableList<Account>> = mutableMapOf()
+    
+    // Accounts as flow for reactive updates
+    internal val _accountsFlow = MutableStateFlow<Map<ChainId, List<Account>>>(emptyMap())
+    override val accountsFlow: StateFlow<Map<ChainId, List<Account>>> = _accountsFlow.asStateFlow()
+    
+    // Accounts as map (legacy support)
+    override val accounts: Map<ChainId, List<Account>>
+        get() = _accounts
 
     override suspend fun addNetwork(network: ChainId) {
         networks.add(network)
@@ -86,11 +95,12 @@ abstract class BaseWallet(
 
     override suspend fun removeNetwork(network: ChainId) {
         networks.remove(network)
-        accounts.remove(network)
+        _accounts.remove(network)
+        _accountsFlow.value = _accounts.toMap()
     }
 
     override suspend fun getAccount(address: String): Account? {
-        return accounts.values.flatten().find { it.address == address }
+        return _accounts.values.flatten().find { it.address == address }
     }
 
     override suspend fun refreshAccounts() {
@@ -104,12 +114,13 @@ abstract class BaseWallet(
             val cachedAccounts = loadCache()
             if (cachedAccounts != null) {
                 flowAccounts = cachedAccounts
-                accounts.clear()
+                _accounts.clear()
                 for ((network, acc) in cachedAccounts) {
-                    accounts[network] = acc.map { account ->
+                    _accounts[network] = acc.map { account ->
                         Account(account, network, getKeyForAccount(), securityDelegate)
                     }.toMutableList()
                 }
+                _accountsFlow.value = _accounts.toMap()
             }
 
             // Fetch fresh data from networks
@@ -149,8 +160,9 @@ abstract class BaseWallet(
         }
 
         flowAccounts = newFlowAccounts
-        accounts.clear()
-        accounts.putAll(newAccounts)
+        _accounts.clear()
+        _accounts.putAll(newAccounts)
+        _accountsFlow.value = _accounts.toMap()
     }
 
     protected abstract fun getKeyForAccount(): KeyProtocol?

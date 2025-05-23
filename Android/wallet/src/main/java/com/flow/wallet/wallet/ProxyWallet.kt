@@ -23,19 +23,20 @@ class ProxyWallet(
         if (account.key != null) {
             throw WalletError.InvalidWalletType
         }
-        val networkAccounts = accounts.getOrPut(account.chainID) { mutableListOf() }
+        val networkAccounts = _accounts.getOrPut(account.chainID) { mutableListOf() }
         networkAccounts.add(account)
-    }
-
-    override suspend fun awaitFirstAccount() {
-        while (accounts.isEmpty()) {
-            kotlinx.coroutines.delay(50)
-        }
+        _accountsFlow.value = _accounts.toMap()
     }
 
     override suspend fun removeAccount(address: String) {
-        accounts.values.forEach { accountList ->
-            accountList.removeIf { it.address == address }
+        var removed = false
+        _accounts.values.forEach { accountList ->
+            if (accountList.removeIf { it.address == address }) {
+                removed = true
+            }
+        }
+        if (removed) {
+            _accountsFlow.value = _accounts.toMap()
         }
     }
 
