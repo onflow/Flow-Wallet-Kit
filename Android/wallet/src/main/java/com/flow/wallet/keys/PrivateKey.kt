@@ -23,6 +23,9 @@ class PrivateKey(
         private const val KEY_SIZE = 256
         private const val KEY_ALGORITHM = "EC"
 
+        private val SECP256K1_N = java.math.BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16)
+        private val P256_N       = java.math.BigInteger("FFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551", 16)
+
         /**
          * Create a new private key with storage
          */
@@ -72,6 +75,37 @@ class PrivateKey(
             return PrivateKey(pk, storage, mapOf(
                 "restoredAt" to System.currentTimeMillis()
             ))
+        }
+
+        /**
+         * Convert signature to canonical low-s form if required by Flow.
+         */
+        private fun ensureLowS(sig: ByteArray, algo: SigningAlgorithm): ByteArray {
+            if (sig.size != 64) return sig
+
+            val r = java.math.BigInteger(1, sig.copyOfRange(0, 32))
+            var s = java.math.BigInteger(1, sig.copyOfRange(32, 64))
+
+            val n = when (algo) {
+                SigningAlgorithm.ECDSA_secp256k1 -> SECP256K1_N
+                SigningAlgorithm.ECDSA_P256      -> P256_N
+                else -> return sig
+            }
+
+            // if s > n/2, use n - s
+            if (s > n.shiftRight(1)) {
+                s = n.subtract(s)
+                // rebuild signature bytes
+                val rBytes = r.toByteArray().let { if (it.size > 32) it.copyOfRange(it.size - 32, it.size) else it }
+                val sBytes = s.toByteArray().let { if (it.size > 32) it.copyOfRange(it.size - 32, it.size) else it }
+                val out = ByteArray(64)
+                System.arraycopy(ByteArray(32 - rBytes.size), 0, out, 0, 32 - rBytes.size)
+                System.arraycopy(rBytes, 0, out, 32 - rBytes.size, rBytes.size)
+                System.arraycopy(ByteArray(32 - sBytes.size), 0, out, 32, 32 - sBytes.size)
+                System.arraycopy(sBytes, 0, out, 64 - sBytes.size, sBytes.size)
+                return out
+            }
+            return sig
         }
     }
 
@@ -126,7 +160,7 @@ class PrivateKey(
         val publicKey: wallet.core.jni.PublicKey?
         try {
             publicKey = when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1().uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false)
                 else -> null
             }
@@ -151,16 +185,18 @@ class PrivateKey(
                 else -> throw WalletError.UnsupportedSignatureAlgorithm
             }
 
-            // WalletCore returns a 65-byte signature (r || s || v) for SECP256K1 where the last byte is
-            // the recovery ID (v). Flow expects a raw 64-byte signature without this byte, so we need to
-            // strip it.  P256 signatures already have the correct 64-byte length.
             val fullSignature = pk.sign(hashed, curve)
-            if (signAlgo == SigningAlgorithm.ECDSA_secp256k1 && fullSignature.size == 65) {
-                // Drop the last byte (recovery id) – keep r || s (64 bytes)
+
+            // 1) Trim recovery-id if present for SECP256K1
+            var sig = if (signAlgo == SigningAlgorithm.ECDSA_secp256k1 && fullSignature.size == 65) {
                 fullSignature.copyOfRange(0, 64)
             } else {
                 fullSignature
             }
+
+            // 2) Enforce canonical (low-s) form – Flow rejects high-s signatures
+            sig = ensureLowS(sig, signAlgo)
+            sig
         } catch (e: Exception) {
             Log.e(TAG, "Signing failed", e)
             throw WalletError.SignError
@@ -171,7 +207,7 @@ class PrivateKey(
         var publicKey: wallet.core.jni.PublicKey?
         return try {
             publicKey = when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1().uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false)
                 else -> return false
             }

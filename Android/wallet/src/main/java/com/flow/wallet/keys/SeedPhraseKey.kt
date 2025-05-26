@@ -60,6 +60,35 @@ class SeedPhraseKey(
                 }
                 .toIntArray()
         }
+
+        private val SECP256K1_N = java.math.BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16)
+        private val P256_N       = java.math.BigInteger("FFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551", 16)
+
+        private fun ensureLowS(sig: ByteArray, algo: SigningAlgorithm): ByteArray {
+            if (sig.size != 64) return sig
+
+            val r = java.math.BigInteger(1, sig.copyOfRange(0, 32))
+            var s = java.math.BigInteger(1, sig.copyOfRange(32, 64))
+
+            val n = when (algo) {
+                SigningAlgorithm.ECDSA_secp256k1 -> SECP256K1_N
+                SigningAlgorithm.ECDSA_P256      -> P256_N
+                else -> return sig
+            }
+
+            if (s > n.shiftRight(1)) {
+                s = n.subtract(s)
+                val rBytes = r.toByteArray().let { if (it.size > 32) it.copyOfRange(it.size - 32, it.size) else it }
+                val sBytes = s.toByteArray().let { if (it.size > 32) it.copyOfRange(it.size - 32, it.size) else it }
+                val out = ByteArray(64)
+                System.arraycopy(ByteArray(32 - rBytes.size), 0, out, 0, 32 - rBytes.size)
+                System.arraycopy(rBytes, 0, out, 32 - rBytes.size, rBytes.size)
+                System.arraycopy(ByteArray(32 - sBytes.size), 0, out, 32, 32 - sBytes.size)
+                System.arraycopy(sBytes, 0, out, 64 - sBytes.size, sBytes.size)
+                return out
+            }
+            return sig
+        }
     }
 
     private val hdWallet: HDWallet = try {
@@ -106,7 +135,7 @@ class SeedPhraseKey(
             val curve = getCurveForAlgorithm(signAlgo)
             derivedPrivateKey = hdWallet.getKeyByCurve(curve, path)
             publicKey = when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> derivedPrivateKey.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_P256 -> derivedPrivateKey.getPublicKeyNist256p1().uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> derivedPrivateKey.getPublicKeySecp256k1(false)
                 else -> throw WalletError.UnsupportedSignatureAlgorithm
             }
@@ -183,7 +212,7 @@ class SeedPhraseKey(
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
             pubKey = when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> twPriv.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_P256 -> twPriv.getPublicKeyNist256p1().uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> twPriv.getPublicKeySecp256k1(false)
                 else -> null
             }
@@ -223,13 +252,16 @@ class SeedPhraseKey(
             val hashed = HasherImpl.hash(data, hashAlgo)
             val fullSignature = twPriv.sign(hashed, curve)
 
-            // WalletCore returns 65-byte signature for SECP256K1 (r||s||v). Drop the recovery byte to
-            // comply with Flow's 64-byte requirement.
-            return if (signAlgo == SigningAlgorithm.ECDSA_secp256k1 && fullSignature.size == 65) {
+            // 1) Drop recovery byte if present
+            var sig = if (signAlgo == SigningAlgorithm.ECDSA_secp256k1 && fullSignature.size == 65) {
                 fullSignature.copyOfRange(0, 64)
             } else {
                 fullSignature
             }
+
+            // 2) Canonicalize to low-s
+            sig = ensureLowS(sig, signAlgo)
+            return sig
         } catch (e: Exception) {
             Log.e(TAG, "Signing failed", e)
             throw WalletError.SignError
@@ -248,7 +280,7 @@ class SeedPhraseKey(
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
             pubKey = when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> twPriv.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_P256 -> twPriv.getPublicKeyNist256p1().uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> twPriv.getPublicKeySecp256k1(false)
                 else -> return false
             }
