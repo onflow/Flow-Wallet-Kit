@@ -221,7 +221,15 @@ class SeedPhraseKey(
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
             val hashed = HasherImpl.hash(data, hashAlgo)
-            return twPriv.sign(hashed, curve)
+            val fullSignature = twPriv.sign(hashed, curve)
+
+            // WalletCore returns 65-byte signature for SECP256K1 (r||s||v). Drop the recovery byte to
+            // comply with Flow's 64-byte requirement.
+            return if (signAlgo == SigningAlgorithm.ECDSA_secp256k1 && fullSignature.size == 65) {
+                fullSignature.copyOfRange(0, 64)
+            } else {
+                fullSignature
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Signing failed", e)
             throw WalletError.SignError

@@ -150,7 +150,17 @@ class PrivateKey(
                 SigningAlgorithm.ECDSA_secp256k1 -> Curve.SECP256K1
                 else -> throw WalletError.UnsupportedSignatureAlgorithm
             }
-            pk.sign(hashed, curve)
+
+            // WalletCore returns a 65-byte signature (r || s || v) for SECP256K1 where the last byte is
+            // the recovery ID (v). Flow expects a raw 64-byte signature without this byte, so we need to
+            // strip it.  P256 signatures already have the correct 64-byte length.
+            val fullSignature = pk.sign(hashed, curve)
+            if (signAlgo == SigningAlgorithm.ECDSA_secp256k1 && fullSignature.size == 65) {
+                // Drop the last byte (recovery id) – keep r || s (64 bytes)
+                fullSignature.copyOfRange(0, 64)
+            } else {
+                fullSignature
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Signing failed", e)
             throw WalletError.SignError
