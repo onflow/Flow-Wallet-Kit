@@ -164,7 +164,7 @@ abstract class BaseWallet(
             println("[BaseWallet] Converting flow-kmm Account to wallet-kit FlowAccount format...")
             // Convert from flow-kmm Account to wallet-kit FlowAccount format
             val flowAccount = FlowAccount(
-                address = flowApiAccount.address,
+                address = if (flowApiAccount.address.startsWith("0x")) flowApiAccount.address else "0x${flowApiAccount.address}",
                 balance = flowApiAccount.balance,
                 keys = flowApiAccount.keys?.map { key ->
                     println("[BaseWallet] Converting key - index: ${key.index}, algorithm: ${key.signingAlgorithm}")
@@ -182,7 +182,7 @@ abstract class BaseWallet(
                 expandable = flowApiAccount.expandable,
                 links = flowApiAccount.links
             )
-            println("[BaseWallet] Successfully converted to wallet-kit FlowAccount format")
+            println("[BaseWallet] Successfully converted to wallet-kit FlowAccount format with address: ${flowAccount.address}")
             
             println("[BaseWallet] Creating wallet Account wrapper...")
             // Create wrapper account
