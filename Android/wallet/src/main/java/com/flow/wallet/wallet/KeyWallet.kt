@@ -6,7 +6,6 @@ import com.flow.wallet.account.Account
 import com.flow.wallet.security.SecurityCheckDelegate
 import com.flow.wallet.errors.WalletError
 import com.flow.wallet.keys.KeyProtocol
-import com.flow.wallet.storage.Cacheable
 import com.flow.wallet.storage.StorageProtocol
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,16 +29,10 @@ class KeyWallet(
     networks: Set<ChainId> = setOf(ChainId.Mainnet, ChainId.Testnet),
     storage: StorageProtocol,
     securityDelegate: SecurityCheckDelegate? = null
-) : BaseWallet(WalletType.KEY, networks.toMutableSet(), storage, securityDelegate), Cacheable<Map<ChainId, List<FlowAccount>>> {
+) : BaseWallet(WalletType.KEY, networks.toMutableSet(), storage, securityDelegate) {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val TAG = KeyWallet::class.java.simpleName
-
-    override val cacheId: String
-        get() = "key_wallet_${key.publicKey(SigningAlgorithm.ECDSA_P256)?.let { BaseEncoding.base16().lowerCase().encode(it) } ?: ""}"
-
-    override val cachedData: Map<ChainId, List<FlowAccount>>
-        get() = _accounts.mapValues { (_, list) -> list.map { it.account } }
 
     init {
         Log.d(TAG, "Initializing KeyWallet with networks: ${networks.joinToString()}")
@@ -47,45 +40,8 @@ class KeyWallet(
         scope.launch {
             try {
                 Log.d(TAG, "Starting initial account fetch")
-                // Try to load from cache first
-                try {
-                    Log.d(TAG, "Attempting to load accounts from cache")
-                    val cachedAccounts = loadCache()
-                    if (cachedAccounts != null) {
-                        Log.d(TAG, "Successfully loaded ${cachedAccounts.size} accounts from cache")
-                        for ((network, acc) in cachedAccounts) {
-                            val accountList = acc.map { account ->
-                                Account(account, network, key, securityDelegate)
-                            }
-                            accountList.forEach { account ->
-                                addAccount(account)
-                            }
-                        }
-                    } else {
-                        Log.d(TAG, "No cached accounts found")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to load accounts from cache", e)
-                    // Clear cache on failure
-                    try {
-                        Log.d(TAG, "Clearing invalid cache")
-                        deleteCache()
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to clear cache", e)
-                    }
-                }
-                
                 fetchAccounts()
                 Log.d(TAG, "Initial account fetch completed successfully")
-                
-                // Cache the results
-                try {
-                    Log.d(TAG, "Caching fetched accounts")
-                    cache()
-                    Log.d(TAG, "Successfully cached accounts")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to cache accounts", e)
-                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error initializing wallet", e)
             }
@@ -105,7 +61,6 @@ class KeyWallet(
             networkAccounts.add(account)
             _accountsFlow.value = _accounts.toMap()
             Log.d(TAG, "Successfully added account ${account.address} to network ${account.chainID}")
-            cache() // Persist changes to cache
         } else {
             Log.d(TAG, "Account ${account.address} already exists in network ${account.chainID}")
         }
@@ -122,7 +77,6 @@ class KeyWallet(
         if (removed) {
             _accountsFlow.value = _accounts.toMap()
             Log.d(TAG, "Successfully removed account: $address")
-            cache() // Persist changes to cache
         } else {
             Log.d(TAG, "Account not found for removal: $address")
         }
