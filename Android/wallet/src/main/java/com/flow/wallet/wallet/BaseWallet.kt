@@ -4,16 +4,27 @@ import com.flow.wallet.account.Account
 import com.flow.wallet.security.SecurityCheckDelegate
 import com.flow.wallet.keys.KeyProtocol
 import com.flow.wallet.storage.StorageProtocol
+import com.flow.wallet.storage.Cacheable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.Serializable
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.Account as FlowAccount
 import org.onflow.flow.models.AccountExpandable
 import org.onflow.flow.models.Links
+
+/**
+ * Serializable data class for caching account data
+ * Since ChainId is not serializable, we use string keys
+ */
+@Serializable
+data class AccountsCache(
+    val accounts: Map<String, List<FlowAccount>> = emptyMap()
+)
 
 /**
  * Base interface for all wallet types
@@ -53,13 +64,18 @@ enum class WalletType {
  * - Account management across multiple networks
  * - Loading state management
  * - Security checks
+ * - Account caching for improved performance
  */
 abstract class BaseWallet(
     override val type: WalletType,
     override val networks: MutableSet<ChainId>,
     override val storage: StorageProtocol,
     override val securityDelegate: SecurityCheckDelegate? = null
-) : Wallet {
+) : Wallet, Cacheable<AccountsCache> {
+
+    companion object {
+        private const val CACHE_PREFIX = "Accounts"
+    }
 
     // Loading state management
     private val _isLoading = MutableStateFlow(false)
@@ -68,6 +84,9 @@ abstract class BaseWallet(
     // Accounts as mutable map
     internal val _accounts: MutableMap<ChainId, MutableList<Account>> = mutableMapOf()
     
+    // Flow accounts for caching
+    internal var flowAccounts: Map<ChainId, List<FlowAccount>> = emptyMap()
+    
     // Accounts as flow for reactive updates
     internal val _accountsFlow = MutableStateFlow<Map<ChainId, List<Account>>>(emptyMap())
     override val accountsFlow: StateFlow<Map<ChainId, List<Account>>> = _accountsFlow.asStateFlow()
@@ -75,6 +94,15 @@ abstract class BaseWallet(
     // Accounts as map (legacy support)
     override val accounts: Map<ChainId, List<Account>>
         get() = _accounts
+
+    // Cacheable implementation
+    override val cachedData: AccountsCache?
+        get() = AccountsCache(
+            accounts = flowAccounts.mapKeys { it.key.id }
+        )
+
+    override val cacheId: String
+        get() = "$CACHE_PREFIX/${type.name}"
 
     override suspend fun addNetwork(network: ChainId) {
         networks.add(network)
@@ -94,9 +122,41 @@ abstract class BaseWallet(
         fetchAccounts()
     }
 
+    // Helper function to convert string back to ChainId
+    private fun stringToChainId(chainIdStr: String): ChainId? {
+        return when (chainIdStr) {
+            "flow-mainnet" -> ChainId.Mainnet
+            "flow-testnet" -> ChainId.Testnet
+            "flow-canarynet" -> ChainId.Canary
+            "flow-emulator" -> ChainId.Emulator
+            else -> null
+        }
+    }
+
     override suspend fun fetchAccounts() {
         _isLoading.value = true
         try {
+            // Try to load from cache first
+            val cachedAccounts = loadCache()
+            if (cachedAccounts != null) {
+                val accountsMap = mutableMapOf<ChainId, List<FlowAccount>>()
+                
+                // Convert cached string keys back to ChainId
+                for ((chainIdStr, accounts) in cachedAccounts.accounts) {
+                    val chainId = stringToChainId(chainIdStr) ?: continue
+                    accountsMap[chainId] = accounts
+                }
+                
+                flowAccounts = accountsMap
+                _accounts.clear()
+                for ((network, acc) in accountsMap) {
+                    _accounts[network] = acc.map { account ->
+                        Account(account, network, getKeyForAccount(), securityDelegate)
+                    }.toMutableList()
+                }
+                _accountsFlow.value = _accounts.toMap()
+            }
+            
             // Fetch fresh data from networks
             fetchAllNetworkAccounts()
         } catch (e: Exception) {
@@ -108,6 +168,7 @@ abstract class BaseWallet(
 
     private suspend fun fetchAllNetworkAccounts() {
         val newAccounts = mutableMapOf<ChainId, MutableList<Account>>()
+        val newFlowAccounts = mutableMapOf<ChainId, List<FlowAccount>>()
 
         // Fetch accounts from all networks in parallel
         coroutineScope {
@@ -116,6 +177,7 @@ abstract class BaseWallet(
                     try {
                         val accounts = fetchAccountsForNetwork(network)
                         if (accounts.isNotEmpty()) {
+                            newFlowAccounts[network] = accounts
                             newAccounts[network] = accounts.map { 
                                 Account(it, network, getKeyForAccount(), securityDelegate)
                             }.toMutableList()
@@ -130,7 +192,15 @@ abstract class BaseWallet(
 
         _accounts.clear()
         _accounts.putAll(newAccounts)
+        flowAccounts = newFlowAccounts
         _accountsFlow.value = _accounts.toMap()
+        
+        // Cache the fresh data
+        try {
+            cache()
+        } catch (e: Exception) {
+            println("Error caching accounts: ${e.message}")
+        }
     }
 
     /**
