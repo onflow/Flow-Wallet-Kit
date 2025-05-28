@@ -265,9 +265,7 @@ class PrivateKey(
                     throw WalletError.EmptyKey
                 }
                 try {
-                    val newPk = TWPrivateKey(data)
-                    pk.data().copyInto(newPk.data())
-                    pk = newPk
+                    pk = TWPrivateKey(data)
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to import private key", e)
                     throw WalletError.InvalidPrivateKey
