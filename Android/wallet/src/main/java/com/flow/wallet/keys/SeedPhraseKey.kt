@@ -271,6 +271,51 @@ class SeedPhraseKey(
         }
     }
 
+    /**
+     * Sign already-hashed data without additional hashing
+     * This method is used by CryptoProviders when the data is already hashed by the KMM SDK
+     * @param data Either already-hashed data (32-byte SHA-256 digest) or raw transaction payload
+     * @param signAlgo Signing algorithm to use
+     * @return Signature bytes in Flow's 64-byte r||s format
+     */
+    suspend fun signHash(data: ByteArray, signAlgo: SigningAlgorithm): ByteArray {
+        if (keyPair == null) throw WalletError.EmptySignKey
+        
+        var twPriv: wallet.core.jni.PrivateKey? = null
+        try {
+            val curve = getCurveForAlgorithm(signAlgo)
+            twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
+            
+            // Check if data is already a 32-byte hash or if it's the full transaction payload
+            val hashToSign = if (data.size == 32) {
+                // Data is already a 32-byte hash - use it directly
+                data
+            } else {
+                // Data is the full transaction payload - hash it first
+                HasherImpl.hash(data, HashingAlgorithm.SHA2_256)
+            }
+            
+            val fullSignature = twPriv.sign(hashToSign, curve)
+
+            // 1) Drop recovery byte if present
+            var sig = if (signAlgo == SigningAlgorithm.ECDSA_secp256k1 && fullSignature.size == 65) {
+                fullSignature.copyOfRange(0, 64)
+            } else {
+                fullSignature
+            }
+
+            // 2) Ensure canonical low-s form
+            sig = ensureLowS(sig, signAlgo)
+            return sig
+        } catch (e: Exception) {
+            throw WalletError.SignError
+        } finally {
+            twPriv?.let {
+                // Clean up
+            }
+        }
+    }
+
     override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
         if (keyPair == null) return false
         
