@@ -8,8 +8,12 @@ interface CryptoProvider {
     fun getPublicKey(): String
     suspend fun getUserSignature(jwt: String): String
     suspend fun signData(data: ByteArray): String
-    fun getSigner(): Signer
+    fun getSigner(hashingAlgorithm: HashingAlgorithm): org.onflow.flow.models.Signer
     fun getHashAlgorithm(): HashingAlgorithm
     fun getSignatureAlgorithm(): SigningAlgorithm
     fun getKeyWeight(): Int
+
+    interface Signer {
+        suspend fun sign(bytes: ByteArray): ByteArray
+    }
 }
