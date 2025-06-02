@@ -216,7 +216,7 @@ class SeedPhraseKey(
     override suspend fun sign(data: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): ByteArray {
         if (keyPair == null) throw WalletError.EmptySignKey
         
-        var twPriv: wallet.core.jni.PrivateKey? = null
+        var twPriv: wallet.core.jni.PrivateKey?
         try {
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
@@ -242,7 +242,7 @@ class SeedPhraseKey(
 
     override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
         if (keyPair == null) return false
-        
+
         var twPriv: wallet.core.jni.PrivateKey?
         var pubKey: wallet.core.jni.PublicKey?
         try {
