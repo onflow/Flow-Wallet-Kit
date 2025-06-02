@@ -95,4 +95,6 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
     implementation "org.jetbrains.kotlin:kotlin-test:2.0.21"
+    testImplementation "com.ionspin.kotlin:bignum:0.3.8"
+    androidTestImplementation "com.ionspin.kotlin:bignum:0.3.8"
 }
