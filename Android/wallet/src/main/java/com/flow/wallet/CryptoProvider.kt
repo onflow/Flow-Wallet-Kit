@@ -1,7 +1,6 @@
 package com.flow.wallet
 
 import org.onflow.flow.models.HashingAlgorithm
-import org.onflow.flow.models.Signer
 import org.onflow.flow.models.SigningAlgorithm
 
 interface CryptoProvider {

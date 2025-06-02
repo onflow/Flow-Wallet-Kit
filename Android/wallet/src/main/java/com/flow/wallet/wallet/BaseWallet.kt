@@ -14,8 +14,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.Account as FlowAccount
-import org.onflow.flow.models.AccountExpandable
-import org.onflow.flow.models.Links
 
 /**
  * Serializable data class for caching account data
@@ -264,7 +262,7 @@ abstract class BaseWallet(
         var accountRemoved = false
         
         // Remove from all networks
-        _accounts.forEach { (network, accounts) ->
+        _accounts.forEach { (_, accounts) ->
             val sizeBefore = accounts.size
             accounts.removeIf { it.address == address }
             val sizeAfter = accounts.size

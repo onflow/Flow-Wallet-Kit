@@ -1,6 +1,5 @@
 package com.flow.wallet.wallet
 
-import com.google.common.io.BaseEncoding
 import com.flow.wallet.Network
 import com.flow.wallet.account.Account
 import com.flow.wallet.security.SecurityCheckDelegate
@@ -17,7 +16,6 @@ import org.onflow.flow.ChainId
 import org.onflow.flow.models.Account as FlowAccount
 import org.onflow.flow.models.SigningAlgorithm
 import android.util.Log
-import com.flow.wallet.keys.PrivateKey
 import com.flow.wallet.keys.toFlowIndexerHex
 
 /**

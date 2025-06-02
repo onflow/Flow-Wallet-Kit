@@ -19,7 +19,6 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonArray
@@ -205,7 +204,7 @@ object Network {
      * @throws WalletError if the request fails
      */
     suspend fun findAccount(publicKey: String, chainId: ChainId): KeyIndexerResponse {
-        val url = chainId.keyIndexerUrl(publicKey) ?: throw WalletError.IncorrectKeyIndexerURL
+        val url = chainId.keyIndexerUrl(publicKey)
         val response = ktorClient.get(url) {
             headers {
                 append("Accept", "application/json")
@@ -323,7 +322,7 @@ object Network {
         return model.accountResponse
     }
 
-    fun ChainId.keyIndexerUrl(publicKey: String): URL {
+    private fun ChainId.keyIndexerUrl(publicKey: String): URL {
         val baseUrl = when (this) {
             ChainId.Mainnet -> "https://production.key-indexer.flow.com"
             ChainId.Testnet -> "https://staging.key-indexer.flow.com"

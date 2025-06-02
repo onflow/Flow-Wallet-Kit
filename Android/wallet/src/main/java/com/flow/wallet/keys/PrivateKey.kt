@@ -168,7 +168,7 @@ class PrivateKey(
     }
 
     override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
-        var publicKey: wallet.core.jni.PublicKey?
+        val publicKey: wallet.core.jni.PublicKey?
         return try {
             publicKey = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> pk.publicKeyNist256p1.uncompressed()

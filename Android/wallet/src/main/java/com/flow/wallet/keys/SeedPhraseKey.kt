@@ -129,8 +129,8 @@ class SeedPhraseKey(
     }
 
     private fun deriveKeyPair(path: String, signAlgo: SigningAlgorithm = SigningAlgorithm.ECDSA_secp256k1): KeyPair {
-        var derivedPrivateKey: wallet.core.jni.PrivateKey? = null
-        var publicKey: wallet.core.jni.PublicKey? = null
+        var derivedPrivateKey: wallet.core.jni.PrivateKey?
+        var publicKey: wallet.core.jni.PublicKey?
         try {
             val curve = getCurveForAlgorithm(signAlgo)
             derivedPrivateKey = hdWallet.getKeyByCurve(curve, path)
@@ -206,8 +206,8 @@ class SeedPhraseKey(
     }
 
     override fun publicKey(signAlgo: SigningAlgorithm): ByteArray? {
-        var twPriv: wallet.core.jni.PrivateKey? = null
-        var pubKey: wallet.core.jni.PublicKey? = null
+        var twPriv: wallet.core.jni.PrivateKey?
+        var pubKey: wallet.core.jni.PublicKey?
         try {
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
@@ -228,7 +228,7 @@ class SeedPhraseKey(
     }
 
     override fun privateKey(signAlgo: SigningAlgorithm): ByteArray? {
-        var twPriv: wallet.core.jni.PrivateKey? = null
+        var twPriv: wallet.core.jni.PrivateKey?
         try {
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
@@ -319,8 +319,8 @@ class SeedPhraseKey(
     override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
         if (keyPair == null) return false
         
-        var twPriv: wallet.core.jni.PrivateKey? = null
-        var pubKey: wallet.core.jni.PublicKey? = null
+        var twPriv: wallet.core.jni.PrivateKey?
+        var pubKey: wallet.core.jni.PublicKey?
         try {
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
