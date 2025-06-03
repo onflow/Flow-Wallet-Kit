@@ -1,5 +1,6 @@
 package com.flow.wallet
 
+import android.util.Log
 import com.flow.wallet.errors.WalletError
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
@@ -38,6 +39,7 @@ import org.onflow.flow.models.Account as FlowAccount
  * Handles communication with Flow blockchain and key indexer services
  */
 object Network {
+    const val TAG = "Network"
     // Define custom JSON configuration
     private val json = Json {
         ignoreUnknownKeys = true
@@ -220,14 +222,14 @@ object Network {
         try {
             return parseKeyIndexerResponse(responseText, publicKey)
         } catch (e: Exception) {
-            println("Parsing failed: ${e.message}")
+            Log.d(TAG,"Parsing failed: ${e.message}")
             e.printStackTrace()
             
             // Try automatic deserialization as a fallback
             try {
                 return json.decodeFromString<KeyIndexerResponse>(responseText)
             } catch (e: Exception) {
-                println("Automatic deserialization also failed: ${e.message}")
+                Log.d(TAG,"Automatic deserialization also failed: ${e.message}")
                 e.printStackTrace()
                 // Return empty response in case of failures
                 return KeyIndexerResponse(publicKey, emptyList())
@@ -239,7 +241,7 @@ object Network {
      * Manual parsing of the key indexer response to avoid serialization issues
      */
     private fun parseKeyIndexerResponse(jsonString: String, publicKey: String): KeyIndexerResponse {
-        println("Attempting manual parsing of response")
+        Log.d(TAG,"Attempting manual parsing of response")
         val jsonElement = json.parseToJsonElement(jsonString)
         val jsonObject = jsonElement.jsonObject
         
@@ -286,16 +288,15 @@ object Network {
                     )
                     
                     accounts.add(account)
-                    println("Successfully parsed account: $address")
                 } catch (e: Exception) {
-                    println("Error parsing account: ${e.message}")
+                    Log.d(TAG,"Error parsing account: ${e.message}")
                 }
             }
         } else {
-            println("No 'accounts' field found in the response")
+            Log.d(TAG,"No 'accounts' field found in the response")
         }
-        
-        println("Manual parsing complete, found ${accounts.size} accounts")
+
+        Log.d(TAG, "Manual parsing complete, found ${accounts.size} accounts")
         return KeyIndexerResponse(publicKey, accounts)
     }
 
@@ -318,7 +319,7 @@ object Network {
      */
     suspend fun findFlowAccountByKey(publicKey: String, chainId: ChainId): List<FlowAccount> {
         val model = findAccount(publicKey, chainId)
-        println("Key indexer response: " + model.accountResponse)
+        Log.d(TAG,"Key indexer response: " + model.accountResponse)
         return model.accountResponse
     }
 
