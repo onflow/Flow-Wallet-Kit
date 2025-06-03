@@ -20,7 +20,7 @@ object WalletFactory {
         networks: Set<ChainId> = setOf(ChainId.Mainnet, ChainId.Testnet),
         storage: StorageProtocol
     ): Wallet {
-        return com.flow.wallet.wallet.WatchWallet(address, networks, storage)
+        return WatchWallet(address, networks, storage)
     }
 
     /**

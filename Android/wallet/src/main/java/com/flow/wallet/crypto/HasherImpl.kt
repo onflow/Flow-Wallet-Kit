@@ -3,7 +3,6 @@ package com.flow.wallet.crypto
 import com.flow.wallet.errors.WalletError
 import org.onflow.flow.models.HashingAlgorithm
 import wallet.core.jni.Hash
-import wallet.core.jni.PrivateKey
 
 /**
  * Implementation of hashing functionality using Trust Wallet's core library

@@ -1,7 +1,5 @@
 package com.flow.wallet
 
-import com.flow.wallet.Network.keyIndexerUrl
-import com.flow.wallet.errors.WalletError
 import io.ktor.client.*
 import io.ktor.client.engine.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -90,7 +88,7 @@ class NetworkTest {
         val response = Network.findAccount("valid-key", ChainId.Testnet)
         assertEquals("valid-key", response.publicKey)
         assertEquals(1, response.accounts.size)
-        
+
         val account = response.accounts[0]
         assertEquals("0x123", account.address)
         assertEquals(0, account.keyId)
@@ -111,11 +109,11 @@ class NetworkTest {
     fun testFindFlowAccountByKey(): Unit = runBlocking {
         val accounts = Network.findFlowAccountByKey("valid-key", ChainId.Testnet)
         assertEquals(1, accounts.size)
-        
+
         val account = accounts[0]
         assertEquals("0x123", account.address)
         assertEquals(1, account.keys?.size)
-        
+
         val key = account.keys?.first()
         assertNotNull(key)
         if (key != null) {
@@ -132,10 +130,10 @@ class NetworkTest {
     fun testKeyIndexerUrl() {
         val mainnetUrl = ChainId.Mainnet.keyIndexerUrl("test-key")
         assertTrue(mainnetUrl.toString().contains("production.key-indexer.flow.com"))
-        
+
         val testnetUrl = ChainId.Testnet.keyIndexerUrl("test-key")
         assertTrue(testnetUrl.toString().contains("staging.key-indexer.flow.com"))
-        
+
         assertFailsWith<Exception> {
             ChainId.Emulator.keyIndexerUrl("test-key")
         }
@@ -145,15 +143,15 @@ class NetworkTest {
     fun testAccountResponseConversion(): Unit = runBlocking {
         val response = Network.findAccount("valid-key", ChainId.Testnet)
         val flowAccounts = response.accountResponse
-        
+
         assertEquals(1, flowAccounts.size)
         val account = flowAccounts[0]
-        
+
         assertEquals("0x123", account.address)
         assertEquals("0", account.balance)
         account.contracts?.let { assertTrue(it.isEmpty()) }
         assertNull(account.links)
-        
+
         val key = account.keys?.first()
         assertNotNull(key)
         if (key != null) {
@@ -181,4 +179,4 @@ private class TestEngine : HttpClientEngineFactory<HttpClientEngineConfig> {
             override fun close() {}
         }
     }
-} 
+}
