@@ -153,10 +153,14 @@ class PrivateKey(
 
             val fullSignature = pk.sign(hashed, curve)
 
-            // 1) Trim recovery-id if present for SECP256K1
-            val sig = if (signAlgo == SigningAlgorithm.ECDSA_secp256k1 && fullSignature.size == 65) {
+            // Flow blockchain expects 64-byte signatures for all ECDSA algorithms
+            // TrustWallet Core sometimes includes a recovery ID byte, making signatures 65 bytes
+            // We need to trim this for both ECDSA_P256 and ECDSA_secp256k1
+            val sig = if (fullSignature.size == 65) {
+                Log.d(TAG, "Trimming recovery ID from 65-byte signature for $signAlgo")
                 fullSignature.copyOfRange(0, 64)
             } else {
+                Log.d(TAG, "Using signature as-is (${fullSignature.size} bytes) for $signAlgo")
                 fullSignature
             }
 
