@@ -70,7 +70,7 @@ class MainActivity : AppCompatActivity() {
         try {
             Log.d("MainActivity", "Starting key generation...")
             
-            // Create a new private key using the modern Flow Wallet Kit API
+            // Create a new private key using the Flow-Wallet-Kit SDK
             privateKey = PrivateKey.create(storage)
             Log.d("MainActivity", "Private key created successfully")
             
