@@ -8,10 +8,6 @@ import com.flow.wallet.storage.StorageProtocol
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
 import wallet.core.jni.Curve
-import java.security.KeyFactory
-import java.security.KeyPair
-import java.security.spec.PKCS8EncodedKeySpec
-import java.security.spec.X509EncodedKeySpec
 import wallet.core.jni.PrivateKey as TWPrivateKey
 /**
  * Implementation of KeyProtocol using raw private keys
@@ -83,33 +79,16 @@ class PrivateKey(
     override val isHardwareBacked: Boolean = false
     override val advance: Any = Unit
 
-    override val key: KeyPair
-        get() = try {
-            var publicKey: wallet.core.jni.PublicKey? = null
-            try {
-                publicKey = pk.getPublicKeySecp256k1(false)
-                val keyFactory = KeyFactory.getInstance("EC")
-                val privateKeySpec = PKCS8EncodedKeySpec(pk.data())
-                val publicKeySpec = X509EncodedKeySpec(publicKey.data())
-                KeyPair(
-                    keyFactory.generatePublic(publicKeySpec),
-                    keyFactory.generatePrivate(privateKeySpec)
-                )
-            } finally {
-                publicKey = null
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to create KeyPair", e)
-            throw WalletError.InitPrivateKeyFailed
-        }
+    override val key: Any
+        get() = pk
 
     override val secret: ByteArray
         get() = pk.data()
 
     override val id: String
-        get() = key.public.encoded.let { 
+        get() = publicKey(SigningAlgorithm.ECDSA_P256)?.let {
             com.google.common.io.BaseEncoding.base64().encode(it)
-        }
+        } ?: throw WalletError.InitPrivateKeyFailed
 
     /**
      * Get key properties
@@ -144,10 +123,10 @@ class PrivateKey(
     }
 
     override fun publicKey(signAlgo: SigningAlgorithm): ByteArray? {
-        var publicKey: wallet.core.jni.PublicKey? = null
+        val publicKey: wallet.core.jni.PublicKey?
         try {
             publicKey = when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1().uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false)
                 else -> null
             }
@@ -156,7 +135,6 @@ class PrivateKey(
             Log.e(TAG, "Failed to get public key", e)
             return null
         } finally {
-            publicKey = null
         }
     }
 
@@ -172,7 +150,21 @@ class PrivateKey(
                 SigningAlgorithm.ECDSA_secp256k1 -> Curve.SECP256K1
                 else -> throw WalletError.UnsupportedSignatureAlgorithm
             }
-            pk.sign(hashed, curve)
+
+            val fullSignature = pk.sign(hashed, curve)
+
+            // Flow blockchain expects 64-byte signatures for all ECDSA algorithms
+            // TrustWallet Core sometimes includes a recovery ID byte, making signatures 65 bytes
+            // We need to trim this for both ECDSA_P256 and ECDSA_secp256k1
+            val sig = if (fullSignature.size == 65) {
+                Log.d(TAG, "Trimming recovery ID from 65-byte signature for $signAlgo")
+                fullSignature.copyOfRange(0, 64)
+            } else {
+                Log.d(TAG, "Using signature as-is (${fullSignature.size} bytes) for $signAlgo")
+                fullSignature
+            }
+
+            sig
         } catch (e: Exception) {
             Log.e(TAG, "Signing failed", e)
             throw WalletError.SignError
@@ -180,24 +172,20 @@ class PrivateKey(
     }
 
     override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
-        var publicKey: wallet.core.jni.PublicKey? = null
+        val publicKey: wallet.core.jni.PublicKey?
         return try {
             publicKey = when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_P256 -> pk.publicKeyNist256p1.uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false)
                 else -> return false
             }
             val hashed = HasherImpl.hash(message, hashAlgo)
-            when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> publicKey.verify(hashed, signature)
-                SigningAlgorithm.ECDSA_secp256k1 -> publicKey.verify(hashed, signature)
-                else -> false
-            }
+            publicKey.verify(hashed, signature)
+
         } catch (e: Exception) {
             Log.e(TAG, "Signature verification failed", e)
             false
         } finally {
-            publicKey = null
         }
     }
 
@@ -242,9 +230,7 @@ class PrivateKey(
                     throw WalletError.EmptyKey
                 }
                 try {
-                    val newPk = TWPrivateKey(data)
-                    pk.data().copyInto(newPk.data())
-                    pk = newPk
+                    pk = TWPrivateKey(data)
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to import private key", e)
                     throw WalletError.InvalidPrivateKey

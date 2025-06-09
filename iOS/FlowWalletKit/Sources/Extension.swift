@@ -74,27 +74,6 @@ extension Flow.SignatureAlgorithm {
     }
 }
 
-// MARK: - PublicKey Extensions
-
-extension PublicKey {
-    /// Format public key by removing the '04' prefix from uncompressed format
-    ///
-    /// In elliptic curve cryptography, uncompressed public keys typically start
-    /// with '04' to indicate the format. Flow expects the key without this prefix.
-    ///
-    /// Example:
-    /// ```swift
-    /// let formattedKey = publicKey.fromat() // Note: typo preserved for compatibility
-    /// // Input:  "04a1b2c3..."
-    /// // Output: "a1b2c3..."
-    /// ```
-    ///
-    /// - Returns: Formatted public key string without the '04' prefix
-    func fromat() -> String {
-        uncompressed.data.hexValue.dropPrefix("04")
-    }
-}
-
 // MARK: - String Extensions
 
 extension String {

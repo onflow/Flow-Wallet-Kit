@@ -1,0 +1,109 @@
+---
+title: Error Handling
+description: Error handling documentation for Flow Wallet Kit iOS SDK
+---
+
+# Error Handling
+
+The Flow Wallet Kit for iOS implements comprehensive error handling to help developers handle and debug issues effectively.
+
+Flow Wallet Kit provides comprehensive error handling through the `FWKError` enum. This documentation covers all possible errors you might encounter while using the SDK and how to handle them.
+
+## Error Categories
+
+### General Errors
+
+| Error | Description | Common Causes |
+|-------|-------------|---------------|
+| `noImplement` | Feature not implemented | Attempting to use planned but unavailable functionality |
+| `emptyKeychain` | No keys in keychain | Missing or deleted keychain entries |
+| `emptyKey` | Invalid key data | Corrupted or missing key data |
+| `emptySignKey` | Missing signing key | Attempting to sign without setting up a key |
+
+### Cryptographic Errors
+
+| Error | Description | Common Causes |
+|-------|-------------|---------------|
+| `unsupportHashAlgorithm` | Unsupported hash algorithm | Using non-supported hashing method |
+| `unsupportSignatureAlgorithm` | Unsupported signature algorithm | Using non-supported signing method |
+| `initChaChapolyFailed` | ChaCha20-Poly1305 initialization failed | Encryption setup issues |
+| `initHDWalletFailed` | HD wallet initialization failed | Invalid entropy or seed phrase |
+| `initPrivateKeyFailed` | Private key initialization failed | Invalid key data |
+| `restoreWalletFailed` | Wallet restoration failed | Corrupted backup data |
+| `invaildSignatureAlgorithm` | Invalid signature algorithm | Unknown signing algorithm specified |
+| `invaildEVMAddress` | Invalid EVM address | Malformed Ethereum address |
+
+### Authentication Errors
+
+| Error | Description | Common Causes |
+|-------|-------------|---------------|
+| `invaildPassword` | Invalid password | Wrong password for decryption |
+| `invaildPrivateKey` | Invalid private key format | Malformed private key data |
+| `invaildKeyStoreJSON` | Invalid KeyStore JSON | Malformed or incomplete KeyStore file |
+| `invaildKeyStorePassword` | Invalid KeyStore password | Wrong password for KeyStore |
+| `signError` | Signing operation failed | Transaction signing issues |
+| `initPublicKeyFailed` | Public key initialization failed | Key derivation issues |
+| `failedPassSecurityCheck` | Security check failed | Failed security validation |
+
+### Network Errors
+
+| Error | Description | Common Causes |
+|-------|-------------|---------------|
+| `incorrectKeyIndexerURL` | Invalid key indexer URL | Malformed service URL |
+| `keyIndexerRequestFailed` | Key indexer request failed | Network or service issues |
+| `decodeKeyIndexerFailed` | Key indexer response decode failed | Invalid response format |
+
+### Storage Errors
+
+| Error | Description | Common Causes |
+|-------|-------------|---------------|
+| `loadCacheFailed` | Cache loading failed | Corrupted cache data |
+| `invaildWalletType` | Invalid wallet type | Unsupported operation for wallet type |
+| `cacheDecodeFailed` | Cache decode failed | Invalid cache data format |
+| `emptyCreatedAddress` | Empty created address | Account creation failure |
+
+## Error Handling Example
+
+Here's how to properly handle errors in your code:
+
+```swift
+do {
+    let wallet = try await FlowWallet.create()
+    try await wallet.sign(transaction)
+} catch FWKError.emptySignKey {
+    // Handle missing signing key
+    print("No signing key available")
+} catch FWKError.signError {
+    // Handle signing failure
+    print("Failed to sign transaction")
+} catch {
+    // Handle other errors
+    print("Unexpected error: \(error)")
+}
+```
+
+## Error Codes
+
+Each error case has a unique error code that can be accessed through the `errorCode` property. The error codes are based on the order of declaration in the `FWKError` enum.
+
+```swift
+let error = FWKError.emptySignKey
+print(error.description) // Prints: "FWKError Code: 3-emptySignKey"
+```
+
+## Best Practices
+
+1. **Always handle specific errors**: Catch and handle specific error cases that your application needs to respond to differently.
+2. **Provide user feedback**: Convert technical errors into user-friendly messages.
+3. **Log errors**: Use the error codes and descriptions for logging and debugging.
+4. **Security considerations**: Never expose sensitive information in error messages.
+
+## Common Error Resolution
+
+Here are some common approaches to resolving specific errors:
+
+- **emptyKeychain**: Ensure proper key initialization and storage
+- **initHDWalletFailed**: Verify seed phrase or entropy input
+- **signError**: Check key permissions and transaction format
+- **keyIndexerRequestFailed**: Verify network connection and service status
+- **loadCacheFailed**: Clear cache and retry operation 

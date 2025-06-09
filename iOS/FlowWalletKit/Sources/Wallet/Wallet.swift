@@ -34,6 +34,8 @@ import Foundation
 /// - Caching account information
 /// - Supporting both key-based and watch-only wallets
 public class Wallet: ObservableObject {
+    
+    static let fullWeightThreshold = 1000
 
     // MARK: - Properties
     
@@ -85,6 +87,7 @@ public class Wallet: ObservableObject {
         if let cacheStorage {
             self.cacheStorage = cacheStorage
         }
+        try? loadCachedAccount()
     }
     
     /// Create a new account on the Flow blockchain
@@ -95,6 +98,27 @@ public class Wallet: ObservableObject {
     }
 
     // MARK: - Public Methods
+    
+    /// Load cached all accounts associated with this wallet if available
+    public func loadCachedAccount() throws {
+        do {
+            if let model = try loadCache() {
+                flowAccounts = model
+                accounts = [Flow.ChainID: [Account]]()
+                for network in model.keys {
+                    if let acc = model[network] {
+                        accounts?[network] = acc.compactMap {
+                            Account(account: $0, chainID: network, key: type.key, securityDelegate: securityDelegate)
+                        }
+                    }
+                }
+            }
+        } catch FWKError.cacheDecodeFailed {
+            //TODO: Handle no cache log
+            try? deleteCache()
+            throw FWKError.cacheDecodeFailed
+        }
+    }
 
     /// Fetch all accounts associated with this wallet
     /// This method performs the following steps:
@@ -102,20 +126,6 @@ public class Wallet: ObservableObject {
     /// 2. Fetches fresh account data from networks
     /// 3. Updates the cache with new data
     public func fetchAccount() async throws {
-        do {
-            if let model = try loadCache() {
-                flowAccounts = model
-                accounts = [Flow.ChainID: [Account]]()
-                for network in model.keys {
-                    if let acc = model[network] {
-                        accounts?[network] = acc.compactMap { Account(account: $0, chainID: network, key: type.key, securityDelegate: securityDelegate) }
-                    }
-                }
-            }
-        } catch FWKError.cacheDecodeFailed {
-            //TODO: Handle no cache log
-            try? deleteCache()
-        }
         try await _ = fetchAllNetworkAccounts()
         try cache()
     }
@@ -228,7 +238,8 @@ public class Wallet: ObservableObject {
             return []
         }()
 
+        let accountList = try await p256KeyAccounts + secp256k1KeyAccounts
         // Combine results from both parallel operations
-        return try await p256KeyAccounts + secp256k1KeyAccounts
+        return accountList.filter{ $0.keys.hasSignleFullWeightKey }
     }
 }

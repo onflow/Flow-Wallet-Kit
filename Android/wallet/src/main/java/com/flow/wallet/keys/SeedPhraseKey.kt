@@ -100,13 +100,13 @@ class SeedPhraseKey(
     }
 
     private fun deriveKeyPair(path: String, signAlgo: SigningAlgorithm = SigningAlgorithm.ECDSA_secp256k1): KeyPair {
-        var derivedPrivateKey: wallet.core.jni.PrivateKey? = null
-        var publicKey: wallet.core.jni.PublicKey? = null
+        var derivedPrivateKey: wallet.core.jni.PrivateKey?
+        var publicKey: wallet.core.jni.PublicKey?
         try {
             val curve = getCurveForAlgorithm(signAlgo)
             derivedPrivateKey = hdWallet.getKeyByCurve(curve, path)
             publicKey = when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> derivedPrivateKey.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_P256 -> derivedPrivateKey.getPublicKeyNist256p1().uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> derivedPrivateKey.getPublicKeySecp256k1(false)
                 else -> throw WalletError.UnsupportedSignatureAlgorithm
             }
@@ -177,13 +177,13 @@ class SeedPhraseKey(
     }
 
     override fun publicKey(signAlgo: SigningAlgorithm): ByteArray? {
-        var twPriv: wallet.core.jni.PrivateKey? = null
-        var pubKey: wallet.core.jni.PublicKey? = null
+        var twPriv: wallet.core.jni.PrivateKey?
+        var pubKey: wallet.core.jni.PublicKey?
         try {
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
             pubKey = when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> twPriv.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_P256 -> twPriv.getPublicKeyNist256p1().uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> twPriv.getPublicKeySecp256k1(false)
                 else -> null
             }
@@ -199,7 +199,7 @@ class SeedPhraseKey(
     }
 
     override fun privateKey(signAlgo: SigningAlgorithm): ByteArray? {
-        var twPriv: wallet.core.jni.PrivateKey? = null
+        var twPriv: wallet.core.jni.PrivateKey?
         try {
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
@@ -216,12 +216,21 @@ class SeedPhraseKey(
     override suspend fun sign(data: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): ByteArray {
         if (keyPair == null) throw WalletError.EmptySignKey
         
-        var twPriv: wallet.core.jni.PrivateKey? = null
+        var twPriv: wallet.core.jni.PrivateKey?
         try {
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
             val hashed = HasherImpl.hash(data, hashAlgo)
-            return twPriv.sign(hashed, curve)
+            val fullSignature = twPriv.sign(hashed, curve)
+
+            // 1) Drop recovery byte if present
+            val sig = if (signAlgo == SigningAlgorithm.ECDSA_secp256k1 && fullSignature.size == 65) {
+                fullSignature.copyOfRange(0, 64)
+            } else {
+                fullSignature
+            }
+
+            return sig
         } catch (e: Exception) {
             Log.e(TAG, "Signing failed", e)
             throw WalletError.SignError
@@ -233,14 +242,14 @@ class SeedPhraseKey(
 
     override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
         if (keyPair == null) return false
-        
-        var twPriv: wallet.core.jni.PrivateKey? = null
-        var pubKey: wallet.core.jni.PublicKey? = null
+
+        var twPriv: wallet.core.jni.PrivateKey?
+        var pubKey: wallet.core.jni.PublicKey?
         try {
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
             pubKey = when (signAlgo) {
-                SigningAlgorithm.ECDSA_P256 -> twPriv.getPublicKeyNist256p1()
+                SigningAlgorithm.ECDSA_P256 -> twPriv.getPublicKeyNist256p1().uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> twPriv.getPublicKeySecp256k1(false)
                 else -> return false
             }

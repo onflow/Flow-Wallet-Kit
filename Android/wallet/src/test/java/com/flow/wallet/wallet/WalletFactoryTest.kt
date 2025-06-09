@@ -42,11 +42,11 @@ class WalletFactoryTest {
     private val testAddress = "0x123"
     private val testKey = PrivateKey(TWPrivateKey(), storage)
     private val testCryptoProvider = TestCryptoProvider()
-    
+
     @Test
     fun testCreateKeyWallet() = runBlocking {
         val wallet = WalletFactory.createKeyWallet(testKey, testNetworks, storage)
-        
+
         assertNotNull(wallet)
         assertEquals(WalletType.KEY, wallet.type)
         assertEquals(testNetworks, wallet.networks)
@@ -56,7 +56,7 @@ class WalletFactoryTest {
     @Test
     fun testCreateWatchWallet() = runBlocking {
         val wallet = WalletFactory.createWatchWallet(testAddress, testNetworks, storage)
-        
+
         assertNotNull(wallet)
         assertEquals(WalletType.WATCH, wallet.type)
         assertEquals(testNetworks, wallet.networks)
@@ -66,10 +66,10 @@ class WalletFactoryTest {
     @Test
     fun testCreateProxyWallet() = runBlocking {
         val wallet = WalletFactory.createProxyWallet(testCryptoProvider, testNetworks, storage)
-        
+
         assertNotNull(wallet)
         assertEquals(WalletType.PROXY, wallet.type)
         assertEquals(testNetworks, wallet.networks)
         assertTrue(wallet is ProxyWallet)
     }
-} 
+}

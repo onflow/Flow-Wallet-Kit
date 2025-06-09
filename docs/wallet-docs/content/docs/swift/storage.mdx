@@ -1,0 +1,222 @@
+---
+title: Storage
+description: Storage system documentation for Flow Wallet Kit iOS SDK
+---
+
+# Storage
+
+The Flow Wallet Kit for iOS implements a secure and efficient storage system for managing wallet data and user preferences.
+
+# Storage Layer
+
+Flow Wallet Kit provides a flexible and secure storage system for managing sensitive wallet data. The storage layer is designed to be modular, allowing different storage backends while maintaining a consistent interface.
+
+## Storage Protocol
+
+The `StorageProtocol` defines the core interface for all storage implementations:
+
+```swift
+public protocol StorageProtocol {
+    var allKeys: [String] { get }
+    func findKey(_ keyword: String) throws -> [String]
+    func get(_ key: String) throws -> Data?
+    func set(_ key: String, value: Data) throws
+    func remove(_ key: String) throws
+    func removeAll() throws
+}
+```
+
+## Storage Implementations
+
+### Keychain Storage
+
+The `KeychainStorage` implementation provides secure storage using iOS Keychain:
+
+```swift
+let storage = KeychainStorage()
+
+// Store a private key
+try storage.set("wallet.privateKey", value: privateKeyData)
+
+// Retrieve the key
+if let keyData = try storage.get("wallet.privateKey") {
+    // Use the key data
+}
+```
+
+#### Features
+- Secure storage backed by iOS Keychain
+- Automatic data encryption
+- Persistence across app reinstalls
+- Biometric protection support
+
+### File System Storage
+
+The `FileSystemStorage` implementation provides encrypted file-based storage:
+
+```swift
+let storage = FileSystemStorage()
+
+// Store wallet data
+try storage.set("wallet.config", value: configData)
+
+// Find all wallet-related keys
+let keys = try storage.findKey("wallet")
+```
+
+#### Features
+- File-based encrypted storage
+- Suitable for larger data sets
+- Configurable encryption
+- Backup-friendly
+
+## Best Practices
+
+### 1. Key Naming Conventions
+
+Use consistent key naming patterns:
+```swift
+// Good
+"wallet.privateKey"
+"wallet.account.main"
+"wallet.settings.network"
+
+// Avoid
+"key1"
+"walletStuff"
+"misc_data"
+```
+
+### 2. Error Handling
+
+Always handle storage errors appropriately:
+
+```swift
+do {
+    try storage.set("wallet.key", value: keyData)
+} catch {
+    // Handle specific error cases
+    switch error {
+    case FWKError.emptyKeychain:
+        // Handle missing keychain
+    case FWKError.loadCacheFailed:
+        // Handle cache issues
+    default:
+        // Handle other errors
+    }
+}
+```
+
+### 3. Data Cleanup
+
+Implement proper data cleanup:
+
+```swift
+// Remove sensitive data when needed
+func clearWalletData() {
+    do {
+        let keys = try storage.findKey("wallet")
+        for key in keys {
+            try storage.remove(key)
+        }
+    } catch {
+        // Handle cleanup errors
+    }
+}
+```
+
+### 4. Storage Selection
+
+Choose the appropriate storage based on your needs:
+
+- **KeychainStorage**: For small, highly sensitive data (keys, credentials)
+- **FileSystemStorage**: For larger data sets, configuration, or cached data
+
+## Example Usage
+
+### Basic Wallet Storage
+
+```swift
+class WalletStorage {
+    private let storage: StorageProtocol
+    
+    init(storage: StorageProtocol = KeychainStorage()) {
+        self.storage = storage
+    }
+    
+    func savePrivateKey(_ key: Data) throws {
+        try storage.set("wallet.privateKey", value: key)
+    }
+    
+    func getPrivateKey() throws -> Data? {
+        try storage.get("wallet.privateKey")
+    }
+    
+    func clearWallet() throws {
+        let walletKeys = try storage.findKey("wallet")
+        for key in walletKeys {
+            try storage.remove(key)
+        }
+    }
+}
+```
+
+### Multiple Storage Types
+
+```swift
+class WalletManager {
+    private let secureStorage: StorageProtocol
+    private let cacheStorage: StorageProtocol
+    
+    init(
+        secureStorage: StorageProtocol = KeychainStorage(),
+        cacheStorage: StorageProtocol = FileSystemStorage()
+    ) {
+        self.secureStorage = secureStorage
+        self.cacheStorage = cacheStorage
+    }
+    
+    func saveCredentials(_ data: Data) throws {
+        try secureStorage.set("credentials", value: data)
+    }
+    
+    func cacheAccountData(_ data: Data) throws {
+        try cacheStorage.set("account.cache", value: data)
+    }
+}
+```
+
+## Security Considerations
+
+1. **Data Sensitivity**: Use KeychainStorage for sensitive data
+2. **Encryption**: Ensure FileSystemStorage uses proper encryption
+3. **Cleanup**: Implement secure data wiping when needed
+4. **Access Control**: Use appropriate iOS security attributes
+5. **Error Handling**: Never expose sensitive data in errors
+
+## Migration Guide
+
+When migrating between storage implementations:
+
+```swift
+func migrateStorage(
+    from oldStorage: StorageProtocol,
+    to newStorage: StorageProtocol
+) throws {
+    // Copy all data to new storage
+    for key in oldStorage.allKeys {
+        if let data = try oldStorage.get(key) {
+            try newStorage.set(key, value: data)
+        }
+    }
+    
+    // Verify migration
+    for key in oldStorage.allKeys {
+        guard try oldStorage.get(key) == newStorage.get(key) else {
+            throw MigrationError.verificationFailed
+        }
+    }
+    
+    // Clear old storage
+    try oldStorage.removeAll()
+} 

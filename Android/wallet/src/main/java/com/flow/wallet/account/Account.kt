@@ -86,7 +86,7 @@ class Account(
         get() = account.keys?.filter { !it.revoked && it.weight >= 1000.toString() } ?: emptyList()
 
     // Cacheable implementation
-    override val cachedData: AccountCache?
+    override val cachedData: AccountCache
         get() = AccountCache(childs, coa)
 
     override val cacheId: String
