@@ -46,7 +46,7 @@ class KeyWallet(
         }
     }
 
-    public override fun getKeyForAccount(): KeyProtocol = key
+    override fun getKeyForAccount(): KeyProtocol = key
 
     override suspend fun addAccount(account: Account) {
         Log.d(TAG, "Attempting to add account: ${account.address}")
@@ -100,7 +100,7 @@ class KeyWallet(
         while (retryCount < maxRetries) {
             try {
                 Log.d(TAG, "Fetch attempt ${retryCount + 1} of $maxRetries for network $network")
-                
+
                 // Get public keys for both supported signature algorithms
                 val p256PublicKey = key.publicKey(SigningAlgorithm.ECDSA_P256)
                 val secp256k1PublicKey = key.publicKey(SigningAlgorithm.ECDSA_secp256k1)
@@ -168,10 +168,10 @@ class KeyWallet(
                 // Wait for both fetches to complete and combine results
                 val p256Results = p256Accounts.await()
                 val secp256k1Results = secp256k1Accounts.await()
-                
+
                 accounts.addAll(p256Results)
                 accounts.addAll(secp256k1Results)
-                
+
                 Log.d(TAG, "Successfully fetched accounts for network $network: ${accounts.size} total accounts found")
                 accounts.forEach { account ->
                     Log.d(TAG, "Final Account ${account.address} with ${account.keys?.size ?: 0} keys")
