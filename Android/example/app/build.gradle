@@ -46,7 +46,7 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
     
     // Flow SDK dependencies
-    implementation 'com.github.onflow.flow-kmm:flow:0.0.3-new'
+    implementation 'com.github.onflow.flow-kmm:flow:0.0.12'
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3'
     
     // Ktor dependencies

@@ -103,8 +103,8 @@ class Account(
             !it.revoked &&
                     it.weight.toInt() >= 1000 && (
                     (p256PublicKey != null && it.publicKey.equals(p256PublicKey.toString(Charsets.ISO_8859_1), ignoreCase = true)) ||
-                    (secpPublicKey != null && it.publicKey.equals(secpPublicKey.toString(Charsets.ISO_8859_1), ignoreCase = true))
-            )
+                            (secpPublicKey != null && it.publicKey.equals(secpPublicKey.toString(Charsets.ISO_8859_1), ignoreCase = true))
+                    )
         }
         keys.addAll(matchingKeys ?: emptyList())
 

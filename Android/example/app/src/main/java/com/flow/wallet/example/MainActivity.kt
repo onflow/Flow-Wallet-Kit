@@ -6,24 +6,50 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.flow.wallet.Network
-import com.flow.wallet.KeyManager
 import com.flow.wallet.account.Account
 import com.flow.wallet.example.databinding.ActivityMainBinding
-import com.flow.wallet.toFormatString
+import com.flow.wallet.keys.PrivateKey
+import com.flow.wallet.storage.InMemoryStorage
 import kotlinx.coroutines.launch
 import org.onflow.flow.ChainId
+import org.onflow.flow.models.SigningAlgorithm
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var flowAccount: Account? = null
+    private var privateKey: PrivateKey? = null
     private val predefinedPublicKey = "046fbd46016912fde73c70ae7ed4beade32d6e384539d889e226d2c3a30dfd2e783aa6459e96f011565d33aca5a510fe3435e4554c54ee96735f073ce383c71f"
+    
+    // Storage for the keys using in-memory storage for demo safety
+    private lateinit var storage: InMemoryStorage
+
+    companion object {
+        init {
+            try {
+                // Load the Trust Wallet Core native library
+                System.loadLibrary("TrustWalletCore")
+                Log.d("MainActivity", "TrustWalletCore library loaded successfully")
+            } catch (e: UnsatisfiedLinkError) {
+                Log.e("MainActivity", "Failed to load TrustWalletCore library", e)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupClickListeners()
+        try {
+            // Initialize safe storage for demo
+            storage = InMemoryStorage()
+            Log.d("MainActivity", "Storage initialized successfully")
+            
+            setupClickListeners()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error initializing app", e)
+            Toast.makeText(this, "Error initializing app: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun setupClickListeners() {
@@ -42,13 +68,23 @@ class MainActivity : AppCompatActivity() {
 
     private fun generateKeyPair() {
         try {
-            val keyPair = KeyManager.generateKeyWithPrefix("example_key")
-            val publicKey = keyPair.public.toFormatString()
+            Log.d("MainActivity", "Starting key generation...")
             
-            binding.tvPublicKey.text = "Public Key: $publicKey"
+            // Create a new private key using the modern Flow Wallet Kit API
+            privateKey = PrivateKey.create(storage)
+            Log.d("MainActivity", "Private key created successfully")
+            
+            // Get the public key in the correct format
+            val publicKeyBytes = privateKey!!.publicKey(SigningAlgorithm.ECDSA_P256)
+            val publicKeyHex = publicKeyBytes?.joinToString("") { "%02x".format(it) } ?: ""
+            
+            binding.tvPublicKey.text = "Public Key: $publicKeyHex"
             Toast.makeText(this, "Key pair generated successfully", Toast.LENGTH_SHORT).show()
+            
+            Log.d("MainActivity", "Generated new key pair with public key: $publicKeyHex")
         } catch (e: Exception) {
-            Toast.makeText(this, "Error generating key pair: ${e.message}", Toast.LENGTH_SHORT).show()
+            Log.e("MainActivity", "Error generating key pair", e)
+            Toast.makeText(this, "Error generating key pair: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -95,7 +131,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e("FindAccount", "Error finding account", e)
                 flowAccount = null
-                Toast.makeText(this@MainActivity, "Error finding account: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "Error finding account: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -123,7 +159,8 @@ class MainActivity : AppCompatActivity() {
                 
                 Toast.makeText(this@MainActivity, "Linked accounts loaded successfully", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(this@MainActivity, "Error loading linked accounts: ${e.message}", Toast.LENGTH_SHORT).show()
+                Log.e("MainActivity", "Error loading linked accounts", e)
+                Toast.makeText(this@MainActivity, "Error loading linked accounts: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
