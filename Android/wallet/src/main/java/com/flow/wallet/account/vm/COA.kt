@@ -103,7 +103,7 @@ class COA(
                 signers = signers
             )
 
-            FlowApi(account.chainID).waitForSeal(id) // implemented
+            FlowApi(account.chainID).waitForSeal(id)
             return account.fetchVM()
         }
     }

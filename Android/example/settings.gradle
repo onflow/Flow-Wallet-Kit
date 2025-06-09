@@ -7,25 +7,23 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google()
         mavenCentral()
+        maven { url "https://jitpack.io" }
+        maven { url "https://maven.google.com" }
+        maven {
+            url = uri("https://maven.pkg.github.com/trustwallet/wallet-core")
+            credentials {
+                username = System.getenv("GITHUB_USER") ?: ext.properties.get("gpr.user")
+                password = System.getenv("GITHUB_TOKEN") ?: ext.properties.get("gpr.key")
+            }
+        }
     }
 }
 
 rootProject.name = "Flow Wallet Kit Android Example"
 include ':app'
 include ':wallet'
-project(':wallet').projectDir = new File('../wallet')
-
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.2'
-        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22'
-    }
-} 
+project(':wallet').projectDir = new File('../wallet') 
