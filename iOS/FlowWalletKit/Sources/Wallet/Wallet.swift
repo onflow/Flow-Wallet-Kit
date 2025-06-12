@@ -165,7 +165,7 @@ public class Wallet: ObservableObject {
     /// - Returns: The matching Account object, or nil if not found
     public func getAccount(by address: String, network: Flow.ChainID) -> Account? {
         // Check if there are accounts for the given network
-        guard let accountList = accounts[network] else {
+        guard let accountList = accounts?[network] else {
             return nil
         }
         // Case-insensitive search for the address
@@ -178,24 +178,24 @@ public class Wallet: ObservableObject {
             return
         }
 
-        var accountTmp: [Account] = accounts[network] ?? []
+        var accountTmp: [Account] = accounts?[network] ?? []
         accountTmp.append(Account(account: account, chainID: network, key: type.key))
-        accounts[network] = accountTmp
+        accounts?[network] = accountTmp
 
-        var flowAccountsTmp = flowAccounts[network] ?? []
+        var flowAccountsTmp = flowAccounts?[network] ?? []
         flowAccountsTmp.append(account)
-        flowAccounts[network] = flowAccountsTmp
+        flowAccounts?[network] = flowAccountsTmp
     }
 
     /// remove account by address
     func removeAccount(_ address: String, network: Flow.ChainID) {
-        var accountTmp: [Account] = accounts[network] ?? []
+        var accountTmp: [Account] = accounts?[network] ?? []
         accountTmp.removeAll { $0.hexAddr.lowercased() == address.lowercased() }
-        accounts[network] = accountTmp
+        accounts?[network] = accountTmp
 
-        var flowAccountsTmp = flowAccounts[network] ?? []
+        var flowAccountsTmp = flowAccounts?[network] ?? []
         flowAccountsTmp.removeAll { $0.address.hex.lowercased() == address.lowercased() }
-        flowAccounts[network] = flowAccountsTmp
+        flowAccounts?[network] = flowAccountsTmp
     }
 
     /// Add a new network to manage
