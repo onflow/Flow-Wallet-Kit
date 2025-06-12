@@ -135,7 +135,8 @@ public class Wallet: ObservableObject {
     ///   - txId: Transaction ID that created the account
     ///   - network: Network where the transaction was executed
     /// - Throws: FWKError.emptyCreatedAddress if no account was created in the transaction
-    public func fetchAccountsByCreationTxId(txId: Flow.ID, network: Flow.ChainID) async throws {
+    public func fetchAccountsByCreationTxId(txId: Flow.ID, network: Flow.ChainID) async throws -> Account {
+    
         if !networks.contains(network) {
             addNetwork(network)
         }
@@ -144,10 +145,57 @@ public class Wallet: ObservableObject {
         guard let address = result.getCreatedAddress() else {
             throw FWKError.emptyCreatedAddress
         }
+
+        if let existAccount = getAccount(by: address, network: network) {
+            return existAccount
+        }
+
         let account = try await flow.accessAPI.getAccountAtLatestBlock(address: .init(address))
         
-        accounts = [network: [Account(account: account, chainID: network, key: type.key)]]
-        self.flowAccounts = [network: [account]]
+        let newAccount = Account(account: account, chainID: network, key: type.key)
+        addAccount(account, network: network)
+
+        return newAccount
+    }
+
+    /// Find the corresponding Account by address and network
+    /// - Parameters:
+    ///   - address: The account address (hex string) to search for
+    ///   - network: The Flow network to search in
+    /// - Returns: The matching Account object, or nil if not found
+    public func getAccount(by address: String, network: Flow.ChainID) -> Account? {
+        // Check if there are accounts for the given network
+        guard let accountList = accounts?[network] else {
+            return nil
+        }
+        // Case-insensitive search for the address
+        return accountList.first { $0.hexAddr.lowercased() == address.lowercased() }
+    }
+
+    /// add account to network
+    func addAccount(_ account: Flow.Account, network: Flow.ChainID) {
+        guard getAccount(by: account.address.hex, network: network) == nil else {
+            return
+        }
+
+        var accountTmp: [Account] = accounts?[network] ?? []
+        accountTmp.append(Account(account: account, chainID: network, key: type.key))
+        accounts?[network] = accountTmp
+
+        var flowAccountsTmp = flowAccounts?[network] ?? []
+        flowAccountsTmp.append(account)
+        flowAccounts?[network] = flowAccountsTmp
+    }
+
+    /// remove account by address
+    func removeAccount(_ address: String, network: Flow.ChainID) {
+        var accountTmp: [Account] = accounts?[network] ?? []
+        accountTmp.removeAll { $0.hexAddr.lowercased() == address.lowercased() }
+        accounts?[network] = accountTmp
+
+        var flowAccountsTmp = flowAccounts?[network] ?? []
+        flowAccountsTmp.removeAll { $0.address.hex.lowercased() == address.lowercased() }
+        flowAccounts?[network] = flowAccountsTmp
     }
 
     /// Add a new network to manage
