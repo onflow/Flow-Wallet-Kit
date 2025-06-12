@@ -135,7 +135,8 @@ public class Wallet: ObservableObject {
     ///   - txId: Transaction ID that created the account
     ///   - network: Network where the transaction was executed
     /// - Throws: FWKError.emptyCreatedAddress if no account was created in the transaction
-    public func fetchAccountsByCreationTxId(txId: Flow.ID, network: Flow.ChainID) async throws {
+    public func fetchAccountsByCreationTxId(txId: Flow.ID, network: Flow.ChainID) async throws -> Account? {
+    
         if !networks.contains(network) {
             addNetwork(network)
         }
@@ -144,10 +145,29 @@ public class Wallet: ObservableObject {
         guard let address = result.getCreatedAddress() else {
             throw FWKError.emptyCreatedAddress
         }
+
+        var currentAccounts = accounts ?? [:]
+        var accountTmp: [Account] = currentAccounts[network] ?? []
+
+        let isExist = accountTmp.contains { $0.hexAddr == address }
+        if isExist {
+            return nil
+        }
+
         let account = try await flow.accessAPI.getAccountAtLatestBlock(address: .init(address))
-        
-        accounts = [network: [Account(account: account, chainID: network, key: type.key)]]
-        self.flowAccounts = [network: [account]]
+        let newAccount = Account(account: account, chainID: network, key: type.key)
+        accountTmp.append(newAccount)
+
+        currentAccounts[network] = accountTmp
+        accounts = currentAccounts
+
+        var currentFlowAccounts = flowAccounts ?? [:]
+        var flowAccountsTmp = currentFlowAccounts[network] ?? []
+        flowAccountsTmp.append(account)
+        currentFlowAccounts[network] = flowAccountsTmp
+        flowAccounts = currentFlowAccounts
+
+        return newAccount
     }
 
     /// Add a new network to manage
