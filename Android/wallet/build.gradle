@@ -71,7 +71,7 @@ dependencies {
     }
     
     // Flow SDK dependencies
-    implementation 'com.github.onflow.flow-kmm:flow:0.0.14'
+    implementation 'com.github.onflow.flow-kmm:flow:0.0.15'
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0'
     implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
     
