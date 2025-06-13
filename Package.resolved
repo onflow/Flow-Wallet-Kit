@@ -15,7 +15,7 @@
         "repositoryURL": "https://github.com/Outblock/flow-swift",
         "state": {
           "branch": null,
-          "revision": "a72bcb13c59105de2f28e0385adeaedffcf0b058",
+          "revision": "b628f3db87e333f34786680243a123424a66aa88",
           "version": null
         }
       },
@@ -26,6 +26,15 @@
           "branch": null,
           "revision": "84e546727d66f1adc5439debad16270d0fdd04e7",
           "version": "4.2.2"
+        }
+      },
+      {
+        "package": "Starscream",
+        "repositoryURL": "https://github.com/daltoniam/Starscream",
+        "state": {
+          "branch": null,
+          "revision": "a063fda2b8145a231953c20e7a646be254365396",
+          "version": "3.1.2"
         }
       },
       {

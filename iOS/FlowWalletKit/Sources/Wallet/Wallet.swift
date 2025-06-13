@@ -34,6 +34,8 @@ import Foundation
 /// - Caching account information
 /// - Supporting both key-based and watch-only wallets
 public class Wallet: ObservableObject {
+    
+    static let fullWeightThreshold = 1000
 
     // MARK: - Properties
     
@@ -85,6 +87,7 @@ public class Wallet: ObservableObject {
         if let cacheStorage {
             self.cacheStorage = cacheStorage
         }
+        try? loadCachedAccount()
     }
     
     /// Create a new account on the Flow blockchain
@@ -95,6 +98,27 @@ public class Wallet: ObservableObject {
     }
 
     // MARK: - Public Methods
+    
+    /// Load cached all accounts associated with this wallet if available
+    public func loadCachedAccount() throws {
+        do {
+            if let model = try loadCache() {
+                flowAccounts = model
+                accounts = [Flow.ChainID: [Account]]()
+                for network in model.keys {
+                    if let acc = model[network] {
+                        accounts?[network] = acc.compactMap {
+                            Account(account: $0, chainID: network, key: type.key, securityDelegate: securityDelegate)
+                        }
+                    }
+                }
+            }
+        } catch FWKError.cacheDecodeFailed {
+            //TODO: Handle no cache log
+            try? deleteCache()
+            throw FWKError.cacheDecodeFailed
+        }
+    }
 
     /// Fetch all accounts associated with this wallet
     /// This method performs the following steps:
@@ -102,20 +126,6 @@ public class Wallet: ObservableObject {
     /// 2. Fetches fresh account data from networks
     /// 3. Updates the cache with new data
     public func fetchAccount() async throws {
-        do {
-            if let model = try loadCache() {
-                flowAccounts = model
-                accounts = [Flow.ChainID: [Account]]()
-                for network in model.keys {
-                    if let acc = model[network] {
-                        accounts?[network] = acc.compactMap { Account(account: $0, chainID: network, key: type.key, securityDelegate: securityDelegate) }
-                    }
-                }
-            }
-        } catch FWKError.cacheDecodeFailed {
-            //TODO: Handle no cache log
-            try? deleteCache()
-        }
         try await _ = fetchAllNetworkAccounts()
         try cache()
     }
@@ -125,7 +135,8 @@ public class Wallet: ObservableObject {
     ///   - txId: Transaction ID that created the account
     ///   - network: Network where the transaction was executed
     /// - Throws: FWKError.emptyCreatedAddress if no account was created in the transaction
-    public func fetchAccountsByCreationTxId(txId: Flow.ID, network: Flow.ChainID) async throws {
+    public func fetchAccountsByCreationTxId(txId: Flow.ID, network: Flow.ChainID) async throws -> Account {
+    
         if !networks.contains(network) {
             addNetwork(network)
         }
@@ -134,10 +145,57 @@ public class Wallet: ObservableObject {
         guard let address = result.getCreatedAddress() else {
             throw FWKError.emptyCreatedAddress
         }
+
+        if let existAccount = getAccount(by: address, network: network) {
+            return existAccount
+        }
+
         let account = try await flow.accessAPI.getAccountAtLatestBlock(address: .init(address))
         
-        accounts = [network: [Account(account: account, chainID: network, key: type.key)]]
-        self.flowAccounts = [network: [account]]
+        let newAccount = Account(account: account, chainID: network, key: type.key)
+        addAccount(account, network: network)
+
+        return newAccount
+    }
+
+    /// Find the corresponding Account by address and network
+    /// - Parameters:
+    ///   - address: The account address (hex string) to search for
+    ///   - network: The Flow network to search in
+    /// - Returns: The matching Account object, or nil if not found
+    public func getAccount(by address: String, network: Flow.ChainID) -> Account? {
+        // Check if there are accounts for the given network
+        guard let accountList = accounts?[network] else {
+            return nil
+        }
+        // Case-insensitive search for the address
+        return accountList.first { $0.hexAddr.lowercased() == address.lowercased() }
+    }
+
+    /// add account to network
+    func addAccount(_ account: Flow.Account, network: Flow.ChainID) {
+        guard getAccount(by: account.address.hex, network: network) == nil else {
+            return
+        }
+
+        var accountTmp: [Account] = accounts?[network] ?? []
+        accountTmp.append(Account(account: account, chainID: network, key: type.key))
+        accounts?[network] = accountTmp
+
+        var flowAccountsTmp = flowAccounts?[network] ?? []
+        flowAccountsTmp.append(account)
+        flowAccounts?[network] = flowAccountsTmp
+    }
+
+    /// remove account by address
+    func removeAccount(_ address: String, network: Flow.ChainID) {
+        var accountTmp: [Account] = accounts?[network] ?? []
+        accountTmp.removeAll { $0.hexAddr.lowercased() == address.lowercased() }
+        accounts?[network] = accountTmp
+
+        var flowAccountsTmp = flowAccounts?[network] ?? []
+        flowAccountsTmp.removeAll { $0.address.hex.lowercased() == address.lowercased() }
+        flowAccounts?[network] = flowAccountsTmp
     }
 
     /// Add a new network to manage
@@ -230,12 +288,6 @@ public class Wallet: ObservableObject {
 
         let accountList = try await p256KeyAccounts + secp256k1KeyAccounts
         // Combine results from both parallel operations
-        return accountList.filter{ $0.keys.hasFullWeightKey }
-    }
-}
-
-extension Array where Element == Flow.AccountKey {
-    var hasFullWeightKey: Bool {
-        filter{ !$0.revoked }.compactMap{ $0.weight }.reduce(0, +) > 1000
+        return accountList.filter{ $0.keys.hasSignleFullWeightKey }
     }
 }
