@@ -61,11 +61,11 @@ object Network {
      */
     object SigningAlgorithmSerializer : KSerializer<SigningAlgorithm> {
         override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("SigningAlgorithm", PrimitiveKind.STRING)
-
+        
         override fun serialize(encoder: Encoder, value: SigningAlgorithm) {
             encoder.encodeString(value.value)
         }
-
+        
         override fun deserialize(decoder: Decoder): SigningAlgorithm {
             return try {
                 val stringValue = decoder.decodeString()
@@ -84,17 +84,17 @@ object Network {
             }
         }
     }
-
+    
     /**
      * Custom serializer for HashingAlgorithm that can handle both int and string values
      */
     object HashingAlgorithmSerializer : KSerializer<HashingAlgorithm> {
         override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("HashingAlgorithm", PrimitiveKind.STRING)
-
+        
         override fun serialize(encoder: Encoder, value: HashingAlgorithm) {
             encoder.encodeString(value.value)
         }
-
+        
         override fun deserialize(decoder: Decoder): HashingAlgorithm {
             return try {
                 val stringValue = decoder.decodeString()
@@ -216,7 +216,7 @@ object Network {
         if (!response.status.isSuccess()) {
             throw WalletError.KeyIndexerRequestFailed
         }
-
+        
         val responseText = response.bodyAsText()
 
         try {
@@ -224,7 +224,7 @@ object Network {
         } catch (e: Exception) {
             Log.d(TAG,"Parsing failed: ${e.message}")
             e.printStackTrace()
-
+            
             // Try automatic deserialization as a fallback
             try {
                 return json.decodeFromString<KeyIndexerResponse>(responseText)
@@ -236,7 +236,7 @@ object Network {
             }
         }
     }
-
+    
     /**
      * Manual parsing of the key indexer response to avoid serialization issues
      */
@@ -244,37 +244,37 @@ object Network {
         Log.d(TAG,"Attempting manual parsing of response")
         val jsonElement = json.parseToJsonElement(jsonString)
         val jsonObject = jsonElement.jsonObject
-
+        
         val accounts = mutableListOf<KeyIndexerResponse.Account>()
-
+        
         // If the response contains an "accounts" field, parse it
         if (jsonObject.containsKey("accounts")) {
             val accountsArray = jsonObject["accounts"]?.jsonArray ?: JsonArray(emptyList())
-
+            
             for (accountElement in accountsArray) {
                 try {
                     val accountObj = accountElement.jsonObject
-
+                    
                     // Extract fields with fallbacks
                     val address = accountObj["address"]?.jsonPrimitive?.content ?: ""
                     val keyId = accountObj["keyId"]?.jsonPrimitive?.intOrNull ?: 0
                     val weight = accountObj["weight"]?.jsonPrimitive?.intOrNull ?: 1000
                     val sigAlgo = accountObj["sigAlgo"]?.jsonPrimitive?.intOrNull ?: 1
                     val hashAlgo = accountObj["hashAlgo"]?.jsonPrimitive?.intOrNull ?: 1
-
+                    
                     // Handle signing algorithm
                     val signing = when (sigAlgo) {
                         1 -> SigningAlgorithm.ECDSA_P256
                         2 -> SigningAlgorithm.ECDSA_secp256k1
                         else -> SigningAlgorithm.ECDSA_P256
                     }
-
+                    
                     // Handle hashing algorithm
                     val hashing = HashingAlgorithm.fromCadenceIndex(hashAlgo)
-
+                    
                     // Check if revoked
                     val isRevoked = accountObj["isRevoked"]?.jsonPrimitive?.booleanOrNull ?: false
-
+                    
                     // Create account object
                     val account = KeyIndexerResponse.Account(
                         address = address,
@@ -286,7 +286,7 @@ object Network {
                         hashing = hashing,
                         isRevoked = isRevoked
                     )
-
+                    
                     accounts.add(account)
                 } catch (e: Exception) {
                     Log.d(TAG,"Error parsing account: ${e.message}")
