@@ -5,6 +5,10 @@ import com.flow.wallet.errors.WalletError
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.statement.bodyAsText
@@ -51,9 +55,48 @@ object Network {
 
     private var _ktorClient: HttpClient? = null
     private val ktorClient: HttpClient by lazy {
-        HttpClient(CIO) {
+        createHttpClient()
+    }
+    
+    private fun createHttpClient(): HttpClient {
+        return HttpClient(CIO) {
             install(ContentNegotiation) { json(json) }
+            
+            // Add timeouts and connection limits for device compatibility
+            install(HttpTimeout) {
+                requestTimeoutMillis = 15000L // 15 seconds
+                connectTimeoutMillis = 10000L // 10 seconds
+                socketTimeoutMillis = 15000L  // 15 seconds
+            }
+            
+            // Add logging for debugging (only in debug builds)
+            if (android.util.Log.isLoggable(TAG, android.util.Log.DEBUG)) {
+                install(Logging) {
+                    logger = object : Logger {
+                        override fun log(message: String) {
+                            android.util.Log.d(TAG, message)
+                        }
+                    }
+                    level = LogLevel.INFO // Reduce logging verbosity
+                }
+            }
+            
+            // Configure engine for better device compatibility
+            engine {
+                // Limit concurrent connections to prevent overwhelming device
+                maxConnectionsCount = 50
+                threadsCount = 4 // Reduced thread count for lower-end devices
+            }
         }
+    }
+
+    /**
+     * Clean up network resources
+     * Call this when the wallet is no longer needed
+     */
+    fun cleanup() {
+        _ktorClient?.close()
+        _ktorClient = null
     }
 
     /**

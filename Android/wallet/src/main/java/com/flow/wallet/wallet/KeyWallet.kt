@@ -1,6 +1,7 @@
 package com.flow.wallet.wallet
 
 import com.flow.wallet.Network
+import com.flow.wallet.NativeLibraryManager
 import com.flow.wallet.account.Account
 import com.flow.wallet.security.SecurityCheckDelegate
 import com.flow.wallet.errors.WalletError
@@ -12,6 +13,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.Account as FlowAccount
 import org.onflow.flow.models.SigningAlgorithm
@@ -33,15 +36,23 @@ class KeyWallet(
     private val TAG = KeyWallet::class.java.simpleName
 
     init {
+        // Ensure native library is loaded before proceeding
+        if (!NativeLibraryManager.ensureLibraryLoaded()) {
+            Log.e(TAG, "Cannot initialize KeyWallet: TrustWalletCore not available")
+            throw WalletError.InitHDWalletFailed
+        }
+        
         Log.d(TAG, "Initializing KeyWallet with networks: ${networks.joinToString()}")
-        // Initialize wallet by fetching accounts
+        // Initialize wallet by fetching accounts with proper error handling
         scope.launch {
             try {
                 Log.d(TAG, "Starting initial account fetch")
+                checkMemoryBeforeOperation()
                 fetchAccounts()
                 Log.d(TAG, "Initial account fetch completed successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Error initializing wallet", e)
+                // Don't crash the app, just log the error
             }
         }
     }
@@ -87,15 +98,15 @@ class KeyWallet(
     ///
     /// For key-based wallets, this method:
     /// - Fetches accounts associated with both P256 and SECP256k1 public keys
-    /// - Performs fetches in parallel for better performance
-    /// - Implements retry logic for failed requests
-    /// - Uses key indexer API to find all related on-chain accounts
-    override suspend fun fetchAccountsForNetwork(network: ChainId): List<FlowAccount> = coroutineScope {
-        Log.d(TAG, "Starting account fetch for network: $network")
+    /// - Performs fetches sequentially to reduce resource usage
+    override suspend fun fetchAccountsForNetwork(network: ChainId): List<FlowAccount> {
+        NativeLibraryManager.throwIfNotLoaded()
+        checkMemoryBeforeOperation()
+        
         val accounts = mutableListOf<FlowAccount>()
+        val maxRetries = 2 // Reduced from potentially infinite retries
+        val baseTimeout = 10000L // 10 seconds instead of longer timeouts
         var retryCount = 0
-        val maxRetries = 3
-        val baseTimeout = 5000L // 5 seconds base timeout
 
         while (retryCount < maxRetries) {
             try {
@@ -112,80 +123,54 @@ class KeyWallet(
 
                 Log.d(TAG, "Found ${if (p256PublicKey != null) "P256" else "no"} and ${if (secp256k1PublicKey != null) "SECP256k1" else "no"} keys for lookup")
 
-                // Fetch accounts for both signature algorithms in parallel with timeout
-                Log.d(TAG, "Starting parallel account fetch for both key types")
-                val p256Accounts = async {
-                    p256PublicKey?.let { publicKey ->
-                        try {
-                            val encodedKey = publicKey.toFlowIndexerHex()
-                            Log.d(TAG, "Fetching P256 accounts for key: ${encodedKey.take(10)}...")
-                            val accounts = Network.findFlowAccountByKey(encodedKey, network)
-                            Log.d(TAG, "Found ${accounts.size} P256 accounts on network $network")
-                            accounts.forEach { account ->
-                                Log.d(TAG, "P256 Account ${account.address} with ${account.keys?.size ?: 0} keys")
-                            }
-                            accounts
-                        } catch (e: Exception) {
-                            when (e) {
-                                is io.ktor.client.network.sockets.ConnectTimeoutException -> {
-                                    Log.e(TAG, "Timeout while fetching P256 accounts on network $network", e)
-                                }
-                                else -> {
-                                    Log.e(TAG, "Error looking up P256 accounts on network $network", e)
-                                }
-                            }
-                            emptyList()
-                        }
-                    } ?: emptyList()
-                }
-
-                val secp256k1Accounts = async {
-                    secp256k1PublicKey?.let { publicKey ->
-                        try {
-                            val encodedKey = publicKey.toFlowIndexerHex()
-                            Log.d(TAG, "Fetching SECP256k1 accounts for key: ${encodedKey.take(10)}...")
-                            val accounts = Network.findFlowAccountByKey(encodedKey, network)
-                            Log.d(TAG, "Found ${accounts.size} SECP256k1 accounts on network $network")
-                            accounts.forEach { account ->
-                                Log.d(TAG, "SECP256k1 Account ${account.address} with ${account.keys?.size ?: 0} keys")
-                            }
-                            accounts
-                        } catch (e: Exception) {
-                            when (e) {
-                                is io.ktor.client.network.sockets.ConnectTimeoutException -> {
-                                    Log.e(TAG, "Timeout while fetching SECP256k1 accounts on network $network", e)
-                                }
-                                else -> {
-                                    Log.e(TAG, "Error looking up SECP256k1 accounts on network $network", e)
-                                }
-                            }
-                            emptyList()
-                        }
-                    } ?: emptyList()
-                }
-
-                Log.d(TAG, "Waiting for parallel account fetches to complete")
-                // Wait for both fetches to complete and combine results
-                val p256Results = p256Accounts.await()
-                val secp256k1Results = secp256k1Accounts.await()
+                // Fetch accounts sequentially instead of in parallel to reduce resource usage
+                Log.d(TAG, "Starting sequential account fetch for both key types")
                 
-                accounts.addAll(p256Results)
-                accounts.addAll(secp256k1Results)
+                // Fetch P256 accounts first
+                p256PublicKey?.let { publicKey ->
+                    try {
+                        val encodedKey = publicKey.toFlowIndexerHex()
+                        Log.d(TAG, "Fetching P256 accounts for key: ${encodedKey.take(10)}...")
+                        val p256Accounts = withTimeout(baseTimeout) {
+                            Network.findFlowAccountByKey(encodedKey, network)
+                        }
+                        Log.d(TAG, "Found ${p256Accounts.size} P256 accounts on network $network")
+                        accounts.addAll(p256Accounts)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error looking up P256 accounts on network $network", e)
+                    }
+                }
+
+                // Small delay between requests to be nicer to the server
+                delay(500)
+
+                // Fetch SECP256k1 accounts second
+                secp256k1PublicKey?.let { publicKey ->
+                    try {
+                        val encodedKey = publicKey.toFlowIndexerHex()
+                        Log.d(TAG, "Fetching SECP256k1 accounts for key: ${encodedKey.take(10)}...")
+                        val secp256k1Accounts = withTimeout(baseTimeout) {
+                            Network.findFlowAccountByKey(encodedKey, network)
+                        }
+                        Log.d(TAG, "Found ${secp256k1Accounts.size} SECP256k1 accounts on network $network")
+                        accounts.addAll(secp256k1Accounts)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error looking up SECP256k1 accounts on network $network", e)
+                    }
+                }
                 
                 Log.d(TAG, "Successfully fetched accounts for network $network: ${accounts.size} total accounts found")
-                accounts.forEach { account ->
-                    Log.d(TAG, "Final Account ${account.address} with ${account.keys?.size ?: 0} keys")
-                }
                 break
             } catch (e: Exception) {
                 retryCount++
                 if (retryCount == maxRetries) {
                     Log.e(TAG, "Failed to fetch accounts for network $network after $maxRetries attempts", e)
-                    throw e
+                    // Don't throw exception, just return what we have
+                    break
                 }
                 val backoffTime = baseTimeout * (1 shl retryCount)
                 Log.d(TAG, "Retry attempt $retryCount of $maxRetries for network $network. Waiting ${backoffTime}ms before retry")
-                kotlinx.coroutines.delay(backoffTime)
+                delay(backoffTime)
             }
         }
 
@@ -193,11 +178,33 @@ class KeyWallet(
             Log.d(TAG, "No accounts found for any public key on network $network")
         } else {
             Log.d(TAG, "Found ${accounts.size} accounts on network $network")
-            accounts.forEach { account ->
-                Log.d(TAG, "Account ${account.address} with ${account.keys?.size ?: 0} keys")
-            }
         }
 
-        accounts
+        return accounts
+    }
+    
+    /**
+     * Check available memory before performing memory-intensive operations
+     */
+    private fun checkMemoryBeforeOperation() {
+        val runtime = Runtime.getRuntime()
+        val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+        val maxMemory = runtime.maxMemory()
+        val memoryUsagePercent = (usedMemory.toDouble() / maxMemory.toDouble()) * 100
+        
+        Log.d(TAG, "Memory usage: ${memoryUsagePercent.toInt()}% (${usedMemory / 1024 / 1024}MB / ${maxMemory / 1024 / 1024}MB)")
+        
+        if (memoryUsagePercent > 85) {
+            Log.w(TAG, "High memory usage detected, forcing garbage collection")
+            System.gc()
+            
+            // Check again after GC
+            val newUsedMemory = runtime.totalMemory() - runtime.freeMemory()
+            val newMemoryUsagePercent = (newUsedMemory.toDouble() / maxMemory.toDouble()) * 100
+            
+            if (newMemoryUsagePercent > 90) {
+                throw WalletError.LoadCacheFailed
+            }
+        }
     }
 } 

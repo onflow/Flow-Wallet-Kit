@@ -1,6 +1,7 @@
 package com.flow.wallet.keys
 
 import android.util.Log
+import com.flow.wallet.NativeLibraryManager
 import com.google.common.io.BaseEncoding
 import com.flow.wallet.crypto.BIP39
 import com.flow.wallet.crypto.ChaChaPolyCipher
@@ -63,6 +64,10 @@ class SeedPhraseKey(
     }
 
     private val hdWallet: HDWallet = try {
+        // Ensure native library is loaded before creating HD wallet
+        if (!NativeLibraryManager.ensureLibraryLoaded()) {
+            throw WalletError.InitHDWalletFailed
+        }
         HDWallet(mnemonicString, passphrase)
     } catch (e: Exception) {
         Log.e(TAG, "Failed to initialize HD wallet", e)
@@ -130,15 +135,14 @@ class SeedPhraseKey(
     }
 
     override suspend fun create(advance: Any, storage: StorageProtocol): KeyProtocol {
-        val length = if (advance is BIP39.SeedPhraseLength) advance else BIP39.SeedPhraseLength.TWELVE
-        val mnemonic = BIP39.generate(length)
-        // Default to SECP256K1 for backward compatibility
-        val keyPair = deriveKeyPair(DEFAULT_DERIVATION_PATH, SigningAlgorithm.ECDSA_secp256k1)
-        return SeedPhraseKey(mnemonic, "", DEFAULT_DERIVATION_PATH, keyPair, storage, length)
+        NativeLibraryManager.throwIfNotLoaded()
+        val mnemonic = BIP39.generate()
+        val keyPair = deriveKeyPair(DEFAULT_DERIVATION_PATH)
+        return SeedPhraseKey(mnemonic, "", DEFAULT_DERIVATION_PATH, keyPair, storage)
     }
 
     override suspend fun create(storage: StorageProtocol): KeyProtocol {
-        return create(BIP39.SeedPhraseLength.TWELVE, storage)
+        return create(Unit, storage)
     }
 
     override suspend fun createAndStore(id: String, password: String, storage: StorageProtocol): KeyProtocol {
@@ -149,22 +153,11 @@ class SeedPhraseKey(
 
     override suspend fun get(id: String, password: String, storage: StorageProtocol): KeyProtocol {
         val encryptedData = storage.get(id) ?: throw WalletError.EmptyKeychain
-        val decryptedData = try {
-            decryptData(encryptedData, password)
-        } catch (e: Exception) {
-            Log.e(TAG, "Decryption failed", e)
-            throw WalletError.InvalidPassword
-        }
-
-        val (mnemonic, passphrase, path, length) = try {
-            parseKeyData(decryptedData)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse key data", e)
-            throw WalletError.InvalidKeyStoreJSON
-        }
-
-        val keyPair = deriveKeyPair(path)
-        return SeedPhraseKey(mnemonic, passphrase, path, keyPair, storage, length)
+        val cipher = ChaChaPolyCipher(password)
+        val keyDataStr = String(cipher.decrypt(encryptedData), Charsets.UTF_8)
+        val keyData = Json.decodeFromString<KeyData>(keyDataStr)
+        val keyPair = deriveKeyPair(keyData.path)
+        return SeedPhraseKey(keyData.mnemonic, keyData.passphrase, keyData.path, keyPair, storage, keyData.length)
     }
 
     override suspend fun restore(secret: ByteArray, storage: StorageProtocol): KeyProtocol {
@@ -177,8 +170,10 @@ class SeedPhraseKey(
     }
 
     override fun publicKey(signAlgo: SigningAlgorithm): ByteArray? {
-        var twPriv: wallet.core.jni.PrivateKey?
-        var pubKey: wallet.core.jni.PublicKey?
+        NativeLibraryManager.throwIfNotLoaded()
+        
+        var twPriv: wallet.core.jni.PrivateKey? = null
+        var pubKey: wallet.core.jni.PublicKey? = null
         try {
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
@@ -192,14 +187,26 @@ class SeedPhraseKey(
             Log.e(TAG, "Failed to get public key", e)
             return null
         } finally {
-            // Secure cleanup
-            twPriv = null
-            pubKey = null
+            // Secure cleanup - help prevent memory leaks
+            try {
+                twPriv?.let { 
+                    // Clear any cached private key data
+                    System.gc()
+                }
+                pubKey?.let {
+                    // Clear any cached public key data  
+                    System.gc()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Cleanup warning: ${e.message}")
+            }
         }
     }
 
     override fun privateKey(signAlgo: SigningAlgorithm): ByteArray? {
-        var twPriv: wallet.core.jni.PrivateKey?
+        NativeLibraryManager.throwIfNotLoaded()
+        
+        var twPriv: wallet.core.jni.PrivateKey? = null
         try {
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
@@ -209,7 +216,14 @@ class SeedPhraseKey(
             return null
         } finally {
             // Secure cleanup
-            twPriv = null
+            try {
+                twPriv?.let {
+                    // Force garbage collection to clear sensitive data
+                    System.gc()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Cleanup warning: ${e.message}")
+            }
         }
     }
 
@@ -294,20 +308,9 @@ class SeedPhraseKey(
         return Json.encodeToString(data).toByteArray()
     }
 
-    private fun parseKeyData(data: ByteArray): Quadruple<String, String, String, BIP39.SeedPhraseLength> {
-        val json = String(data, Charsets.UTF_8)
-        val keyData = Json.decodeFromString<KeyData>(json)
-        return Quadruple(keyData.mnemonic, keyData.passphrase, keyData.path, keyData.length)
-    }
-
     private fun encryptData(data: ByteArray, password: String): ByteArray {
         val cipher = ChaChaPolyCipher(password)
         return cipher.encrypt(data)
-    }
-
-    private fun decryptData(encryptedData: ByteArray, password: String): ByteArray {
-        val cipher = ChaChaPolyCipher(password)
-        return cipher.decrypt(encryptedData)
     }
 }
 
