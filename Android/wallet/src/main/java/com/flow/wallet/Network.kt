@@ -6,6 +6,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
@@ -64,9 +65,16 @@ object Network {
             
             // Add timeouts and connection limits for device compatibility
             install(HttpTimeout) {
-                requestTimeoutMillis = 15000L // 15 seconds
-                connectTimeoutMillis = 10000L // 10 seconds
-                socketTimeoutMillis = 15000L  // 15 seconds
+                requestTimeoutMillis = 20000L // Increased to 20 seconds
+                connectTimeoutMillis = 15000L // Increased to 15 seconds  
+                socketTimeoutMillis = 20000L  // Increased to 20 seconds
+            }
+            
+            // Add retry interceptor for network issues
+            install(HttpRequestRetry) {
+                retryOnServerErrors(maxRetries = 3)
+                retryOnException(maxRetries = 3, retryOnTimeout = true)
+                exponentialDelay() // Use exponential backoff
             }
             
             // Add logging for debugging (only in debug builds)
@@ -86,6 +94,9 @@ object Network {
                 // Limit concurrent connections to prevent overwhelming device
                 maxConnectionsCount = 50
                 threadsCount = 4 // Reduced thread count for lower-end devices
+                
+                // Add DNS resolution configuration
+                requestTimeout = 20000 // 20 seconds for complete request
             }
         }
     }
@@ -250,34 +261,69 @@ object Network {
      */
     suspend fun findAccount(publicKey: String, chainId: ChainId): KeyIndexerResponse {
         val url = chainId.keyIndexerUrl(publicKey)
-        val response = ktorClient.get(url) {
-            headers {
-                append("Accept", "application/json")
-            }
-        }
+        var lastException: Exception? = null
+        val maxRetries = 3
+        
+        repeat(maxRetries) { attempt ->
+            try {
+                Log.d(TAG, "Attempting to connect to key indexer (attempt ${attempt + 1}/$maxRetries): $url")
+                
+                val response = ktorClient.get(url) {
+                    headers {
+                        append("Accept", "application/json")
+                    }
+                }
 
-        if (!response.status.isSuccess()) {
-            throw WalletError.KeyIndexerRequestFailed
+                if (!response.status.isSuccess()) {
+                    throw WalletError.KeyIndexerRequestFailed
+                }
+                
+                val responseText = response.bodyAsText()
+
+                try {
+                    return parseKeyIndexerResponse(responseText, publicKey)
+                } catch (e: Exception) {
+                    Log.d(TAG,"Parsing failed: ${e.message}")
+                    e.printStackTrace()
+                    
+                    // Try automatic deserialization as a fallback
+                    try {
+                        return json.decodeFromString<KeyIndexerResponse>(responseText)
+                    } catch (e: Exception) {
+                        Log.d(TAG,"Automatic deserialization also failed: ${e.message}")
+                        e.printStackTrace()
+                        // Return empty response in case of failures
+                        return KeyIndexerResponse(publicKey, emptyList())
+                    }
+                }
+            } catch (e: Exception) {
+                lastException = e
+                val isNetworkError = when {
+                    e.message?.contains("UnresolvedAddressException", ignoreCase = true) == true -> true
+                    e.message?.contains("ConnectException", ignoreCase = true) == true -> true
+                    e.message?.contains("SocketTimeoutException", ignoreCase = true) == true -> true
+                    e.message?.contains("UnknownHostException", ignoreCase = true) == true -> true
+                    e.message?.contains("Network is unreachable", ignoreCase = true) == true -> true
+                    e.message?.contains("No route to host", ignoreCase = true) == true -> true
+                    else -> false
+                }
+                
+                if (isNetworkError) {
+                    Log.d(TAG, "Network error on attempt ${attempt + 1}: ${e.message}")
+                    if (attempt < maxRetries - 1) {
+                        // Wait before retrying (exponential backoff)
+                        kotlinx.coroutines.delay(1000L * (attempt + 1))
+                    }
+                } else {
+                    // Non-network error, don't retry
+                    throw e
+                }
+            }
         }
         
-        val responseText = response.bodyAsText()
-
-        try {
-            return parseKeyIndexerResponse(responseText, publicKey)
-        } catch (e: Exception) {
-            Log.d(TAG,"Parsing failed: ${e.message}")
-            e.printStackTrace()
-            
-            // Try automatic deserialization as a fallback
-            try {
-                return json.decodeFromString<KeyIndexerResponse>(responseText)
-            } catch (e: Exception) {
-                Log.d(TAG,"Automatic deserialization also failed: ${e.message}")
-                e.printStackTrace()
-                // Return empty response in case of failures
-                return KeyIndexerResponse(publicKey, emptyList())
-            }
-        }
+        // All retries failed
+        Log.d(TAG, "All key indexer connection attempts failed")
+        lastException?.let { throw it } ?: throw WalletError.KeyIndexerRequestFailed
     }
     
     /**
