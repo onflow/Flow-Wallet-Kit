@@ -290,4 +290,36 @@ public class Wallet: ObservableObject {
         // Combine results from both parallel operations
         return accountList.filter{ $0.keys.hasSignleFullWeightKey }
     }
+    
+    /// Fetch Account by address and chainId
+    /// - Parameters:
+    ///   - address: The address to fetch account from
+    ///   - chainID: The network to fetch accounts from
+    /// - Returns: Account
+    public func fetchAndUpdateAccount(by address: String, chainID: Flow.ChainID) async throws -> Flow.Account? {
+        let newFlowAccount = try await flow.getAccountAtLatestBlock(address: address)
+
+        var flowAccountsArray = flowAccounts?[chainID] ?? []
+        if let idx = flowAccountsArray
+            .firstIndex(where: { $0.address.hex.lowercased() == address.lowercased() }) {
+            flowAccountsArray[idx] = newFlowAccount
+        } else {
+            flowAccountsArray.append(newFlowAccount)
+        }
+        if flowAccounts == nil { flowAccounts = [:] }
+        flowAccounts?[chainID] = flowAccountsArray
+
+        var accountsArray = accounts?[chainID] ?? []
+        if let idx = accountsArray
+            .firstIndex(where: { $0.hexAddr.lowercased() == address.lowercased() }) {
+            let newAccount = Account(account: newFlowAccount, chainID: chainID, key: type.key)
+            accountsArray[idx] = newAccount
+        } else {
+            let newAccount = Account(account: newFlowAccount, chainID: chainID, key: type.key)
+            accountsArray.append(newAccount)
+        }
+        if accounts == nil { accounts = [:] }
+        accounts?[chainID] = accountsArray
+        return newFlowAccount
+    }
 }
