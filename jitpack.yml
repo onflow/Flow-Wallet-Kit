@@ -1,0 +1,8 @@
+jdk:
+  - openjdk11
+before_install:
+  - sdk install java 11.0.10-open
+  - sdk use java 11.0.10-open
+install:
+  - echo "Running install step from Android directory"
+  - cd Android && ./gradlew publishToMavenLocal --stacktrace --info 

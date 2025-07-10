@@ -99,3 +99,50 @@ dependencies {
     testImplementation "com.ionspin.kotlin:bignum:0.3.8"
     androidTestImplementation "com.ionspin.kotlin:bignum:0.3.10"
 }
+
+task sourceJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    archiveClassifier = "sources"
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+                groupId = 'com.github.onflow'
+                artifactId = 'flow-wallet-kit'
+                version = '0.1.6'
+                
+                artifact sourceJar
+                
+                pom {
+                    name = 'Flow Wallet Kit'
+                    description = 'Flow blockchain wallet SDK for Android'
+                    url = 'https://github.com/onflow/Flow-Wallet-Kit'
+                    
+                    licenses {
+                        license {
+                            name = 'The Apache License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                    
+                    developers {
+                        developer {
+                            id = 'onflow'
+                            name = 'Flow Team'
+                            email = 'dev@onflow.org'
+                        }
+                    }
+                    
+                    scm {
+                        connection = 'scm:git:git://github.com/onflow/Flow-Wallet-Kit.git'
+                        developerConnection = 'scm:git:ssh://github.com:onflow/Flow-Wallet-Kit.git'
+                        url = 'https://github.com/onflow/Flow-Wallet-Kit/tree/main'
+                    }
+                }
+            }
+        }
+    }
+}
