@@ -1,8 +1,8 @@
 name: generate-doc
 
 on:
-  release:
-    types: [published]
+#  release:
+#    types: [published]
 
 jobs:
   generate-doc:
