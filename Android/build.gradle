@@ -11,6 +11,8 @@ buildscript {
     }
 }
 
+apply plugin: 'maven-publish'
+
 allprojects {
     repositories {
         google()
