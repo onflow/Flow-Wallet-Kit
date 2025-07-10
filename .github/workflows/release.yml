@@ -21,7 +21,7 @@ jobs:
       # Step 3: Run Gradle build and publish
       - name: Build and Publish
         run: |
-          cd Android && ./gradlew check publish --no-configure-on-demand --no-daemon --info
+          cd Android && ./gradlew wallet:check wallet:publish --no-configure-on-demand --no-daemon --info
         env:
           ORG_GRADLE_PROJECT_githubUsername: ${{ github.actor }}
           ORG_GRADLE_PROJECT_githubPassword: ${{ secrets.GITHUB_TOKEN }}
