@@ -130,3 +130,7 @@ Both platforms have comprehensive test coverage:
 - Hardware security features should gracefully fall back to software implementations
 - Key Indexer API integration is used for account discovery
 - The codebase follows clean architecture principles with clear separation between storage, keys, and wallet layers
+
+## Development Guidelines
+
+- Always use pnpm please

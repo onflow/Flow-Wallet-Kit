@@ -11,6 +11,47 @@
 // Re-export all types
 export * from './types/index.js';
 
+// Re-export crypto utilities (except types that conflict with types/index.js)
+export {
+  // Interfaces
+  type SymmetricEncryption,
+  type EncryptedData,
+  type EncryptedVault,
+  type PasswordEncryptionOptions,
+  // Classes
+  AESGCMCipher,
+  ChaChaPolyCipher,
+  Hasher,
+  PasswordEncryption,
+  // Enums (renamed to avoid conflict)
+  EncryptionAlgorithm
+} from './crypto/index.js';
+
+// Re-export utility functions (except types that conflict with types/index.js)
+export {
+  // Error classes and utilities (renamed to avoid conflict)
+  WalletError as WalletErrorClass,
+  WalletErrors,
+  createWalletError,
+  isWalletError,
+  // Crypto utilities
+  isNode,
+  isWebCryptoAvailable,
+  getCrypto,
+  getRandomBytes,
+  generateSalt,
+  generateNonce,
+  arrayBufferToBase64,
+  base64ToArrayBuffer,
+  hexToBytes,
+  bytesToHex,
+  concatBytes,
+  constantTimeEqual,
+  deriveKey,
+  stringToBytes,
+  bytesToString
+} from './utils/index.js';
+
 // Export version
 export const VERSION = '0.1.0';
 
@@ -53,5 +94,3 @@ export function init(config?: FlowWalletKitConfig): void {
 // - Key implementations (PrivateKey, SeedPhraseKey, SecureElementKey)
 // - Wallet implementations (KeyWallet, WatchWallet)
 // - Network service implementation
-// - Crypto utilities
-// - Error classes
