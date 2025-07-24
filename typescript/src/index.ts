@@ -89,8 +89,24 @@ export function init(config?: FlowWalletKitConfig): void {
   console.log('Flow Wallet Kit initialized', config);
 }
 
+// Re-export storage implementations
+export {
+  // Base protocol
+  BaseStorageProtocol,
+  // Storage providers
+  InMemoryProvider,
+  FileSystemProvider,
+  EncryptedStorageProvider,
+  // Factory functions
+  createStorageProvider,
+  createEncryptedFileSystemStorage,
+  createEncryptedMemoryStorage,
+  // Re-export types
+  type StorageProtocol,
+  SecurityLevel
+} from './storage/index.js';
+
 // Future exports will include:
-// - Storage implementations (MemoryStorage, IndexedDBStorage, etc.)
 // - Key implementations (PrivateKey, SeedPhraseKey, SecureElementKey)
 // - Wallet implementations (KeyWallet, WatchWallet)
 // - Network service implementation
