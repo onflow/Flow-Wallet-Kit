@@ -2,5 +2,5 @@
  * Utility exports for Flow Wallet Kit
  */
 
-export * from './errors';
-export * from './crypto';
+export * from './errors.js';
+export * from './crypto.js';

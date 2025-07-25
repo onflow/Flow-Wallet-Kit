@@ -106,7 +106,42 @@ export {
   SecurityLevel
 } from './storage/index.js';
 
+// Re-export key implementations
+export {
+  // Base classes
+  BaseKeyProtocol,
+  // Key providers
+  PrivateKeyProvider,
+  SeedPhraseProvider,
+  // Constants
+  FLOW_DEFAULT_PATH,
+  // Curve utilities
+  getCurve,
+  getHasher,
+  generatePrivateKey,
+  derivePublicKey,
+  getCompressedPublicKey,
+  isValidPrivateKey,
+  sign,
+  verify,
+  privateKeyToHex,
+  privateKeyFromHex,
+  publicKeyToHex,
+  publicKeyFromHex,
+  getPublicKeyPoint,
+  normalizeSignature,
+  // Re-export key types
+  KeyType,
+  SigningAlgorithm,
+  HashingAlgorithm,
+  type KeyProtocol,
+  type KeyCreationOptions,
+  type SeedPhraseKeyOptions,
+  type PrivateKeyOptions,
+  type KeyStatic
+} from './keys/index.js';
+
 // Future exports will include:
-// - Key implementations (PrivateKey, SeedPhraseKey, SecureElementKey)
 // - Wallet implementations (KeyWallet, WatchWallet)
 // - Network service implementation
+// - SecureElementKey (Web Crypto API non-extractable keys)

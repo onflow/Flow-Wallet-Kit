@@ -4,13 +4,18 @@
  * This module exports all storage providers and related utilities.
  */
 
+// Import types
+import type { StorageProtocol } from '../types/storage.js';
+
 // Base storage protocol
 export { BaseStorageProtocol } from './StorageProtocol.js';
 
-// Storage providers
-export { InMemoryProvider } from './InMemoryProvider.js';
-export { FileSystemProvider } from './FileSystemProvider.js';
-export { EncryptedStorageProvider } from './EncryptedStorageProvider.js';
+// Storage providers - import first, then export
+import { InMemoryProvider } from './InMemoryProvider.js';
+import { FileSystemProvider } from './FileSystemProvider.js';
+import { EncryptedStorageProvider } from './EncryptedStorageProvider.js';
+
+export { InMemoryProvider, FileSystemProvider, EncryptedStorageProvider };
 
 // Re-export storage types
 export type { StorageProtocol } from '../types/storage.js';
@@ -25,8 +30,8 @@ export function createStorageProvider(options?: {
   type?: 'memory' | 'filesystem' | 'encrypted';
   basePath?: string;
   password?: string;
-  baseProvider?: import('../types/storage.js').StorageProtocol;
-}): import('../types/storage.js').StorageProtocol {
+  baseProvider?: StorageProtocol;
+}): StorageProtocol {
   const { type = 'memory', basePath, password, baseProvider } = options || {};
   
   switch (type) {
@@ -62,7 +67,7 @@ export function createStorageProvider(options?: {
 export function createEncryptedFileSystemStorage(
   basePath: string,
   password: string
-): EncryptedStorageProvider {
+): StorageProtocol {
   const fileProvider = new FileSystemProvider(basePath);
   return new EncryptedStorageProvider(fileProvider, password);
 }
@@ -74,7 +79,7 @@ export function createEncryptedFileSystemStorage(
  */
 export function createEncryptedMemoryStorage(
   password: string
-): EncryptedStorageProvider {
+): StorageProtocol {
   const memoryProvider = new InMemoryProvider();
   return new EncryptedStorageProvider(memoryProvider, password);
 }
