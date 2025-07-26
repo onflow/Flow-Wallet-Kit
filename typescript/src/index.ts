@@ -141,7 +141,33 @@ export {
   type KeyStatic
 } from './keys/index.js';
 
+// Re-export wallet implementations
+export {
+  // Base wallet
+  Wallet,
+  // Wallet implementations
+  KeyWallet,
+  WatchWallet,
+  // Account
+  Account,
+  // Factory functions
+  createKeyWallet,
+  createWatchWallet,
+  // Types
+  WalletType,
+  WalletState
+} from './wallet/index.js';
+
+// Re-export network implementations
+export {
+  // Network services
+  KeyIndexer,
+  NetworkManager,
+  // Types
+  ChainId
+} from './network/index.js';
+
 // Future exports will include:
-// - Wallet implementations (KeyWallet, WatchWallet)
-// - Network service implementation
 // - SecureElementKey (Web Crypto API non-extractable keys)
+// - Wallet factory functions
+// - Transaction builders and signers

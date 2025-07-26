@@ -120,7 +120,8 @@ export class ChaChaPolyCipher implements SymmetricEncryption {
     }
     
     const cipher = Object.create(ChaChaPolyCipher.prototype);
-    cipher._key = key;
+    // Create a copy of the key to ensure independence
+    cipher._key = new Uint8Array(key);
     return cipher;
   }
 }

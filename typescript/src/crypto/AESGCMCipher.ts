@@ -156,8 +156,9 @@ export class AESGCMCipher implements SymmetricEncryption {
     
     const cipher = new AESGCMCipher('');
     // Override the key directly using Object.defineProperty to bypass readonly
+    // Create a copy of the key to ensure independence
     Object.defineProperty(cipher, '_key', {
-      value: key,
+      value: new Uint8Array(key),
       writable: false,
       enumerable: false,
       configurable: false

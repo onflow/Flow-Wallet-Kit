@@ -154,7 +154,7 @@ export abstract class BaseKeyProtocol<
     }
     
     const keyPrefix = this.getKeyPrefix();
-    const allKeys = Object.keys(this.storage);
+    const allKeys = this.storage.allKeys;
     
     return allKeys
       .filter(key => key.startsWith(keyPrefix))

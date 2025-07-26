@@ -156,18 +156,23 @@ export class PrivateKeyProvider extends BaseKeyProtocol<PrivateKeyData, Uint8Arr
     secret: Uint8Array,
     storage: StorageProtocol
   ): Promise<IKeyProtocol<PrivateKeyData, Uint8Array, PrivateKeyOptions>> {
-    // Try both curves to determine which one the key belongs to
-    let signAlgo: SigningAlgorithm;
+    // Try to determine which curve the key belongs to
+    // Note: Since both curves use 32-byte keys, we can't definitively determine
+    // the curve from the key alone. In a real implementation, you would need
+    // additional metadata. For now, we'll default to P256 unless the advance
+    // options specify otherwise.
+    let signAlgo: SigningAlgorithm = SigningAlgorithm.ECDSA_P256;
     
-    if (isValidPrivateKey(secret, SigningAlgorithm.ECDSA_P256)) {
-      signAlgo = SigningAlgorithm.ECDSA_P256;
-    } else if (isValidPrivateKey(secret, SigningAlgorithm.ECDSA_SECP256K1)) {
+    // Check if the key is valid for the default curve
+    if (!isValidPrivateKey(secret, signAlgo)) {
+      // Try the other curve
       signAlgo = SigningAlgorithm.ECDSA_SECP256K1;
-    } else {
-      throw new WalletError(
-        WalletErrorCode.InvalidPrivateKey,
-        'Invalid private key for both P256 and secp256k1 curves'
-      );
+      if (!isValidPrivateKey(secret, signAlgo)) {
+        throw new WalletError(
+          WalletErrorCode.InvalidPrivateKey,
+          'Invalid private key for both P256 and secp256k1 curves'
+        );
+      }
     }
     
     const key: PrivateKeyData = {
@@ -272,22 +277,9 @@ export class PrivateKeyProvider extends BaseKeyProtocol<PrivateKeyData, Uint8Arr
    * Deserialize secret from storage
    */
   protected deserializeSecret(data: Uint8Array): Uint8Array {
-    if (data.length < 33) { // 1 byte for algo + 32 bytes for key
-      throw new WalletError(
-        WalletErrorCode.InvalidPrivateKey,
-        'Invalid serialized private key data'
-      );
-    }
-    
-    const signAlgoByte = data[0];
-    const privateKey = data.slice(1);
-    
-    // Update the key data with the stored algorithm
-    this._key.signAlgo = signAlgoByte === 0 ? 
-      SigningAlgorithm.ECDSA_P256 : 
-      SigningAlgorithm.ECDSA_SECP256K1;
-    
-    return privateKey;
+    // Return the full serialized data, including the algorithm byte
+    // The static get method will handle extracting the parts
+    return data;
   }
   
   /**
@@ -377,6 +369,13 @@ export class PrivateKeyProvider extends BaseKeyProtocol<PrivateKeyData, Uint8Arr
     const { secret, advance } = await temp.loadFromStorage(id, password);
     
     // The secret includes the algorithm byte
+    if (secret.length < 33) {
+      throw new WalletError(
+        WalletErrorCode.InvalidPrivateKey,
+        'Invalid stored private key data'
+      );
+    }
+    
     const signAlgoByte = secret[0];
     const privateKey = secret.slice(1);
     const signAlgo = signAlgoByte === 0 ? 
@@ -388,7 +387,10 @@ export class PrivateKeyProvider extends BaseKeyProtocol<PrivateKeyData, Uint8Arr
       signAlgo
     };
     
-    const provider = new PrivateKeyProvider(key, privateKey, advance, storage);
+    // Use the extracted signAlgo in advance if not already present
+    const finalAdvance = { ...advance, signAlgo };
+    
+    const provider = new PrivateKeyProvider(key, privateKey, finalAdvance, storage);
     provider._id = id;
     
     return provider;
