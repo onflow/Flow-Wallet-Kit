@@ -27,8 +27,8 @@ jobs:
         uses: gradle/gradle-build-action@v2
         with:
           gradle-version: 8.13
-          build-root-directory: Android
-          arguments: :wallet:check :wallet:publish --no-configure-on-demand --no-daemon --info
+          build-root-directory: Android/wallet
+          arguments: check publish --no-configure-on-demand --no-daemon --info
         env:
           ORG_GRADLE_PROJECT_githubUsername: ${{ github.actor }}
           ORG_GRADLE_PROJECT_githubPassword: ${{ secrets.GITHUB_TOKEN }}
@@ -40,9 +40,9 @@ jobs:
         run: |
           mkdir -p reports
           # Copy test reports
-          cp -r flow/build/reports/tests reports/tests || echo "No test reports found"
+          cp -r Android/wallet/build/reports/tests reports/tests || echo "No test reports found"
           # Copy Gradle build logs
-          cp -r flow/build/reports reports/gradle-reports || echo "No Gradle reports found"
+          cp -r Android/wallet/build/reports reports/gradle-reports || echo "No Gradle reports found"
 
       # Step 5: Upload all reports and logs
       - name: Upload All Reports
