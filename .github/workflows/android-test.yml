@@ -30,12 +30,18 @@ jobs:
         uses: gradle/gradle-build-action@v2
         with:
           gradle-version: 8.13
+        env:
+          GPR_USER: ${{ secrets.GPR_USER }}
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
 
       - name: Navigate to Project Directory
         run: cd Android/wallet
         
       - name: Run unit tests
         run: cd Android/wallet && gradle testDebugUnitTest --stacktrace
+        env:
+          GPR_USER: ${{ secrets.GPR_USER }}
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
 
       - name: Run connected tests
         uses: ReactiveCircus/android-emulator-runner@v2
@@ -49,6 +55,9 @@ jobs:
             adb devices -l
             adb shell 'while [ -z "$(/system/bin/getprop sys.boot_completed)" ]; do sleep 1; done'
             cd Android/wallet && gradle connectedDebugAndroidTest --stacktrace
+        env:
+          GPR_USER: ${{ secrets.GPR_USER }}
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
 
       - name: Upload test report
         if: failure()
@@ -56,4 +65,3 @@ jobs:
         with:
           name: android-test-report
           path: Android/wallet/build/reports/androidTests/connected/debug/
-

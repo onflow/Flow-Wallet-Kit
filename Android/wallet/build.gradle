@@ -17,8 +17,8 @@ if (localProps.exists()) {
     properties.load(localProps.newDataInputStream())
     println "Authenticating user: " + properties.getProperty("gpr.user")
 } else {
-    println "local.properties not found, please create it next to build.gradle and set gpr.user and gpr.key (Create a GitHub package read only + non expiration token at https://github.com/settings/tokens)\n" +
-            "Or set GITHUB_USER and GITHUB_TOKEN environment variables"
+    println "local.properties not found, please create it next to build.gradle and set gpr.user and gpr.key (Create a GitHub Packages token at https://github.com/settings/tokens)\n" +
+            "Or set GPR_USER and GPR_TOKEN environment variables"
 }
 
 android {
@@ -59,8 +59,8 @@ repositories {
     maven {
         url = uri("https://maven.pkg.github.com/trustwallet/wallet-core")
         credentials {
-            username = properties.getProperty("gpr.user") as String?: System.getenv("GITHUB_USER")
-            password = properties.getProperty("gpr.key") as String?: System.getenv("GITHUB_TOKEN")
+            username = properties.getProperty("gpr.user") as String ?: System.getenv("GPR_USER")
+            password = properties.getProperty("gpr.key") as String ?: System.getenv("GPR_TOKEN")
         }
     }
 }
@@ -143,13 +143,8 @@ afterEvaluate {
                 name = "GitHubPackages"
                 url = uri("https://maven.pkg.github.com/onflow/flow-wallet-kit")
                 credentials {
-                    username = (project.findProperty("githubUsername")
-                            ?: System.getenv("GITHUB_ACTOR")
-                            ?: System.getenv("GITHUB_USER")
-                            ?: properties.getProperty("gpr.user"))
-                    password = (project.findProperty("githubPassword")
-                            ?: System.getenv("GITHUB_TOKEN")
-                            ?: properties.getProperty("gpr.key"))
+                    username = properties.getProperty("gpr.user") as String ?: System.getenv("GPR_USER")
+                    password = properties.getProperty("gpr.key") as String ?: System.getenv("GPR_TOKEN")
                 }
             }
         }
