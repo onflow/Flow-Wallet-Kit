@@ -36,7 +36,7 @@ jobs:
             --author 'Flow Mobile Team' \
             --author_url https://github.com/onflow \
             --github_url https://github.com/onflow/flow-wallet-kit \
-            --github-file-prefix https://github.com/onflow/flow-wallet-kittree/${RELEASE_VERSION} \
+            --github-file-prefix https://github.com/onflow/flow-wallet-kit/tree/${RELEASE_VERSION} \
             --module-version ${RELEASE_VERSION} \
             --source-directory FlowWalletKit/Sources
         working-directory: main
