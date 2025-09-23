@@ -20,8 +20,12 @@ dependencyResolutionManagement {
         maven {
             url = uri("https://maven.pkg.github.com/trustwallet/wallet-core")
             credentials {
-                username = System.getenv("GPR_USER")
-                password = System.getenv("GPR_TOKEN")
+                username = (settings.ext.has("gpr.user") ? settings.ext.get("gpr.user") : null)
+                    ?: System.getenv("GPR_USER")
+                    ?: System.getenv("GITHUB_USER")
+                password = (settings.ext.has("gpr.key") ? settings.ext.get("gpr.key") : null)
+                    ?: System.getenv("GPR_TOKEN")
+                    ?: System.getenv("GITHUB_TOKEN")
             }
         }
     }

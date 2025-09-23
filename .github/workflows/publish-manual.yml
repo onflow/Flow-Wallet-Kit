@@ -31,11 +31,14 @@ jobs:
         with:
           gradle-version: 8.14.1
           build-root-directory: Android/wallet
-          arguments: check publish --no-configure-on-demand --no-daemon --info
+          arguments: assembleRelease publish -x test --no-configure-on-demand --no-daemon --info --stacktrace --warning-mode all
         env:
-          # Use non-reserved env var names mapped from secrets that also avoid GITHUB_ prefix
+          # GitHub Packages credentials (PAT) for cross-org deps and publishing
           GPR_USER: ${{ secrets.GPR_USER }}
           GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
+          # Also expose Actions built-in token for fallback publish
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ORG_GRADLE_PROJECT_VERSION_NAME: ${{ inputs.version }}
 
       - name: Collect Reports and Logs

@@ -12,10 +12,8 @@ import kotlinx.serialization.Contextual
  */
 @Serializable
 data class AccountCache(
-    @Contextual
-    val childs: List<ChildAccount>?,
-    @Contextual
-    val coa: COA?
+    val childs: List<@Contextual ChildAccount>?,
+    @Contextual val coa: COA?
 ) {
     companion object {
         private val json = Json { ignoreUnknownKeys = true }

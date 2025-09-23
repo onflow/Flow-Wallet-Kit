@@ -51,6 +51,13 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
+
+    // Configure variant-aware publishing to silence AGP warning
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
 }
 
 repositories {
@@ -61,8 +68,18 @@ repositories {
     maven {
         url = uri("https://maven.pkg.github.com/trustwallet/wallet-core")
         credentials {
-            username = properties.getProperty("gpr.user") as String ?: System.getenv("GPR_USER")
-            password = properties.getProperty("gpr.key") as String ?: System.getenv("GPR_TOKEN")
+            username = (
+                project.findProperty("gpr.user")
+                    ?: System.getenv("GPR_USER")
+                    ?: System.getenv("GITHUB_USER")
+                    ?: properties.getProperty("gpr.user")
+            ) as String
+            password = (
+                project.findProperty("gpr.key")
+                    ?: System.getenv("GPR_TOKEN")
+                    ?: System.getenv("GITHUB_TOKEN")
+                    ?: properties.getProperty("gpr.key")
+            ) as String
         }
     }
 }
@@ -108,19 +125,14 @@ dependencies {
     androidTestImplementation "com.ionspin.kotlin:bignum:0.3.10"
 }
 
-// Build sources jar for publication
-tasks.register('androidSourcesJar', Jar) {
-    archiveClassifier.set('sources')
-    from android.sourceSets.main.java.srcDirs
-}
-
 afterEvaluate {
     publishing {
         publications {
             // Publish the Android release variant
             release(MavenPublication) {
                 from components.release
-                artifact tasks.androidSourcesJar
+                // Optional: set an explicit artifactId
+                artifactId = 'flow-wallet-android'
 
                 pom {
                     name = 'flow-wallet-android'
@@ -145,8 +157,20 @@ afterEvaluate {
                 name = "GitHubPackages"
                 url = uri("https://maven.pkg.github.com/onflow/flow-wallet-kit")
                 credentials {
-                    username = properties.getProperty("gpr.user") as String ?: System.getenv("GPR_USER")
-                    password = properties.getProperty("gpr.key") as String ?: System.getenv("GPR_TOKEN")
+                    // Prefer Actions built-in token for publishing to this repo
+                    username = (
+                        System.getenv("GITHUB_ACTOR")
+                                ?: project.findProperty("gpr.user")
+                                ?: System.getenv("GPR_USER")
+                                ?: System.getenv("GITHUB_USER")
+                                ?: properties.getProperty("gpr.user")
+                    ) as String
+                    password = (
+                        System.getenv("GITHUB_TOKEN")
+                                ?: project.findProperty("gpr.key")
+                                ?: System.getenv("GPR_TOKEN")
+                                ?: properties.getProperty("gpr.key")
+                    ) as String
                 }
             }
         }
