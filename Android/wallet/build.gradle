@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.android'
-    id 'org.jetbrains.kotlin.plugin.serialization' version '1.8.0'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '2.1.20'
     id 'maven-publish'
 }
 
@@ -23,11 +23,12 @@ if (localProps.exists()) {
 
 android {
     namespace 'com.flow.wallet'
-    compileSdk 33
+    compileSdk 36
+    buildToolsVersion '35.0.0'
 
     defaultConfig {
         minSdk 24
-        targetSdk 33
+        targetSdk 36
         versionCode 1
         versionName "1.0"
 
@@ -40,7 +41,8 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-    
+    ndkVersion '27.1.12297006'
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -66,7 +68,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.0'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.1.20'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
     implementation 'androidx.core:core-ktx:1.9.0'
@@ -79,7 +81,7 @@ dependencies {
     
     // Flow SDK dependencies
     implementation 'com.github.onflow.flow-kmm:flow:0.0.26'
-    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3'
     implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
     
     // HD Wallet implementation
@@ -101,7 +103,7 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
-    implementation "org.jetbrains.kotlin:kotlin-test:2.0.21"
+    implementation "org.jetbrains.kotlin:kotlin-test:2.1.20"
     testImplementation "com.ionspin.kotlin:bignum:0.3.8"
     androidTestImplementation "com.ionspin.kotlin:bignum:0.3.10"
 }
