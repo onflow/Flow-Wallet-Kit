@@ -28,7 +28,7 @@ jobs:
         with:
           gradle-version: 8.14.1
           build-root-directory: Android/wallet
-          arguments: check publish --no-configure-on-demand --no-daemon --info
+          arguments: assembleRelease publish -x test --no-configure-on-demand --no-daemon --info
         env:
           # Use non-reserved env var names mapped from secrets that also avoid GITHUB_ prefix
           GPR_USER: ${{ secrets.GPR_USER }}

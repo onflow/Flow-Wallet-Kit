@@ -51,6 +51,13 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
+
+    // Configure variant-aware publishing to silence AGP warning
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
 }
 
 repositories {
