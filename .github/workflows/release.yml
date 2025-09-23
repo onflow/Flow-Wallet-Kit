@@ -2,6 +2,10 @@ on:
   release:
     types: [created]
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     runs-on: macos-latest
@@ -18,13 +22,17 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle' # Enables caching for Gradle dependencies
 
-      # Step 3: Run Gradle build and publish
-      - name: Build and Publish
-        run: |
-          cd Android && ./gradlew :wallet:check :wallet:publish --no-configure-on-demand --no-daemon --info
+      # Step 3: Set up Gradle and publish
+      - name: Set up Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: 8.13
+          build-root-directory: Android
+          arguments: :wallet:check :wallet:publish --no-configure-on-demand --no-daemon --info
         env:
           ORG_GRADLE_PROJECT_githubUsername: ${{ github.actor }}
           ORG_GRADLE_PROJECT_githubPassword: ${{ secrets.GITHUB_TOKEN }}
+          ORG_GRADLE_PROJECT_VERSION_NAME: ${{ github.event.release.tag_name }}
 
       # Step 4: Collect all reports and logs
       - name: Collect Reports and Logs
