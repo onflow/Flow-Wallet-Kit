@@ -12,12 +12,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          path: master
+          path: main
 
       - name: Get tag
         id: vars
         run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
-        working-directory: master
+        working-directory: main
 
       - name: Setup ruby
         uses: ruby/setup-ruby@v1
@@ -39,7 +39,7 @@ jobs:
             --github-file-prefix https://github.com/onflow/flow-wallet-kittree/${RELEASE_VERSION} \
             --module-version ${RELEASE_VERSION} \
             --source-directory FlowWalletKit/Sources
-        working-directory: master
+        working-directory: main
       
       - name: Checkout doc
         uses: actions/checkout@v3
@@ -58,8 +58,8 @@ jobs:
         run: |
           mkdir -p docs/current
           mkdir -p docs/$RELEASE_VERSION
-          cp -R ${G_WORKSPACE}/master/.build/jazzy/* docs/current
-          cp -R ${G_WORKSPACE}/master/.build/jazzy/* docs/$RELEASE_VERSION
+          cp -R ${G_WORKSPACE}/main/.build/jazzy/* docs/current
+          cp -R ${G_WORKSPACE}/main/.build/jazzy/* docs/$RELEASE_VERSION
         working-directory: gh-pages
 
       - name: Commit
