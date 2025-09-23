@@ -30,8 +30,9 @@ jobs:
           build-root-directory: Android/wallet
           arguments: check publish --no-configure-on-demand --no-daemon --info
         env:
-          ORG_GRADLE_PROJECT_githubUsername: ${{ secrets.WALLET_CORE_USER }}
-          ORG_GRADLE_PROJECT_githubPassword: ${{ secrets.WALLET_CORE_TOKEN }}
+          # Use non-reserved env var names mapped from secrets that also avoid GITHUB_ prefix
+          GPR_USER: ${{ secrets.GPR_USER }}
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
           ORG_GRADLE_PROJECT_VERSION_NAME: ${{ github.event.release.tag_name }}
 
       # Step 4: Collect all reports and logs
