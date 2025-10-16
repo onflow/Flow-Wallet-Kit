@@ -184,4 +184,5 @@ public class SecureEnclaveKey: KeyProtocol {
     public func rawSign(data: Data, signAlgo _: Flow.SignatureAlgorithm = .ECDSA_P256) throws -> Data {
         return try key.signature(for: data).rawRepresentation
     }
+    
 }

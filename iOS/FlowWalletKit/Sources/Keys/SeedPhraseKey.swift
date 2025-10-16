@@ -52,6 +52,13 @@ public class SeedPhraseKey: KeyProtocol {
     public var derivationPath: String
     /// Optional passphrase for additional security
     public var passphrase: String
+    
+    /// Default base derivation path for Ethereum accounts
+    public static var ethBaseDerivationPath = DerivationPath(purpose: .bip44,
+                                                             coin: CoinType.ethereum.slip44Id,
+                                                             account: 0,
+                                                             change: 0,
+                                                             address: 0).description
 
     /// Default seed phrase length (12 words)
     public static let defaultSeedPhraseLength: BIP39.SeedPhraseLength = .twelve
@@ -230,7 +237,7 @@ public class SeedPhraseKey: KeyProtocol {
         guard let pubK = try? getPublicKey(signAlgo: signAlgo) else {
             return nil
         }
-        return pubK.uncompressed.data.dropFirst()
+        return pubK.uncompressed.data.dropFirst() // 04
     }
     
     /// Get the private key for a signature algorithm
@@ -278,5 +285,58 @@ public class SeedPhraseKey: KeyProtocol {
             throw FWKError.unsupportSignatureAlgorithm
         }
         return pubKey
+    }
+}
+
+// MARK: - Ethereum Support
+
+extension SeedPhraseKey: EthereumKeyProtocol {
+    
+    public func ethAddress(index: UInt32) throws -> String {
+        try withEthereumPrivateKey(index: index) { key in
+            CoinType.ethereum.deriveAddress(privateKey: key)
+        }
+    }
+    
+    public func ethPublicKey(index: UInt32) throws -> Data {
+        try withEthereumPrivateKey(index: index) { key in
+            key.getPublicKeySecp256k1(compressed: false).uncompressed.data
+        }
+    }
+    
+    public func ethPrivateKey(index: UInt32) throws -> Data {
+        try withEthereumPrivateKey(index: index) { key in
+            key.data
+        }
+    }
+    
+    public func ethSign(digest: Data, index: UInt32) throws -> Data {
+        try withEthereumPrivateKey(index: index) { key in
+            try validateEthereumDigest(digest)
+            guard let signature = key.sign(digest: digest, curve: .secp256k1) else {
+                throw FWKError.signError
+            }
+            // Signature is 65 bytes: [r(32) | s(32) | v(1)]
+            return try normalizeEthereumSignature(signature)
+        }
+    }
+    
+    private func ethereumDerivationPath(index: UInt32) throws -> DerivationPath {
+        guard let basePath = DerivationPath(SeedPhraseKey.ethBaseDerivationPath) else {
+            throw FWKError.invalidEthereumDerivationPath
+        }
+        return DerivationPath(purpose: basePath.purpose,
+                              coin: basePath.coin,
+                              account: basePath.account,
+                              change: basePath.change,
+                              address: index)
+    }
+    
+    private func withEthereumPrivateKey<T>(index: UInt32,
+                                           _ body: (WalletCore.PrivateKey) throws -> T) throws -> T {
+        let path = try ethereumDerivationPath(index: index)
+        var key = hdWallet.getKey(coin: .ethereum, derivationPath: path.description)
+        defer { key = WalletCore.PrivateKey() }
+        return try body(key)
     }
 }

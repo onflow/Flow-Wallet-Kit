@@ -7,6 +7,7 @@
 import Flow
 import Foundation
 import KeychainAccess
+import WalletCore
 
 /// Protocol defining the interface for cryptographic key management
 public protocol KeyProtocol: Identifiable {

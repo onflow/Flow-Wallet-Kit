@@ -100,6 +100,18 @@ public enum FWKError: String, Error, CaseIterable, CustomStringConvertible {
     /// Failed to initialize public key
     /// Thrown when public key derivation or loading fails
     case initPublicKeyFailed
+    /// Ethereum capability is unavailable for the selected key
+    case unsupportedEthereumKey
+    /// Unsupported or out-of-range Ethereum derivation index
+    case unsupportedEthereumDerivation
+    /// Invalid EVM typed data structure
+    case invalidEthereumTypedData
+    /// Ethereum message/digest must be 32 bytes
+    case invalidEthereumMessage
+    /// Malformed Ethereum signature blob
+    case invalidEthereumSignature
+    /// Invalid or malformed Ethereum derivation path definition
+    case invalidEthereumDerivationPath
     
     case failedPassSecurityCheck
     
