@@ -7,6 +7,7 @@ import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
+import wallet.core.jni.CoinType
 import wallet.core.jni.Curve
 import wallet.core.jni.PrivateKey as TWPrivateKey
 /**
@@ -17,7 +18,7 @@ class PrivateKey(
     internal var pk: TWPrivateKey,
     override var storage: StorageProtocol,
     private val keyProperties: Map<String, Any> = emptyMap()
-) : KeyProtocol, PrivateKeyProvider {
+) : KeyProtocol, PrivateKeyProvider, EthereumKeyProtocol {
     companion object {
         private const val TAG = "PrivateKey"
         private const val KEY_SIZE = 256
@@ -246,4 +247,31 @@ class PrivateKey(
     fun cleanup() {
         pk = TWPrivateKey()
     }
-} 
+
+    override fun ethAddress(index: Int): String {
+        if (index != 0) throw WalletError.UnsupportedEthereumDerivation
+        return CoinType.ETHEREUM.deriveAddress(pk)
+    }
+
+    override fun ethPublicKey(index: Int): ByteArray {
+        if (index != 0) throw WalletError.UnsupportedEthereumDerivation
+        return pk.getPublicKeySecp256k1(false).data()
+    }
+
+    override fun ethPrivateKey(index: Int): ByteArray {
+        if (index != 0) throw WalletError.UnsupportedEthereumDerivation
+        return pk.data()
+    }
+
+    override fun ethSignDigest(digest: ByteArray, index: Int): ByteArray {
+        if (index != 0) throw WalletError.UnsupportedEthereumDerivation
+        EthereumSignatureUtils.validateDigest(digest)
+        return try {
+            val signature = pk.sign(digest, Curve.SECP256K1)
+            EthereumSignatureUtils.normalize(signature)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ethereum signing failed", e)
+            throw WalletError.SignError
+        }
+    }
+}

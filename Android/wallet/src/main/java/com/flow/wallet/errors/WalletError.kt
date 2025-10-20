@@ -32,6 +32,12 @@ class WalletError(
         val InvalidEVMAddress = WalletError(11, "Invalid EVM address")
         val UnsupportedKeyFormat = WalletError(33, "Key format not supported")
         val InvalidMnemonic = WalletError(34, "Invalid mnemonic phrase")
+        val UnsupportedEthereumKey = WalletError(35, "Ethereum operations are not supported by this key")
+        val UnsupportedEthereumDerivation = WalletError(36, "Unsupported Ethereum derivation index")
+        val InvalidEthereumTypedData = WalletError(37, "Invalid Ethereum typed data payload")
+        val InvalidEthereumMessage = WalletError(38, "Ethereum message must be 32 bytes")
+        val InvalidEthereumSignature = WalletError(39, "Malformed Ethereum signature")
+        val InvalidEthereumDerivationPath = WalletError(40, "Invalid Ethereum derivation path")
 
         // MARK: - Authentication Errors
         val InvalidPassword = WalletError(12, "Invalid password provided")
@@ -100,8 +106,15 @@ class WalletError(
                 31 -> RemoveCacheFailed
                 32 -> FailedPassSecurityCheck
                 33 -> UnsupportedKeyFormat
+                34 -> InvalidMnemonic
+                35 -> UnsupportedEthereumKey
+                36 -> UnsupportedEthereumDerivation
+                37 -> InvalidEthereumTypedData
+                38 -> InvalidEthereumMessage
+                39 -> InvalidEthereumSignature
+                40 -> InvalidEthereumDerivationPath
                 else -> throw IllegalArgumentException("Unknown error code: $code")
             }
         }
     }
-} 
+}

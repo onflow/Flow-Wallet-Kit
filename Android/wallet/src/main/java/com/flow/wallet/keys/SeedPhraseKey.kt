@@ -14,6 +14,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
+import wallet.core.jni.CoinType
 import wallet.core.jni.Curve
 import wallet.core.jni.HDWallet
 import java.security.KeyFactory
@@ -45,10 +46,11 @@ class SeedPhraseKey(
     private var keyPair: KeyPair?,
     override var storage: StorageProtocol,
     private val seedPhraseLength: BIP39.SeedPhraseLength = BIP39.SeedPhraseLength.TWELVE
-) : SeedPhraseKeyProvider {
+) : SeedPhraseKeyProvider, EthereumKeyProtocol {
     companion object {
         private const val TAG = "SeedPhraseKey"
         private const val DEFAULT_DERIVATION_PATH = "m/44'/539'/0'/0/0"
+        private const val ETH_DERIVATION_PREFIX = "m/44'/60'/0'/0"
 
         fun parseDerivationPath(path: String): IntArray {
             return path.split("/")
@@ -311,6 +313,50 @@ class SeedPhraseKey(
     private fun encryptData(data: ByteArray, password: String): ByteArray {
         val cipher = ChaChaPolyCipher(password)
         return cipher.encrypt(data)
+    }
+
+    override fun ethAddress(index: Int): String = withEthereumPrivateKey(index) {
+        CoinType.ETHEREUM.deriveAddress(it)
+    }
+
+    override fun ethPublicKey(index: Int): ByteArray = withEthereumPrivateKey(index) {
+        it.getPublicKeySecp256k1(false).data()
+    }
+
+    override fun ethPrivateKey(index: Int): ByteArray = withEthereumPrivateKey(index) {
+        it.data()
+    }
+
+    override fun ethSignDigest(digest: ByteArray, index: Int): ByteArray = withEthereumPrivateKey(index) {
+        EthereumSignatureUtils.validateDigest(digest)
+        try {
+            val signature = it.sign(digest, Curve.SECP256K1)
+            EthereumSignatureUtils.normalize(signature)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ethereum signing failed", e)
+            throw WalletError.SignError
+        }
+    }
+
+    private inline fun <T> withEthereumPrivateKey(index: Int, block: (TWPrivateKey) -> T): T {
+        NativeLibraryManager.throwIfNotLoaded()
+        if (index < 0) throw WalletError.UnsupportedEthereumDerivation
+        var twPriv: TWPrivateKey? = null
+        return try {
+            val path = ethereumDerivationPath(index)
+            twPriv = hdWallet.getKeyByCurve(Curve.SECP256K1, path)
+            block(twPriv!!)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to derive Ethereum key", e)
+            throw WalletError.InvalidEthereumDerivationPath
+        } finally {
+            twPriv = null
+        }
+    }
+
+    private fun ethereumDerivationPath(index: Int): String {
+        if (index < 0) throw WalletError.UnsupportedEthereumDerivation
+        return "$ETH_DERIVATION_PREFIX/$index"
     }
 }
 
