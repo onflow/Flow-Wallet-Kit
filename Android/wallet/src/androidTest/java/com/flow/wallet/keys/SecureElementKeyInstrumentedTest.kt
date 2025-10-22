@@ -5,6 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assume
 import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
 import junit.framework.TestCase.assertEquals
@@ -41,6 +42,8 @@ class SecureElementKeyInstrumentedTest {
 
     @Before
     fun setup() {
+        Assume.assumeFalse("Skipping SecureElement tests on emulator",
+            com.flow.wallet.TestDeviceUtils.isEmulator())  // Emulator lacks hardware-backed keystore
         context = ApplicationProvider.getApplicationContext()
         MockitoAnnotations.openMocks(this)
         
