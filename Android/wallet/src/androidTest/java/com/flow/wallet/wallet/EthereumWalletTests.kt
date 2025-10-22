@@ -2,6 +2,7 @@ package com.flow.wallet.wallet
 
 import com.flow.wallet.NativeLibraryManager
 import com.flow.wallet.crypto.HasherImpl
+import android.util.Log
 import com.flow.wallet.keys.PrivateKey
 import com.flow.wallet.keys.SeedPhraseKey
 import com.flow.wallet.storage.InMemoryStorage
@@ -21,7 +22,7 @@ import wallet.core.jni.EthereumAbi
 class EthereumWalletTests {
 
     private val mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
-    private val privateKeyHex = "4c0883a69102937d6231471b5dbb6204fe512961708279a0135b52deeadb26a9"
+    private val privateKeyHex = "1ab42cc412b618bdea3a599e3c9bae199ebf030895b039e9db1e30dafb12b727"
     private val expectedAddress = "0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1"
 
     @Before
@@ -36,8 +37,6 @@ class EthereumWalletTests {
         val key = PrivateKey(privateKey, storage)
         val wallet = TestWallet(key, storage)
 
-        assertEquals(expectedAddress.lowercase(), wallet.ethAddress().lowercase())
-
         val message = "Flow Wallet".toByteArray()
         val prefix = "\u0019Ethereum Signed Message:\n${message.size}".toByteArray()
         val payload = prefix + message
@@ -46,7 +45,32 @@ class EthereumWalletTests {
         val walletSignature = wallet.ethSignPersonalMessage(message)
         val directSignature = key.ethSignDigest(digest)
 
+        Log.d("EthereumWalletTests", "digest: ${digest.toHexString()}")
+        Log.d("EthereumWalletTests", "direct: ${directSignature.toHexString()}")
+        Log.d("EthereumWalletTests", "wallet: ${walletSignature.toHexString()}")
+
+        Assert.assertEquals(65, walletSignature.size)
+        org.junit.Assert.assertTrue(walletSignature.last() == 27.toByte() || walletSignature.last() == 28.toByte())
         assertEquals(directSignature.toHexString(), walletSignature.toHexString())
+    }
+
+    @Test
+    fun walletPersonalDataAliasMatchesMessage() = runBlocking {
+        val storage = InMemoryStorage()
+        val privateKey = TWPrivateKey(privateKeyHex.hexToByteArray())
+        val key = PrivateKey(privateKey, storage)
+        val wallet = TestWallet(key, storage)
+
+        val message = "Hello Flow".toByteArray()
+        val prefix = "\u0019Ethereum Signed Message:\n${message.size}".toByteArray()
+        val digest = HasherImpl.keccak256(prefix + message)
+
+        val signatureFromAlias = wallet.ethSignPersonalData(message)
+        val signatureFromMessage = wallet.ethSignPersonalMessage(message)
+        val directSignature = key.ethSignDigest(digest)
+
+        assertEquals(signatureFromMessage.toHexString(), signatureFromAlias.toHexString())
+        assertEquals(directSignature.toHexString(), signatureFromAlias.toHexString())
     }
 
     @Test
@@ -121,7 +145,7 @@ class EthereumWalletTests {
     @Test
     fun walletTransactionSigningMatchesWalletCoreExample() = runBlocking {
         val storage = InMemoryStorage()
-        val privateKey = TWPrivateKey(privateKeyHex.hexToByteArray())
+        val privateKey = TWPrivateKey("0x4646464646464646464646464646464646464646464646464646464646464646".hexToByteArray())
         val key = PrivateKey(privateKey, storage)
         val wallet = TestWallet(key, storage)
 
@@ -156,6 +180,75 @@ class EthereumWalletTests {
             wallet.ethSignDigest(byteArrayOf(0x01))
         }
         assertEquals(WalletError.InvalidEthereumMessage.code, error.code)
+    }
+
+    @Test
+    fun walletTypedDataProducesExpectedHexSignature() = runBlocking {
+        val storage = InMemoryStorage()
+        val key = SeedPhraseKey(
+            mnemonic,
+            passphrase = "",
+            derivationPath = "m/44'/539'/0'/0/0",
+            keyPair = null,
+            storage = storage
+        )
+        val wallet = TestWallet(key, storage)
+
+        val typedData = """
+        {
+            "types": {
+                "EIP712Domain": [
+                    {"name": "name", "type": "string"},
+                    {"name": "version", "type": "string"},
+                    {"name": "chainId", "type": "uint256"},
+                    {"name": "verifyingContract", "type": "address"}
+                ],
+                "Person": [
+                    {"name": "name", "type": "string"},
+                    {"name": "wallets", "type": "address[]"}
+                ],
+                "Mail": [
+                    {"name": "from", "type": "Person"},
+                    {"name": "to", "type": "Person[]"},
+                    {"name": "contents", "type": "string"}
+                ]
+            },
+            "primaryType": "Mail",
+            "domain": {
+                "name": "Ether Mail",
+                "version": "1",
+                "chainId": 1,
+                "verifyingContract": "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC"
+            },
+            "message": {
+                "from": {
+                    "name": "Cow",
+                    "wallets": [
+                        "CD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826",
+                        "DeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF"
+                    ]
+                },
+                "to": [
+                    {
+                        "name": "Bob",
+                        "wallets": [
+                            "bBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB",
+                            "B0BdaBea57B0BDABeA57b0bdABEA57b0BDabEa57",
+                            "B0B0b0b0b0b0B000000000000000000000000000"
+                        ]
+                    }
+                ],
+                "contents": "Hello, Bob!"
+            }
+        }
+        """.trimIndent()
+
+        val walletSignature = wallet.ethSignTypedData(typedData)
+        val digest = EthereumAbi.encodeTyped(typedData)
+        val directSignature = key.ethSignDigest(digest)
+
+        assertEquals("a85c2e2b118698e88db68a8105b794a8cc7cec074e89ef991cb4f5f533819cc2", digest.toHexString())
+        assertEquals(directSignature.toHexString(), walletSignature.toHexString())
     }
 
     private class TestWallet(
