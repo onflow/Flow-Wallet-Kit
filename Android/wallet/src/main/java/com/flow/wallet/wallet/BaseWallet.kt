@@ -17,8 +17,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
 import org.onflow.flow.ChainId
-import java.nio.charset.Charsets
-import wallet.core.jni.AnySigner
+import kotlin.text.Charsets
+import wallet.core.java.AnySigner
 import wallet.core.jni.CoinType
 import wallet.core.jni.EthereumAbi
 import wallet.core.jni.proto.Ethereum
