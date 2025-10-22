@@ -12,8 +12,8 @@ import org.onflow.flow.ChainId
 import wallet.core.jni.proto.Ethereum
 import wallet.core.jni.PrivateKey as TWPrivateKey
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlin.test.assertFailsWith
+import org.junit.Assert
 import com.flow.wallet.errors.WalletError
 import com.google.protobuf.ByteString
 import wallet.core.jni.EthereumAbi
@@ -26,11 +26,11 @@ class EthereumWalletTests {
 
     @Before
     fun setup() {
-        assertTrue(NativeLibraryManager.ensureLibraryLoaded(), "TrustWalletCore native library must load for tests")
+        Assert.assertTrue(NativeLibraryManager.ensureLibraryLoaded())
     }
 
     @Test
-    fun `wallet personal sign matches direct signature`() = runBlocking {
+    fun walletPersonalSignMatchesDirectSignature() = runBlocking {
         val storage = InMemoryStorage()
         val privateKey = TWPrivateKey(privateKeyHex.hexToByteArray())
         val key = PrivateKey(privateKey, storage)
@@ -50,7 +50,7 @@ class EthereumWalletTests {
     }
 
     @Test
-    fun `wallet typed data signing matches direct signature`() = runBlocking {
+    fun walletTypedDataSigningMatchesDirectSignature() = runBlocking {
         val storage = InMemoryStorage()
         val key = SeedPhraseKey(
             mnemonic,
@@ -119,7 +119,7 @@ class EthereumWalletTests {
     }
 
     @Test
-    fun `wallet transaction signing matches wallet core example`() = runBlocking {
+    fun walletTransactionSigningMatchesWalletCoreExample() = runBlocking {
         val storage = InMemoryStorage()
         val privateKey = TWPrivateKey(privateKeyHex.hexToByteArray())
         val key = PrivateKey(privateKey, storage)
@@ -146,7 +146,7 @@ class EthereumWalletTests {
     }
 
     @Test
-    fun `wallet rejects invalid digest length`() = runBlocking {
+    fun walletRejectsInvalidDigestLength() = runBlocking {
         val storage = InMemoryStorage()
         val privateKey = TWPrivateKey(privateKeyHex.hexToByteArray())
         val key = PrivateKey(privateKey, storage)

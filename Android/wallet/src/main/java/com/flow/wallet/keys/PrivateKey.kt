@@ -124,14 +124,15 @@ class PrivateKey(
     }
 
     override fun publicKey(signAlgo: SigningAlgorithm): ByteArray? {
-        val publicKey: wallet.core.jni.PublicKey?
-        try {
-            publicKey = when (signAlgo) {
+        if (signAlgo != SigningAlgorithm.ECDSA_P256 && signAlgo != SigningAlgorithm.ECDSA_secp256k1) {
+            return null
+        }
+        return try {
+            val publicKey = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1().uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false)
-                else -> null
             }
-            return publicKey?.data()
+            publicKey.data()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get public key", e)
             return null
@@ -144,12 +145,14 @@ class PrivateKey(
     }
 
     override suspend fun sign(data: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): ByteArray {
+        if (signAlgo != SigningAlgorithm.ECDSA_P256 && signAlgo != SigningAlgorithm.ECDSA_secp256k1) {
+            throw WalletError.UnsupportedSignatureAlgorithm
+        }
         return try {
             val hashed = HasherImpl.hash(data, hashAlgo)
             val curve = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256      -> Curve.NIST256P1
                 SigningAlgorithm.ECDSA_secp256k1 -> Curve.SECP256K1
-                else -> throw WalletError.UnsupportedSignatureAlgorithm
             }
 
             val fullSignature = pk.sign(hashed, curve)
@@ -174,11 +177,13 @@ class PrivateKey(
 
     override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
         val publicKey: wallet.core.jni.PublicKey?
+        if (signAlgo != SigningAlgorithm.ECDSA_P256 && signAlgo != SigningAlgorithm.ECDSA_secp256k1) {
+            return false
+        }
         return try {
             publicKey = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> pk.publicKeyNist256p1.uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false)
-                else -> return false
             }
             val hashed = HasherImpl.hash(message, hashAlgo)
             publicKey.verify(hashed, signature)

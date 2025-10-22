@@ -4,25 +4,27 @@ import com.flow.wallet.NativeLibraryManager
 import com.flow.wallet.crypto.HasherImpl
 import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.InMemoryStorage
-import kotlin.test.*
+import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import wallet.core.jni.PrivateKey as TWPrivateKey
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class EthereumKeyTests {
 
     private val mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
-    private val mnemonicEthAddress = "0x27Ef5cDBe01777D62438AfFeb695e33fC2335979"
-    private val privateKeyHex = "4c0883a69102937d6231471b5dbb6204fe512961708279a0135b52deeadb26a9"
-    private val privateKeyEthAddress = "0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1"
+    private val mnemonicEthAddress = "0x9858EfFD232B4033E47d90003D41EC34EcaEda94"
+    private val privateKeyHex = "9a983cb3d832fbde5ab49d692b7a8bf5b5d232479c99333d0fc8e1d21f1b55b6"
+    private val privateKeyEthAddress = "0x6Fac4D18c912343BF86fa7049364Dd4E424Ab9C0"
 
     @Before
     fun setup() {
-        assertTrue(NativeLibraryManager.ensureLibraryLoaded(), "TrustWalletCore native library must load for tests")
+        Assert.assertTrue(NativeLibraryManager.ensureLibraryLoaded())
     }
 
     @Test
-    fun `seed phrase key derives ethereum address and signatures`() {
+    fun seedPhraseKeyDerivesEthereumAddressAndSignatures() {
         val storage = InMemoryStorage()
         val key = SeedPhraseKey(
             mnemonic,
@@ -39,11 +41,11 @@ class EthereumKeyTests {
         val digest = HasherImpl.keccak256("hello world".toByteArray())
         val signature = key.ethSignDigest(digest)
         assertEquals(65, signature.size)
-        assertTrue(signature.last() == 27.toByte() || signature.last() == 28.toByte())
+        Assert.assertTrue(signature.last() == 27.toByte() || signature.last() == 28.toByte())
     }
 
     @Test
-    fun `private key derives ethereum address and signatures`() {
+    fun privateKeyDerivesEthereumAddressAndSignatures() {
         val storage = InMemoryStorage()
         val privateKey = TWPrivateKey(privateKeyHex.hexToByteArray())
         val key = PrivateKey(privateKey, storage)
@@ -52,11 +54,11 @@ class EthereumKeyTests {
         val digest = HasherImpl.keccak256("flow".toByteArray())
         val signature = key.ethSignDigest(digest)
         assertEquals(65, signature.size)
-        assertTrue(signature.last() == 27.toByte() || signature.last() == 28.toByte())
+        Assert.assertTrue(signature.last() == 27.toByte() || signature.last() == 28.toByte())
     }
 
     @Test
-    fun `invalid digest length throws`() {
+    fun invalidDigestLengthThrows() {
         val storage = InMemoryStorage()
         val privateKey = TWPrivateKey(privateKeyHex.hexToByteArray())
         val key = PrivateKey(privateKey, storage)

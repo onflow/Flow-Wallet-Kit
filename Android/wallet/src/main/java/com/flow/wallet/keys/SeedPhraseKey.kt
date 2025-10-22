@@ -80,7 +80,6 @@ class SeedPhraseKey(
         return when (signAlgo) {
             SigningAlgorithm.ECDSA_P256 -> Curve.NIST256P1
             SigningAlgorithm.ECDSA_secp256k1 -> Curve.SECP256K1
-            else -> throw WalletError.UnsupportedSignatureAlgorithm
         }
     }
 
@@ -115,7 +114,6 @@ class SeedPhraseKey(
             publicKey = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> derivedPrivateKey.getPublicKeyNist256p1().uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> derivedPrivateKey.getPublicKeySecp256k1(false)
-                else -> throw WalletError.UnsupportedSignatureAlgorithm
             }
 
             val keyFactory = KeyFactory.getInstance("EC")
@@ -264,10 +262,10 @@ class SeedPhraseKey(
         try {
             val curve = getCurveForAlgorithm(signAlgo)
             twPriv = hdWallet.getKeyByCurve(curve, derivationPath)
+            if (signAlgo != SigningAlgorithm.ECDSA_P256 && signAlgo != SigningAlgorithm.ECDSA_secp256k1) return false
             pubKey = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> twPriv.getPublicKeyNist256p1().uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> twPriv.getPublicKeySecp256k1(false)
-                else -> return false
             }
             val hashed = HasherImpl.hash(message, hashAlgo)
             return pubKey.verify(hashed, signature)
