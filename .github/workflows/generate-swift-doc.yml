@@ -1,6 +1,7 @@
 name: generate-doc
 
 on:
+  workflow_dispatch:
 #  release:
 #    types: [published]
 
