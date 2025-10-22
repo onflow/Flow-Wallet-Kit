@@ -7,6 +7,7 @@ import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.SigningAlgorithm
+import wallet.core.jni.CoinType
 import wallet.core.jni.Curve
 import wallet.core.jni.PrivateKey as TWPrivateKey
 /**
@@ -17,7 +18,7 @@ class PrivateKey(
     internal var pk: TWPrivateKey,
     override var storage: StorageProtocol,
     private val keyProperties: Map<String, Any> = emptyMap()
-) : KeyProtocol, PrivateKeyProvider {
+) : KeyProtocol, PrivateKeyProvider, EthereumKeyProtocol {
     companion object {
         private const val TAG = "PrivateKey"
         private const val KEY_SIZE = 256
@@ -123,14 +124,15 @@ class PrivateKey(
     }
 
     override fun publicKey(signAlgo: SigningAlgorithm): ByteArray? {
-        val publicKey: wallet.core.jni.PublicKey?
-        try {
-            publicKey = when (signAlgo) {
+        if (signAlgo != SigningAlgorithm.ECDSA_P256 && signAlgo != SigningAlgorithm.ECDSA_secp256k1) {
+            return null
+        }
+        return try {
+            val publicKey = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> pk.getPublicKeyNist256p1().uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false)
-                else -> null
             }
-            return publicKey?.data()
+            publicKey.data()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get public key", e)
             return null
@@ -143,12 +145,14 @@ class PrivateKey(
     }
 
     override suspend fun sign(data: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): ByteArray {
+        if (signAlgo != SigningAlgorithm.ECDSA_P256 && signAlgo != SigningAlgorithm.ECDSA_secp256k1) {
+            throw WalletError.UnsupportedSignatureAlgorithm
+        }
         return try {
             val hashed = HasherImpl.hash(data, hashAlgo)
             val curve = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256      -> Curve.NIST256P1
                 SigningAlgorithm.ECDSA_secp256k1 -> Curve.SECP256K1
-                else -> throw WalletError.UnsupportedSignatureAlgorithm
             }
 
             val fullSignature = pk.sign(hashed, curve)
@@ -173,11 +177,13 @@ class PrivateKey(
 
     override fun isValidSignature(signature: ByteArray, message: ByteArray, signAlgo: SigningAlgorithm, hashAlgo: HashingAlgorithm): Boolean {
         val publicKey: wallet.core.jni.PublicKey?
+        if (signAlgo != SigningAlgorithm.ECDSA_P256 && signAlgo != SigningAlgorithm.ECDSA_secp256k1) {
+            return false
+        }
         return try {
             publicKey = when (signAlgo) {
                 SigningAlgorithm.ECDSA_P256 -> pk.publicKeyNist256p1.uncompressed()
                 SigningAlgorithm.ECDSA_secp256k1 -> pk.getPublicKeySecp256k1(false)
-                else -> return false
             }
             val hashed = HasherImpl.hash(message, hashAlgo)
             publicKey.verify(hashed, signature)
@@ -246,4 +252,31 @@ class PrivateKey(
     fun cleanup() {
         pk = TWPrivateKey()
     }
-} 
+
+    override fun ethAddress(index: Int): String {
+        if (index != 0) throw WalletError.UnsupportedEthereumDerivation
+        return CoinType.ETHEREUM.deriveAddress(pk)
+    }
+
+    override fun ethPublicKey(index: Int): ByteArray {
+        if (index != 0) throw WalletError.UnsupportedEthereumDerivation
+        return pk.getPublicKeySecp256k1(false).data()
+    }
+
+    override fun ethPrivateKey(index: Int): ByteArray {
+        if (index != 0) throw WalletError.UnsupportedEthereumDerivation
+        return pk.data()
+    }
+
+    override fun ethSignDigest(digest: ByteArray, index: Int): ByteArray {
+        if (index != 0) throw WalletError.UnsupportedEthereumDerivation
+        EthereumSignatureUtils.validateDigest(digest)
+        return try {
+            val signature = pk.sign(digest, Curve.SECP256K1)
+            EthereumSignatureUtils.normalize(signature)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ethereum signing failed", e)
+            throw WalletError.SignError
+        }
+    }
+}

@@ -24,6 +24,7 @@
 
 import Flow
 import Foundation
+import WalletCore
 
 // MARK: - Wallet Implementation
 
@@ -52,6 +53,9 @@ public class Wallet: ObservableObject {
     /// Value: Array of Account objects for that network
     @Published
     public var accounts: [Flow.ChainID: [Account]]? = nil
+    
+    @Published
+    public var eoaAddress: Set<String>?
 
     /// Raw Flow accounts data, used for caching
     /// This property stores the underlying Flow.Account objects
@@ -88,6 +92,7 @@ public class Wallet: ObservableObject {
             self.cacheStorage = cacheStorage
         }
         try? loadCachedAccount()
+        refreshEOAAddresses()
     }
     
     /// Create a new account on the Flow blockchain

@@ -1,10 +1,14 @@
 package com.flow.wallet.wallet
 
 import com.flow.wallet.account.Account
-import com.flow.wallet.security.SecurityCheckDelegate
+import com.flow.wallet.crypto.HasherImpl
+import com.flow.wallet.errors.WalletError
+import com.flow.wallet.keys.EthereumKeyProtocol
 import com.flow.wallet.keys.KeyProtocol
+import com.flow.wallet.security.SecurityCheckDelegate
 import com.flow.wallet.storage.StorageProtocol
 import com.flow.wallet.storage.Cacheable
+import com.google.protobuf.ByteString
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -13,6 +17,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
 import org.onflow.flow.ChainId
+import kotlin.text.Charsets
+import wallet.core.java.AnySigner
+import wallet.core.jni.CoinType
+import wallet.core.jni.EthereumAbi
+import wallet.core.jni.proto.Ethereum
 import org.onflow.flow.models.Account as FlowAccount
 
 /**
@@ -31,6 +40,7 @@ interface Wallet {
     val type: WalletType
     val accounts: Map<ChainId, List<Account>>
     val accountsFlow: StateFlow<Map<ChainId, List<Account>>>
+    val eoaAddresses: StateFlow<Set<String>>
     val networks: Set<ChainId>
     val storage: StorageProtocol
     val isLoading: StateFlow<Boolean>
@@ -45,6 +55,12 @@ interface Wallet {
     suspend fun fetchAccounts()
     suspend fun fetchAccountsForNetwork(network: ChainId): List<FlowAccount>
     suspend fun fetchAccountByAddress(address: String, network: ChainId)
+    suspend fun ethAddress(index: Int = 0): String
+    suspend fun ethSignDigest(digest: ByteArray, index: Int = 0): ByteArray
+    suspend fun ethSignPersonalMessage(message: ByteArray, index: Int = 0): ByteArray
+    suspend fun ethSignPersonalData(data: ByteArray, index: Int = 0): ByteArray
+    suspend fun ethSignTypedData(json: String, index: Int = 0): ByteArray
+    suspend fun ethSignTransaction(input: Ethereum.SigningInput, index: Int = 0): Ethereum.SigningOutput
 }
 
 /**
@@ -88,6 +104,8 @@ abstract class BaseWallet(
     // Accounts as flow for reactive updates
     internal val _accountsFlow = MutableStateFlow<Map<ChainId, List<Account>>>(emptyMap())
     override val accountsFlow: StateFlow<Map<ChainId, List<Account>>> = _accountsFlow.asStateFlow()
+    private val _eoaAddresses = MutableStateFlow<Set<String>>(emptySet())
+    override val eoaAddresses: StateFlow<Set<String>> = _eoaAddresses.asStateFlow()
     
     // Accounts as map (legacy support)
     override val accounts: Map<ChainId, List<Account>>
@@ -274,6 +292,73 @@ abstract class BaseWallet(
         
             // Update the flow
             _accountsFlow.value = _accounts.toMap()
+    }
+
+    override suspend fun ethAddress(index: Int): String {
+        val key = resolveEthereumKey()
+        val address = key.ethAddress(index)
+        updateEoaCache(address)
+        return address
+    }
+
+    override suspend fun ethSignDigest(digest: ByteArray, index: Int): ByteArray {
+        ensureSecurityCheck()
+        val key = resolveEthereumKey()
+        return key.ethSignDigest(digest, index)
+    }
+
+    override suspend fun ethSignPersonalMessage(message: ByteArray, index: Int): ByteArray {
+        val prefix = "\u0019Ethereum Signed Message:\n${message.size}".toByteArray(Charsets.UTF_8)
+        val payload = prefix + message
+        val digest = HasherImpl.keccak256(payload)
+        return ethSignDigest(digest, index)
+    }
+
+    override suspend fun ethSignPersonalData(data: ByteArray, index: Int): ByteArray {
+        return ethSignPersonalMessage(data, index)
+    }
+
+    override suspend fun ethSignTypedData(json: String, index: Int): ByteArray {
+        val digest = EthereumAbi.encodeTyped(json)
+        if (digest.size != 32) {
+            throw WalletError.InvalidEthereumTypedData
+        }
+        return ethSignDigest(digest, index)
+    }
+
+    override suspend fun ethSignTransaction(input: Ethereum.SigningInput, index: Int): Ethereum.SigningOutput {
+        ensureSecurityCheck()
+        val key = resolveEthereumKey()
+        val privateKey = key.ethPrivateKey(index)
+        val builder = input.toBuilder()
+        builder.privateKey = ByteString.copyFrom(privateKey)
+        return try {
+            AnySigner.sign(builder.build(), CoinType.ETHEREUM, Ethereum.SigningOutput.parser())
+        } finally {
+            builder.clearPrivateKey()
+            privateKey.fill(0)
+        }
+    }
+
+    private suspend fun ensureSecurityCheck() {
+        securityDelegate?.let {
+            val passed = it.verify()
+            if (!passed) {
+                throw WalletError.FailedPassSecurityCheck
+            }
+        }
+    }
+
+    private fun resolveEthereumKey(): EthereumKeyProtocol {
+        val key = getKeyForAccount() ?: throw WalletError.UnsupportedEthereumKey
+        if (key !is EthereumKeyProtocol) {
+            throw WalletError.UnsupportedEthereumKey
+        }
+        return key
+    }
+
+    private fun updateEoaCache(address: String) {
+        _eoaAddresses.value = _eoaAddresses.value + address
     }
 
     protected abstract fun getKeyForAccount(): KeyProtocol?

@@ -3,6 +3,7 @@ package com.flow.wallet.wallet
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assume
 import com.flow.wallet.CryptoProvider
 import com.flow.wallet.keys.KeyProtocol
 import com.flow.wallet.keys.PrivateKey
@@ -32,6 +33,8 @@ class WalletInstrumentedTest {
     @Before
     fun setup() {
         System.loadLibrary("TrustWalletCore")
+        Assume.assumeFalse("Skipping Wallet instrumentation tests on emulator",
+            com.flow.wallet.TestDeviceUtils.isEmulator())  // Emulator has no trusted keystore implementation
         context = ApplicationProvider.getApplicationContext()
         storage = HardwareBackedStorage(context)
         testKey = PrivateKey(wallet.core.jni.PrivateKey(), storage)

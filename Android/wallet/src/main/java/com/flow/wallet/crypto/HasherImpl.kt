@@ -27,4 +27,5 @@ object HasherImpl {
     /** Convenience wrappers */
     fun sha256(data: ByteArray)  = hash(data, HashingAlgorithm.SHA2_256)
     fun sha3_256(data: ByteArray) = hash(data, HashingAlgorithm.SHA3_256)
+    fun keccak256(data: ByteArray): ByteArray = Hash.keccak256(data)
 }

@@ -16,6 +16,7 @@ import WalletCore
 
 /// Implementation of KeyProtocol using raw private keys
 public class PrivateKey: KeyProtocol {
+    
     /// Type used for advanced key creation options (raw private key string)
     public typealias Advance = String
 
@@ -249,5 +250,45 @@ public class PrivateKey: KeyProtocol {
         case .unknown:
             throw FWKError.unsupportSignatureAlgorithm
         }
+    }
+}
+
+// MARK: - EthereumKeyProtocol
+
+extension PrivateKey: EthereumKeyProtocol {
+    public func ethAddress(index: UInt32) throws -> String {
+        guard index == 0 else {
+            throw FWKError.unsupportedEthereumDerivation
+        }
+        return CoinType.ethereum.deriveAddress(privateKey: pk)
+    }
+    
+    public func ethPublicKey(index: UInt32) throws -> Data {
+        guard index == 0 else {
+            throw FWKError.unsupportedEthereumDerivation
+        }
+        return pk.getPublicKeyByType(pubkeyType: .secp256k1).uncompressed.data
+    }
+    
+    public func ethPrivateKey(index: UInt32) throws -> Data {
+        guard index == 0 else {
+            throw FWKError.unsupportedEthereumDerivation
+        }
+        return pk.data
+    }
+    
+    public func ethSign(digest: Data, index: UInt32) throws -> Data {
+        guard index == 0 else {
+            throw FWKError.unsupportedEthereumDerivation
+        }
+        try validateEthereumDigest(digest)
+        
+        guard let signature = pk.sign(digest: digest, curve: .secp256k1) else {
+            throw FWKError.signError
+        }
+        
+        // Signature is 65 bytes: [r(32) | s(32) | v(1)], where wallet-core may yield v=0/1.
+        // Normalize `v` to 27/28 to satisfy RPC expectations per Ethereum Yellow Paper/EIP-155.
+        return try normalizeEthereumSignature(signature)
     }
 }

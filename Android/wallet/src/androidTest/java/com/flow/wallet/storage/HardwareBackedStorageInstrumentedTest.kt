@@ -3,6 +3,7 @@ package com.flow.wallet.storage
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assume
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
 import org.junit.Test
@@ -12,6 +13,10 @@ import kotlin.test.assertFalse
 
 @RunWith(AndroidJUnit4::class)
 class HardwareBackedStorageInstrumentedTest {
+    init {
+        Assume.assumeFalse("Skipping hardware-backed storage tests on emulator",
+            com.flow.wallet.TestDeviceUtils.isEmulator())  // Emulator does not provide Android Keystore support
+    }
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val testAlias = "test-alias-${System.currentTimeMillis()}"
     private val testKeyStore = KeyStore.getInstance("AndroidKeyStore").apply {
