@@ -67,7 +67,7 @@ extension Wallet {
         return AnySigner.sign(input: signingInput, coin: .ethereum)
     }
     
-    private func refreshEOAAddresses() {
+    func refreshEOAAddresses() {
         guard let key = try? resolveEthereumKey() else {
             eoaAddress = nil
             return
