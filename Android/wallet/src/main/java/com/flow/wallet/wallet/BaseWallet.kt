@@ -4,6 +4,7 @@ import com.flow.wallet.account.Account
 import com.flow.wallet.crypto.HasherImpl
 import com.flow.wallet.errors.WalletError
 import com.flow.wallet.keys.EthereumKeyProtocol
+import com.flow.wallet.keys.EthereumSignatureUtils
 import com.flow.wallet.keys.KeyProtocol
 import com.flow.wallet.security.SecurityCheckDelegate
 import com.flow.wallet.storage.StorageProtocol
@@ -21,7 +22,9 @@ import kotlin.text.Charsets
 import wallet.core.java.AnySigner
 import wallet.core.jni.CoinType
 import wallet.core.jni.EthereumAbi
+import wallet.core.jni.PublicKey
 import wallet.core.jni.proto.Ethereum
+import java.util.Locale
 import org.onflow.flow.models.Account as FlowAccount
 
 /**
@@ -61,6 +64,7 @@ interface Wallet {
     suspend fun ethSignPersonalData(data: ByteArray, index: Int = 0): ByteArray
     suspend fun ethSignTypedData(json: String, index: Int = 0): ByteArray
     suspend fun ethSignTransaction(input: Ethereum.SigningInput, index: Int = 0): Ethereum.SigningOutput
+    suspend fun ethRecoverAddress(signature: ByteArray, message: ByteArray): String
 }
 
 /**
@@ -326,18 +330,41 @@ abstract class BaseWallet(
         return ethSignDigest(digest, index)
     }
 
-    override suspend fun ethSignTransaction(input: Ethereum.SigningInput, index: Int): Ethereum.SigningOutput {
+    override suspend fun ethSignTransaction(
+        input: Ethereum.SigningInput,
+        index: Int
+    ): Ethereum.SigningOutput {
         ensureSecurityCheck()
         val key = resolveEthereumKey()
         val privateKey = key.ethPrivateKey(index)
         val builder = input.toBuilder()
         builder.privateKey = ByteString.copyFrom(privateKey)
-        return try {
+        return  try {
             AnySigner.sign(builder.build(), CoinType.ETHEREUM, Ethereum.SigningOutput.parser())
         } finally {
             builder.clearPrivateKey()
             privateKey.fill(0)
         }
+    }
+
+    override suspend fun ethRecoverAddress(
+        signature: ByteArray,
+        message: ByteArray
+    ): String {
+        if (signature.size != 65) {
+            throw WalletError.InvalidEthereumSignature
+        }
+        val normalizedSignature = EthereumSignatureUtils.normalize(signature)
+        val prefix = "\u0019Ethereum Signed Message:\n${message.size}".toByteArray(Charsets.UTF_8)
+        val payload = prefix + message
+        val digest = HasherImpl.keccak256(payload)
+        val publicKey = runCatching {
+            PublicKey.recover(normalizedSignature, digest)
+        }.getOrElse {
+            throw WalletError.InvalidEthereumSignature
+        }
+        val address = CoinType.ETHEREUM.deriveAddressFromPublicKey(publicKey)
+        return address
     }
 
     private suspend fun ensureSecurityCheck() {

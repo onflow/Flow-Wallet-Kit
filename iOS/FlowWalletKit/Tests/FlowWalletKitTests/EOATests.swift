@@ -102,53 +102,53 @@ final class EOATests: XCTestCase {
         let wallet = Wallet(type: .key(key), networks: [.testnet], cacheStorage: storage)
 
         let typedData = """
-        {
-            "types": {
-                "EIP712Domain": [
-                    {"name": "name", "type": "string"},
-                    {"name": "version", "type": "string"},
-                    {"name": "chainId", "type": "uint256"},
-                    {"name": "verifyingContract", "type": "address"}
-                ],
-                "Person": [
-                    {"name": "name", "type": "string"},
-                    {"name": "wallets", "type": "address[]"}
-                ],
-                "Mail": [
-                    {"name": "from", "type": "Person"},
-                    {"name": "to", "type": "Person[]"},
-                    {"name": "contents", "type": "string"}
+{
+    "types": {
+        "EIP712Domain": [
+            {"name": "name", "type": "string"},
+            {"name": "version", "type": "string"},
+            {"name": "chainId", "type": "uint256"},
+            {"name": "verifyingContract", "type": "address"}
+        ],
+        "Person": [
+            {"name": "name", "type": "string"},
+            {"name": "wallets", "type": "address[]"}
+        ],
+        "Mail": [
+            {"name": "from", "type": "Person"},
+            {"name": "to", "type": "Person[]"},
+            {"name": "contents", "type": "string"}
+        ]
+    },
+    "primaryType": "Mail",
+    "domain": {
+        "name": "Ether Mail",
+        "version": "1",
+        "chainId": 1,
+        "verifyingContract": "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC"
+    },
+    "message": {
+        "from": {
+            "name": "Cow",
+            "wallets": [
+                "CD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826",
+                "DeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF"
+            ]
+        },
+        "to": [
+            {
+                "name": "Bob",
+                "wallets": [
+                    "bBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB",
+                    "B0BdaBea57B0BDABeA57b0bdABEA57b0BDabEa57",
+                    "B0B0b0b0b0b0B000000000000000000000000000"
                 ]
-            },
-            "primaryType": "Mail",
-            "domain": {
-                "name": "Ether Mail",
-                "version": "1",
-                "chainId": 1,
-                "verifyingContract": "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC"
-            },
-            "message": {
-                "from": {
-                    "name": "Cow",
-                    "wallets": [
-                        "CD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826",
-                        "DeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF"
-                    ]
-                },
-                "to": [
-                    {
-                        "name": "Bob",
-                        "wallets": [
-                            "bBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB",
-                            "B0BdaBea57B0BDABeA57b0bdABEA57b0BDabEa57",
-                            "B0B0b0b0b0b0B000000000000000000000000000"
-                        ]
-                    }
-                ],
-                "contents": "Hello, Bob!"
             }
-        }
-        """
+        ],
+        "contents": "Hello, Bob!"
+    }
+}
+"""
 
         let typedDataHash = EthereumAbi.encodeTyped(messageJson: typedData)
         XCTAssertEqual(typedDataHash.hexString, "a85c2e2b118698e88db68a8105b794a8cc7cec074e89ef991cb4f5f533819cc2")
@@ -185,6 +185,22 @@ final class EOATests: XCTestCase {
 
         let output = try wallet.ethSignTransaction(input)
         XCTAssertEqual(output.encoded.hexString, "f86c098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a76400008025a028ef61340bd939bc2195fe537567866003e1a15d3c71ff63e1590620aa636276a067cbe9d8997f761aecb703304b3800ccf555c9f3dc64214b297fb1966a3b6d83")
+        let expectedHash = Hash.keccak256(data: output.encoded)
+        XCTAssertEqual(output.preHash.hexString, expectedHash.hexString)
+        XCTAssertEqual(output.txId().hexString, expectedHash.hexString)
+        XCTAssertEqual(output.txIdHex(), "0x" + expectedHash.hexString)
+    }
+
+    func testEcRecoverReturnsExpectedAddress() throws {
+        guard let signature = Data(hexString: "0xa77836f00d36b5cd16c17bb26f23cdc78db7928b8d1d1341bd3f11cc279b60a508b80e01992cb0ad9a6c2212177dd84a43535e3bf29794c1dc13d17a59c2d98c1b") else {
+            XCTFail("Failed to decode signature")
+            return
+        }
+        let message = Data("Hello, Flow EVM!".utf8)
+
+        let recovered = try Wallet.ethRecoverAddress(signature: signature, message: message)
+
+		XCTAssertEqual(recovered.lowercased(), "0xe513e4f52f76c9bd3db2474e885b8e7e814ea516")
     }
 
     func testInvalidTypedDataThrows() throws {
@@ -240,4 +256,24 @@ private extension Data {
         }
         self = result
     }
+}
+
+private func dataFromHexMinimal(_ hex: String, paddedTo length: Int = 32) -> Data {
+    var cleaned = hex.lowercased().hasPrefix("0x") ? String(hex.dropFirst(2)) : hex
+    cleaned = cleaned.trimmingCharacters(in: CharacterSet(charactersIn: "0"))
+    if cleaned.isEmpty {
+        return Data(count: length)
+    }
+    if cleaned.count % 2 != 0 {
+        cleaned = "0" + cleaned
+    }
+    guard let value = Data(hexString: "0x" + cleaned) else {
+        return Data(count: length)
+    }
+    if value.count >= length {
+        return Data(value.suffix(length))
+    }
+    var padded = Data(count: length - value.count)
+    padded.append(value)
+    return padded
 }
