@@ -186,7 +186,7 @@ class EthereumWalletTests {
 
         val recovered = wallet.ethRecoverAddress(signature, message)
 
-        assertEquals("0xe513e4f52f76c9bd3db2474e885b8e7e814ea516", recovered)
+        assertEquals("0xe513e4f52f76c9bd3db2474e885b8e7e814ea516", recovered.lowercase())
     }
 
     @Test
