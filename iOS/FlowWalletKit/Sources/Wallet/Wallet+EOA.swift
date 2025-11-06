@@ -58,16 +58,37 @@ extension Wallet {
         return try key.ethSign(digest: digest, index: index)
     }
     
+    /// Recovers the Ethereum address from a personal-sign style signature.
+    static public func ethRecoverAddress(signature: Data, message: Data) throws -> String {
+        let normalizedSignature = try normalizeEthereumSignature(signature)
+        let prefixString = "\u{19}Ethereum Signed Message:\n\(message.count)"
+        guard let prefix = prefixString.data(using: .utf8) else {
+            throw FWKError.invalidEthereumMessage
+        }
+        var payload = Data()
+        payload.append(prefix)
+        payload.append(message)
+        let digest = Hash.keccak256(data: payload)
+        guard let publicKey = PublicKey.recover(signature: normalizedSignature, message: digest) else {
+            throw FWKError.invalidEthereumSignature
+        }
+		let address = AnyAddress(publicKey: publicKey, coin: .ethereum)
+        return address.description
+    }
+    
     /// Signs an Ethereum transaction using WalletCore's AnySigner pipeline.
     public func ethSignTransaction(_ input: EthereumSigningInput, index: UInt32 = 0) throws -> EthereumSigningOutput {
         let key = try resolveEthereumKey()
         var signingInput = input
         signingInput.privateKey = try key.ethPrivateKey(index: index)
         defer { signingInput.privateKey = Data() }
-        return AnySigner.sign(input: signingInput, coin: .ethereum)
+	    var output: EthereumSigningOutput = AnySigner.sign(input: signingInput, coin: .ethereum)
+        let transactionHash = Hash.keccak256(data: output.encoded)
+        output.preHash = transactionHash
+        return output
     }
     
-    private func refreshEOAAddresses() {
+    public func refreshEOAAddresses() {
         guard let key = try? resolveEthereumKey() else {
             eoaAddress = nil
             return

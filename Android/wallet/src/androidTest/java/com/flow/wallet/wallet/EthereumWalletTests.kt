@@ -18,6 +18,7 @@ import org.junit.Assert
 import com.flow.wallet.errors.WalletError
 import com.google.protobuf.ByteString
 import wallet.core.jni.EthereumAbi
+import java.math.BigInteger
 
 class EthereumWalletTests {
 
@@ -167,6 +168,25 @@ class EthereumWalletTests {
             "f86c098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a76400008025a028ef61340bd939bc2195fe537567866003e1a15d3c71ff63e1590620aa636276a067cbe9d8997f761aecb703304b3800ccf555c9f3dc64214b297fb1966a3b6d83",
             output.encoded.toByteArray().toHexString()
         )
+        val expectedHash = HasherImpl.keccak256(output.encoded.toByteArray()).toHexString()
+        assertEquals(expectedHash, output.preHash.toByteArray().toHexString())
+        assertEquals(expectedHash, output.txId().toHexString())
+        assertEquals("0x$expectedHash", output.txIdHex())
+    }
+
+    @Test
+    fun walletEcRecoverReturnsExpectedAddress() = runBlocking {
+        val storage = InMemoryStorage()
+        val privateKey = TWPrivateKey(privateKeyHex.hexToByteArray())
+        val key = PrivateKey(privateKey, storage)
+        val wallet = TestWallet(key, storage)
+
+        val signature = "a77836f00d36b5cd16c17bb26f23cdc78db7928b8d1d1341bd3f11cc279b60a508b80e01992cb0ad9a6c2212177dd84a43535e3bf29794c1dc13d17a59c2d98c1b".hexToByteArray()
+        val message = "Hello, Flow EVM!".toByteArray()
+
+        val recovered = wallet.ethRecoverAddress(signature, message)
+
+        assertEquals("0xe513e4f52f76c9bd3db2474e885b8e7e814ea516", recovered)
     }
 
     @Test
@@ -264,10 +284,27 @@ class EthereumWalletTests {
     }
 
     private fun String.hexToByteArray(): ByteArray {
+        var clean = removePrefix("0x")
+        if (clean.isEmpty()) return byteArrayOf()
+        if (clean.length % 2 != 0) {
+            clean = "0$clean"
+        }
+        val lower = clean.lowercase()
+        return ByteArray(lower.length / 2) { index ->
+            lower.substring(index * 2, index * 2 + 2).toInt(16).toByte()
+        }
+    }
+
+    private fun String.hexToMinimalByteArray(): ByteArray {
         val clean = removePrefix("0x")
-        require(clean.length % 2 == 0) { "Hex string must have even length" }
-        return ByteArray(clean.length / 2) { index ->
-            clean.substring(index * 2, index * 2 + 2).toInt(16).toByte()
+        if (clean.isEmpty()) return byteArrayOf()
+        val value = BigInteger(clean, 16)
+        if (value == BigInteger.ZERO) return byteArrayOf()
+        val bytes = value.toByteArray()
+        return if (bytes.isNotEmpty() && bytes[0] == 0.toByte()) {
+            bytes.copyOfRange(1, bytes.size)
+        } else {
+            bytes
         }
     }
 
