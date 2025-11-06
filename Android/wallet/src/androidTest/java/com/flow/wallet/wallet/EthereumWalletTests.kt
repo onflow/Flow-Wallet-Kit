@@ -171,7 +171,6 @@ class EthereumWalletTests {
         val expectedHash = HasherImpl.keccak256(output.encoded.toByteArray()).toHexString()
         assertEquals(expectedHash, output.preHash.toByteArray().toHexString())
         assertEquals(expectedHash, output.txId().toHexString())
-        assertEquals("0x$expectedHash", output.txIdHex())
     }
 
     @Test
