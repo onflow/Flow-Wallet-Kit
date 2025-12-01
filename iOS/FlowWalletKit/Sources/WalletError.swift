@@ -79,6 +79,10 @@ public enum FWKError: String, Error, CaseIterable, CustomStringConvertible {
     /// Invalid EVM address
     /// Thrown when an unknown or invalid EVM address is provided
     case invaildEVMAddress
+    /// Empty FLowAddress
+    case emptyFlowAddress
+    /// Unsupported EVM chain for Flow submission
+    case unsupportedEVMChain
     
     // MARK: - Authentication Errors
     

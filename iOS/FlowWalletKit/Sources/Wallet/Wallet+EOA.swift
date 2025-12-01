@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Flow
 import WalletCore
 
 // MARK: - Support EOA
@@ -72,7 +73,7 @@ extension Wallet {
         guard let publicKey = PublicKey.recover(signature: normalizedSignature, message: digest) else {
             throw FWKError.invalidEthereumSignature
         }
-		let address = AnyAddress(publicKey: publicKey, coin: .ethereum)
+        let address = AnyAddress(publicKey: publicKey, coin: .ethereum)
         return address.description
     }
     
@@ -82,7 +83,7 @@ extension Wallet {
         var signingInput = input
         signingInput.privateKey = try key.ethPrivateKey(index: index)
         defer { signingInput.privateKey = Data() }
-	    var output: EthereumSigningOutput = AnySigner.sign(input: signingInput, coin: .ethereum)
+        var output: EthereumSigningOutput = AnySigner.sign(input: signingInput, coin: .ethereum)
         let transactionHash = Hash.keccak256(data: output.encoded)
         output.preHash = transactionHash
         return output
@@ -130,5 +131,84 @@ extension Wallet {
             throw FWKError.unsupportedEthereumKey
         }
         return ethereumKey
+    }
+
+    /// Sends an EOA-signed Ethereum transaction to Flow EVM through Cadence.
+    /// - Parameters:
+    ///   - account: Flow account used as proposer/payer/authorizer.
+    ///   - rlpEncodedTransaction: Signed Ethereum transaction payload.
+    ///   - coinbaseAddr: EOA coinbase address.
+    /// - Returns: Flow transaction ID after submission.
+	public func ethSendSignedTransactionByCadence(chainId: Flow.ChainID = .mainnet,
+												  account: Flow.Address,
+												  rlpEncodedTransaction: Data,
+												  coinbaseAddr: String,
+												  signers: [FlowSigner],
+												  payer: Flow.Address? = nil
+    ) async throws -> Flow.ID {
+        try await flow.runEVMTransaction(
+            chainID: chainId,
+            proposer: account,
+            payer: payer ?? account,
+            rlpEncodedTransaction: Array(rlpEncodedTransaction),
+            coinbaseAddress: coinbaseAddr,
+            signers: signers
+        )
+    }
+
+    /// Sign an Ethereum transaction (WalletCore input) and submit it to Flow EVM via Cadence.
+    /// Returns both the Flow transaction ID and the EVM transaction hash.
+    /// - Parameters:
+    ///   - chain: Flow EVM chain (mainnet/testnet only).
+    ///   - input: Unsigned Ethereum signing input; chainId is set automatically based on `chain`.
+    ///   - fromAddress: Expected EOA sender/coinbase; must match the wallet's derived address for `index`.
+    ///   - signers: Flow signers (proposer/authorizers/payer).
+    ///   - flowAddress: Optional Flow address for proposer/payer; defaults to the first signer address.
+    ///   - payer: Optional custom payer; defaults to proposer.
+    ///   - index: HD derivation index for EVM key (defaults to 0).
+    /// - Returns: `FlowEVMSubmitResult` containing Flow tx id and EVM tx hash (0x-prefixed).
+    public func ethSignTransactionAndSendByCadence(
+        chain: EVMChain = .flowMainnet,
+        input: EthereumSigningInput,
+        fromAddress: String,
+        signers: [FlowSigner],
+        flowAddress: Flow.Address? = nil,
+        payer: Flow.Address? = nil,
+        index: UInt32 = 0
+    ) async throws -> FlowEVMSubmitResult {
+        guard case .key = type else {
+            throw FWKError.invaildWalletType
+        }
+        guard !signers.isEmpty else {
+            throw FWKError.emptySignKey
+        }
+
+        var signingInput = input
+        signingInput.chainID = chain.chainIdData
+        guard let fromAddr = AnyAddress(string: fromAddress, coin: .ethereum) else {
+            throw FWKError.invaildEVMAddress
+        }
+        let derivedAddr = try ethAddress(index: index)
+        guard fromAddr.description.lowercased() == derivedAddr.lowercased() else {
+            throw FWKError.invaildEVMAddress
+        }
+
+        let signed = try ethSignTransaction(signingInput, index: index)
+        guard let flowChainID = chain.flowChainID else {
+            throw FWKError.unsupportedEVMChain
+        }
+        guard let proposer = flowAddress ?? signers.first?.address else {
+            throw FWKError.emptyFlowAddress
+        }
+        let flowTxId = try await ethSendSignedTransactionByCadence(
+            chainId: flowChainID,
+            account: proposer,
+            rlpEncodedTransaction: signed.encoded,
+            coinbaseAddr: fromAddr.description,
+            signers: signers,
+            payer: payer ?? proposer
+        )
+        let flowTxIdString = String(describing: flowTxId)
+        return FlowEVMSubmitResult(flowTxId: flowTxIdString, evmTxId: signed.txIdHex())
     }
 }
