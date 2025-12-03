@@ -32,6 +32,7 @@ class WalletError(
         val InvalidEVMAddress = WalletError(11, "Invalid EVM address")
         val EmptyFlowAddress = WalletError(41, "Flow address is empty")
         val UnsupportedEVMChain = WalletError(42, "Unsupported EVM chain for Flow submission")
+        val EmptyCreatedAddress = WalletError(43, "No account address created in transaction")
         val UnsupportedKeyFormat = WalletError(33, "Key format not supported")
         val InvalidMnemonic = WalletError(34, "Invalid mnemonic phrase")
         val UnsupportedEthereumKey = WalletError(35, "Ethereum operations are not supported by this key")
@@ -117,6 +118,7 @@ class WalletError(
                 40 -> InvalidEthereumDerivationPath
                 41 -> EmptyFlowAddress
                 42 -> UnsupportedEVMChain
+                43 -> EmptyCreatedAddress
                 else -> throw IllegalArgumentException("Unknown error code: $code")
             }
         }

@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
 import org.onflow.flow.ChainId
+import org.onflow.flow.FlowApi
+import org.onflow.flow.getCreatedAccountAddress
+import org.onflow.flow.waitForCreatedAccountAddress
 import kotlin.text.Charsets
 import wallet.core.java.AnySigner
 import wallet.core.jni.CoinType
@@ -58,6 +61,7 @@ interface Wallet {
     suspend fun fetchAccounts()
     suspend fun fetchAccountsForNetwork(network: ChainId): List<FlowAccount>
     suspend fun fetchAccountByAddress(address: String, network: ChainId)
+    suspend fun fetchAccountByCreationTxId(txId: String, network: ChainId): Account
     suspend fun ethAddress(index: Int = 0): String
     suspend fun ethSignDigest(digest: ByteArray, index: Int = 0): ByteArray
     suspend fun ethSignPersonalMessage(message: ByteArray, index: Int = 0): ByteArray
@@ -265,6 +269,19 @@ abstract class BaseWallet(
         }
     }
 
+    override suspend fun fetchAccountByCreationTxId(txId: String, network: ChainId): Account {
+        addNetwork(network)
+
+        val flowApi = FlowApi(network)
+        val createdAddress = flowApi.waitForCreatedAccountAddress(txId)
+            ?: throw WalletError.EmptyCreatedAddress
+
+        getAccount(createdAddress)?.let { return it }
+
+        fetchAccountByAddress(createdAddress, network)
+        return getAccount(createdAddress) ?: throw WalletError.InvalidWalletType
+    }
+
     override suspend fun addAccount(account: Account) {
         val network = account.chainID
         // Get or create the network list
@@ -389,4 +406,4 @@ abstract class BaseWallet(
     }
 
     protected abstract fun getKeyForAccount(): KeyProtocol?
-} 
+}
