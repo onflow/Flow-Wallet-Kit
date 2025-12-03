@@ -60,7 +60,6 @@ class KeyProtocolTest {
             mnemonicString = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
             passphrase = "",
             derivationPath = "m/44'/539'/0'/0/0",
-            keyPair = keyPair,
             storage = mockStorage
         )
     }

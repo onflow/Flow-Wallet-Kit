@@ -1,6 +1,7 @@
 package com.flow.wallet.wallet
 
 import com.flow.wallet.crypto.HasherImpl
+import com.google.common.io.BaseEncoding
 import wallet.core.jni.proto.Ethereum
 
 /**

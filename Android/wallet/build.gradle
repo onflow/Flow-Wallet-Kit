@@ -27,7 +27,7 @@ android {
     buildToolsVersion '35.0.0'
 
     defaultConfig {
-        minSdk 24
+        minSdk 28
         targetSdk 36
         versionCode 1
         versionName "1.0"
@@ -97,7 +97,7 @@ dependencies {
     }
     
     // Flow SDK dependencies
-    implementation 'com.github.onflow.flow-kmm:flow:0.0.26'
+    implementation 'com.github.onflow.flow-kmm:flow:0.1.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3'
     implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
     

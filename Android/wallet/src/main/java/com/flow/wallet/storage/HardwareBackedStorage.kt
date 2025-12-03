@@ -249,7 +249,6 @@ class HardwareBackedStorage(context: Context) : StorageProtocol {
      */
     fun isHardwareSecurityModuleAvailable(): Boolean {
         if (!isHardwareSupported) return false
-        
         return try {
             val keyGenerator = KeyGenerator.getInstance(
                 KeyProperties.KEY_ALGORITHM_AES,
@@ -259,9 +258,9 @@ class HardwareBackedStorage(context: Context) : StorageProtocol {
                 "test_hsm_key",
                 KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
             )
-                .setIsStrongBoxBacked(true)
-                .build()
-            keyGenerator.init(keyGenParameterSpec)
+            keyGenParameterSpec.setIsStrongBoxBacked(true)
+            val params = keyGenParameterSpec.build()
+            keyGenerator.init(params)
             true
         } catch (e: Exception) {
             Log.d(TAG, "Hardware security module not available: ${e.message}")
