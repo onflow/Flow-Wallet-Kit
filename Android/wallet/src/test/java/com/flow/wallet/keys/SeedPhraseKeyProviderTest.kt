@@ -32,7 +32,7 @@ class SeedPhraseKeyProviderTest {
     @Before
     fun setup() {
         MockitoAnnotations.openMocks(this)
-        seedPhraseKeyProvider = SeedPhraseKey(validSeedPhrase, "", "m/44'/539'/0'/0/0", null, mockStorage)
+        seedPhraseKeyProvider = SeedPhraseKey(validSeedPhrase, "", "m/44'/539'/0'/0/0", mockStorage)
     }
 
     @Test
