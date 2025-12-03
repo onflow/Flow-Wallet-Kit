@@ -24,17 +24,13 @@ class COA(
         override var address: String = account.address
         override var keyIndex: Int = 0
 
-        override suspend fun sign(bytes: ByteArray): ByteArray {
+        override suspend fun sign(bytes: ByteArray, transaction: Transaction?): ByteArray {
             val signKey = account.findKeyInAccount().firstOrNull() ?: throw WalletError.EmptySignKey
             return key.sign(
                 data = bytes,
                 signAlgo = signKey.signingAlgorithm,
                 hashAlgo = signKey.hashingAlgorithm
             )
-        }
-
-        override suspend fun sign(transaction: Transaction?, bytes: ByteArray): ByteArray {
-            return sign(bytes)
         }
     }
 
