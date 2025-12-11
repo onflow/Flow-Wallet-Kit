@@ -24,11 +24,21 @@ class EthereumWalletTests {
 
     private val mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
     private val privateKeyHex = "1ab42cc412b618bdea3a599e3c9bae199ebf030895b039e9db1e30dafb12b727"
-    private val expectedAddress = "0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1"
+    private val expectedAddress = "0x9858EfFD232B4033E47d90003D41EC34EcaEda94"
+    private val storage = InMemoryStorage()
+    private lateinit var wallet: TestWallet
+    private lateinit var key: SeedPhraseKey
 
     @Before
     fun setup() {
         Assert.assertTrue(NativeLibraryManager.ensureLibraryLoaded())
+        key = SeedPhraseKey(mnemonic, storage = storage)
+        wallet = TestWallet(key, storage)
+    }
+
+    @Test
+    fun eoaAddress() = runBlocking {
+        assertEquals(expectedAddress, wallet.ethAddress())
     }
 
     @Test
@@ -76,16 +86,6 @@ class EthereumWalletTests {
 
     @Test
     fun walletTypedDataSigningMatchesDirectSignature() = runBlocking {
-        val storage = InMemoryStorage()
-        val key = SeedPhraseKey(
-            mnemonic,
-            passphrase = "",
-            derivationPath = "m/44'/539'/0'/0/0",
-            keyPair = null,
-            storage = storage
-        )
-        val wallet = TestWallet(key, storage)
-
         val typedData = """
         {
             "types": {
@@ -168,9 +168,13 @@ class EthereumWalletTests {
             "f86c098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a76400008025a028ef61340bd939bc2195fe537567866003e1a15d3c71ff63e1590620aa636276a067cbe9d8997f761aecb703304b3800ccf555c9f3dc64214b297fb1966a3b6d83",
             output.encoded.toByteArray().toHexString()
         )
-        val expectedHash = HasherImpl.keccak256(output.encoded.toByteArray()).toHexString()
-        assertEquals(expectedHash, output.preHash.toByteArray().toHexString())
-        assertEquals(expectedHash, output.txId().toHexString())
+        val expectedSigningHash = "daf5a779ae972f972197303d7b574746c7ef83eadac0f2791ad23db92e4c8e53"
+        val expectedTxHash = HasherImpl.keccak256(output.encoded.toByteArray()).toHexString()
+
+        // WalletCore's preHash is the signing hash (hash of the unsigned payload)
+        assertEquals(expectedSigningHash, output.preHash.toByteArray().toHexString())
+        // txId should be keccak of the signed transaction
+        assertEquals(expectedTxHash, output.txId().toHexString())
     }
 
     @Test
@@ -208,7 +212,6 @@ class EthereumWalletTests {
             mnemonic,
             passphrase = "",
             derivationPath = "m/44'/539'/0'/0/0",
-            keyPair = null,
             storage = storage
         )
         val wallet = TestWallet(key, storage)

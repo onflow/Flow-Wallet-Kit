@@ -9,9 +9,6 @@ import WalletCore
 public extension EthereumSigningOutput {
     /// Returns the transaction hash (txid) for the signed payload.
     func txId() -> Data {
-        if !preHash.isEmpty {
-            return preHash
-        }
         return Hash.keccak256(data: encoded)
     }
 
@@ -22,4 +19,3 @@ public extension EthereumSigningOutput {
         return "0x" + hash.hexString
     }
 }
-

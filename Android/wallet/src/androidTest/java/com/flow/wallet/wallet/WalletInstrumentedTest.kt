@@ -17,6 +17,7 @@ import org.junit.runner.RunWith
 import org.onflow.flow.ChainId
 import org.onflow.flow.models.HashingAlgorithm
 import org.onflow.flow.models.Signer
+import org.onflow.flow.models.Transaction
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -42,11 +43,18 @@ class WalletInstrumentedTest {
             override fun getPublicKey(): String = "test_public_key"
             override suspend fun getUserSignature(jwt: String): String = "test_signature"
             override suspend fun signData(data: ByteArray): String = "test_signed_data"
-            override fun getSigner(hashingAlgorithm: HashingAlgorithm): Signer = object : org.onflow.flow.models.Signer {
+                override fun getSigner(hashingAlgorithm: HashingAlgorithm): Signer = object : org.onflow.flow.models.Signer {
                 override var address: String = testAddress
                 override var keyIndex: Int = 0
-                override suspend fun sign(transaction: org.onflow.flow.models.Transaction?, bytes: ByteArray): ByteArray = "test_signature".toByteArray()
-                override suspend fun sign(bytes: ByteArray): ByteArray = "test_signature".toByteArray()
+                    override suspend fun sign(
+                        bytes: ByteArray,
+                        transaction: Transaction?
+                    ): ByteArray {
+                        TODO("Not yet implemented")
+                        return ByteArray(1)
+                    }
+                    suspend fun sign(transaction: org.onflow.flow.models.Transaction?, bytes: ByteArray): ByteArray = "test_signature".toByteArray()
+                suspend fun sign(bytes: ByteArray): ByteArray = "test_signature".toByteArray()
             }
             override fun getHashAlgorithm(): org.onflow.flow.models.HashingAlgorithm = org.onflow.flow.models.HashingAlgorithm.SHA2_256
             override fun getSignatureAlgorithm(): org.onflow.flow.models.SigningAlgorithm = org.onflow.flow.models.SigningAlgorithm.ECDSA_P256

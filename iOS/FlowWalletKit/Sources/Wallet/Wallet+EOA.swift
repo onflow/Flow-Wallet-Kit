@@ -83,10 +83,7 @@ extension Wallet {
         var signingInput = input
         signingInput.privateKey = try key.ethPrivateKey(index: index)
         defer { signingInput.privateKey = Data() }
-        var output: EthereumSigningOutput = AnySigner.sign(input: signingInput, coin: .ethereum)
-        let transactionHash = Hash.keccak256(data: output.encoded)
-        output.preHash = transactionHash
-        return output
+        return AnySigner.sign(input: signingInput, coin: .ethereum)
     }
     
     public func refreshEOAAddresses() {

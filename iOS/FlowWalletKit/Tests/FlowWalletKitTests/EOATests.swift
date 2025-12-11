@@ -162,7 +162,7 @@ final class EOATests: XCTestCase {
     func testWalletTransactionSigningMatchesWalletCoreExample() throws {
         let storage = makeEphemeralStorage()
         guard
-            let pkData = Data(hexString: samplePrivateKeyHex),
+            let pkData = Data(hexString: "0x4646464646464646464646464646464646464646464646464646464646464646"),
             let corePrivateKey = WalletCore.PrivateKey(data: pkData)
         else {
             XCTFail("Failed to create WalletCore.PrivateKey from sample data")
@@ -185,10 +185,14 @@ final class EOATests: XCTestCase {
 
         let output = try wallet.ethSignTransaction(input)
         XCTAssertEqual(output.encoded.hexString, "f86c098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a76400008025a028ef61340bd939bc2195fe537567866003e1a15d3c71ff63e1590620aa636276a067cbe9d8997f761aecb703304b3800ccf555c9f3dc64214b297fb1966a3b6d83")
-        let expectedHash = Hash.keccak256(data: output.encoded)
-        XCTAssertEqual(output.preHash.hexString, expectedHash.hexString)
-        XCTAssertEqual(output.txId().hexString, expectedHash.hexString)
-        XCTAssertEqual(output.txIdHex(), "0x" + expectedHash.hexString)
+        let expectedSigningHash = "daf5a779ae972f972197303d7b574746c7ef83eadac0f2791ad23db92e4c8e53"
+        let expectedTxHash = Hash.keccak256(data: output.encoded).hexString
+
+        // WalletCore preHash is the signing hash (pre-signing payload hash)
+        XCTAssertEqual(output.preHash.hexString, expectedSigningHash)
+        // txId uses keccak of the signed/encoded transaction
+        XCTAssertEqual(output.txId().hexString, expectedTxHash)
+        XCTAssertEqual(output.txIdHex(), "0x" + expectedTxHash)
     }
 
     func testEcRecoverReturnsExpectedAddress() throws {
