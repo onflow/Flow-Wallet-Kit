@@ -8,8 +8,8 @@ import com.flow.wallet.crypto.ChaChaPolyCipher
 import com.flow.wallet.crypto.HasherImpl
 import com.flow.wallet.errors.WalletError
 import com.flow.wallet.storage.StorageProtocol
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.onflow.flow.models.HashingAlgorithm
@@ -27,9 +27,7 @@ private data class KeyData(
     @SerialName("passphrase")
     val passphrase: String,
     @SerialName("path")
-    val path: String,
-    @SerialName("length")
-    val length: BIP39.SeedPhraseLength
+    val path: String
 )
 
 /**
@@ -38,13 +36,13 @@ private data class KeyData(
  */
 class SeedPhraseKey(
     private val mnemonicString: String,
-    private val passphrase: String,
-    override val derivationPath: String,
-    override var storage: StorageProtocol,
-    private val seedPhraseLength: BIP39.SeedPhraseLength = BIP39.SeedPhraseLength.TWELVE
+    private val passphrase: String = DEFAULT_PASSPHRASE,
+    override val derivationPath: String = DEFAULT_DERIVATION_PATH,
+    override var storage: StorageProtocol
 ) : SeedPhraseKeyProvider, EthereumKeyProtocol {
     companion object {
         private const val TAG = "SeedPhraseKey"
+        private const val DEFAULT_PASSPHRASE = ""
         public const val DEFAULT_DERIVATION_PATH = "m/44'/539'/0'/0/0"
         public const val ETH_DERIVATION_PREFIX = "m/44'/60'/0'/0"
 
@@ -132,8 +130,8 @@ class SeedPhraseKey(
         val encryptedData = storage.get(id) ?: throw WalletError.EmptyKeychain
         val cipher = ChaChaPolyCipher(password)
         val keyDataStr = String(cipher.decrypt(encryptedData), Charsets.UTF_8)
-        val keyData = Json.decodeFromString<KeyData>(keyDataStr)
-        return SeedPhraseKey(keyData.mnemonic, keyData.passphrase, keyData.path, storage, keyData.length)
+        val keyData = Json { ignoreUnknownKeys = true }.decodeFromString<KeyData>(keyDataStr)
+        return SeedPhraseKey(keyData.mnemonic, keyData.passphrase, keyData.path, storage)
     }
 
     override suspend fun restore(secret: ByteArray, storage: StorageProtocol): KeyProtocol {
@@ -269,14 +267,24 @@ class SeedPhraseKey(
         return storage.allKeys
     }
 
-    private fun createKeyData(): ByteArray {
+    private fun createKeyDataOld(): ByteArray {
         val data = mapOf(
             "mnemonic" to mnemonicString,
             "passphrase" to passphrase,
             "path" to derivationPath,
-            "length" to seedPhraseLength
+            "length" to ""
         )
         return Json.encodeToString(data).toByteArray()
+    }
+
+
+    private fun createKeyData(): ByteArray {
+        val data = KeyData(
+            mnemonic = mnemonicString,
+            passphrase = passphrase,
+            path = derivationPath
+        )
+        return Json { ignoreUnknownKeys = true }.encodeToString(data).toByteArray()
     }
 
     private fun encryptData(data: ByteArray, password: String): ByteArray {
@@ -328,13 +336,5 @@ class SeedPhraseKey(
         return "$ETH_DERIVATION_PREFIX/$index"
     }
 }
-
-// Helper class for returning four values
-private data class Quadruple<A, B, C, D>(
-    val first: A,
-    val second: B,
-    val third: C,
-    val fourth: D
-) 
 
 private fun ByteArray.toHexString(): String = BaseEncoding.base16().lowerCase().encode(this)

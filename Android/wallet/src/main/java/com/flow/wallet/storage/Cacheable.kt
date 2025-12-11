@@ -5,6 +5,9 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.concurrent.TimeUnit
 
+// Use a lenient JSON instance so added fields won't break cache deserialization
+private val cacheJson = Json { ignoreUnknownKeys = true }
+
 /**
  * Protocol defining caching behavior for wallet components
  * @param T The type of data being cached (must be serializable)
@@ -41,7 +44,7 @@ interface Cacheable<T> where T : @Serializable Any {
             data = data,
             expiresIn = expiresIn ?: cacheExpiration
         )
-        val json = Json.encodeToString(wrapper)
+        val json = cacheJson.encodeToString(wrapper)
         storage.set(cacheId, json.toByteArray())
     }
 
@@ -53,7 +56,7 @@ interface Cacheable<T> where T : @Serializable Any {
     fun loadCache(ignoreExpiration: Boolean = false): T? {
         val data = storage.get(cacheId) ?: return null
         val json = String(data)
-        val wrapper = Json.decodeFromString<CacheWrapper<T>>(json)
+        val wrapper = cacheJson.decodeFromString<CacheWrapper<T>>(json)
         
         if (!ignoreExpiration && wrapper.isExpired) {
             deleteCache()
