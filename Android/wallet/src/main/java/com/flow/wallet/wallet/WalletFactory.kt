@@ -48,6 +48,6 @@ object WalletFactory {
         networks: Set<ChainId> = setOf(ChainId.Mainnet, ChainId.Testnet),
         storage: StorageProtocol
     ): Wallet {
-        return ProxyWallet(networks, storage)
+        return ProxyWallet(cryptoProvider, networks, storage)
     }
 } 
