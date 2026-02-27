@@ -130,7 +130,7 @@ class KeyWallet(
                 p256PublicKey?.let { publicKey ->
                     try {
                         val encodedKey = publicKey.toFlowIndexerHex()
-                        Log.d(TAG, "Fetching P256 accounts for key: ${encodedKey.take(10)}...")
+                        Log.d(TAG, "Fetching P256 accounts for key: ${encodedKey.take(10)}... on network $network")
                         val p256Accounts = withTimeout(baseTimeout) {
                             Network.findFlowAccountByKey(encodedKey, network)
                         }
@@ -148,7 +148,7 @@ class KeyWallet(
                 secp256k1PublicKey?.let { publicKey ->
                     try {
                         val encodedKey = publicKey.toFlowIndexerHex()
-                        Log.d(TAG, "Fetching SECP256k1 accounts for key: ${encodedKey.take(10)}...")
+                        Log.d(TAG, "Fetching SECP256k1 accounts for key: ${encodedKey.take(10)}... on network $network")
                         val secp256k1Accounts = withTimeout(baseTimeout) {
                             Network.findFlowAccountByKey(encodedKey, network)
                         }

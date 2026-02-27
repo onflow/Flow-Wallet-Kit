@@ -1,5 +1,6 @@
 package com.flow.wallet.wallet
 
+import android.util.Log
 import com.flow.wallet.account.Account
 import com.flow.wallet.crypto.HasherImpl
 import com.flow.wallet.errors.WalletError
@@ -163,6 +164,7 @@ abstract class BaseWallet(
             // Try to load from cache first
             val cachedAccounts = loadCache()
             if (cachedAccounts != null) {
+                Log.d("BaseWallet", "Cache LOADED. Keys: ${cachedAccounts.accounts.keys}")
                 val accountsMap = mutableMapOf<ChainId, List<FlowAccount>>()
                 
                 // Convert cached string keys back to ChainId
@@ -191,8 +193,8 @@ abstract class BaseWallet(
     }
 
     private suspend fun fetchAllNetworkAccounts() {
-        val newAccounts = mutableMapOf<ChainId, MutableList<Account>>()
-        val newFlowAccounts = mutableMapOf<ChainId, List<FlowAccount>>()
+        val newAccounts = _accounts.toMutableMap()
+        val newFlowAccounts = flowAccounts.toMutableMap()
 
         // Fetch accounts from all networks in parallel
         coroutineScope {
@@ -200,11 +202,17 @@ abstract class BaseWallet(
                 async {
                     try {
                         val accounts = fetchAccountsForNetwork(network)
+                        Log.d("BaseWallet", "Fetch result for $network: ${accounts.size} accounts")
                         if (accounts.isNotEmpty()) {
                             newFlowAccounts[network] = accounts
                             newAccounts[network] = accounts.map { 
                                 Account(it, network, getKeyForAccount(), securityDelegate)
                             }.toMutableList()
+                        } else {
+                            val cached = flowAccounts[network]
+                            if (!cached.isNullOrEmpty()) {
+                                Log.w("BaseWallet", "Network returned 0 accounts for $network, but cache has ${cached.size}. KEEPING CACHE due to potential indexer latency.")
+                            }
                         }
                     } catch (e: Exception) {
                         println("Error fetching accounts for network $network: ${e.message}")
