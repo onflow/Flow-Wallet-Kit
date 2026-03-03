@@ -59,6 +59,22 @@ class SeedPhraseKey(
                 }
                 .toIntArray()
         }
+
+        /**
+         * Static factory that loads a [SeedPhraseKey] from [storage] without needing an
+         * existing instance.  Mirrors the instance [get] method but is callable anywhere.
+         *
+         * Returns null instead of throwing so callers can treat a missing key as absent.
+         */
+        fun load(id: String, password: String, storage: StorageProtocol): SeedPhraseKey? {
+            val encryptedData = storage.get(id) ?: return null
+            return try {
+                val cipher = ChaChaPolyCipher(password)
+                val keyDataStr = String(cipher.decrypt(encryptedData), Charsets.UTF_8)
+                val keyData = Json.decodeFromString<KeyData>(keyDataStr)
+                SeedPhraseKey(keyData.mnemonic, keyData.passphrase, keyData.path, storage, keyData.length)
+            } catch (e: Exception) { null }
+        }
     }
 
     private val hdWallet: HDWallet = try {
