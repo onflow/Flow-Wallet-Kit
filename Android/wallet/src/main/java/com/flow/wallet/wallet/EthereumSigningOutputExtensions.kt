@@ -8,10 +8,6 @@ import wallet.core.jni.proto.Ethereum
  * Utilities for extracting transaction hash information from Ethereum signing outputs.
  */
 fun Ethereum.SigningOutput.txId(): ByteArray {
-    val existing = preHash.toByteArray()
-    if (existing.isNotEmpty()) {
-        return existing
-    }
-    val computed = HasherImpl.keccak256(encoded.toByteArray())
-    return computed
+    // Transaction hash should be keccak256 of the signed/encoded transaction.
+    return HasherImpl.keccak256(encoded.toByteArray())
 }
