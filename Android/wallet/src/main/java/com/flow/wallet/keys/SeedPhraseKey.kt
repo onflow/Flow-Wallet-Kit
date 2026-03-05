@@ -286,11 +286,11 @@ class SeedPhraseKey(
     }
 
     private fun createKeyData(): ByteArray {
-        val data = mapOf(
-            "mnemonic" to mnemonicString,
-            "passphrase" to passphrase,
-            "path" to derivationPath,
-            "length" to seedPhraseLength
+        val data = KeyData(
+            mnemonic = mnemonicString,
+            passphrase = passphrase,
+            path = derivationPath,
+            length = seedPhraseLength
         )
         return Json.encodeToString(data).toByteArray()
     }
