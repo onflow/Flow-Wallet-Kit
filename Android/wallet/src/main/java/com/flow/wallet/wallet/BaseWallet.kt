@@ -431,7 +431,7 @@ abstract class BaseWallet(
     }
 
     private val eoaMapCacheId: String
-        get() = "$EOA_MAP_CACHE_PREFIX/${type.name}"
+        get() = "$EOA_MAP_CACHE_PREFIX/${type.name}/${getKeyForAccount()?.id ?: "unknown"}"
 
     /** Persist eoaAddressMap to storage. */
     fun cacheEOAAddressMap() {
