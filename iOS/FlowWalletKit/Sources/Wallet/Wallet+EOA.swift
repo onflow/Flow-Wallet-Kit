@@ -19,6 +19,20 @@ extension Wallet {
         updateEOAAddressCache(with: addresses)
         return addresses
     }
+
+    /// Derive multiple EOA accounts from the wallet's seed phrase.
+    /// Each returned `EOAAccount` carries its own signing context.
+    /// - Parameter indexes: BIP44 address indexes to derive (defaults to [0]).
+    /// - Returns: Array of `EOAAccount` instances with signing capabilities.
+    public func getEOAAccounts(indexes: [UInt32]? = nil) throws -> [EOAAccount] {
+        let key = try resolveEthereumKey()
+        let normalizedIndexes = indexes?.isEmpty == false ? indexes! : [0]
+        return try normalizedIndexes.map { index in
+            let address = try key.ethAddress(index: index)
+            let publicKey = try key.ethPublicKey(index: index)
+            return EOAAccount(address: address, index: index, publicKey: publicKey, key: key)
+        }
+    }
     
     /// Returns the Ethereum address for the given derivation index (default index 0).
     public func ethAddress(index: UInt32 = 0) throws -> String {

@@ -63,6 +63,7 @@ interface Wallet {
     suspend fun fetchAccountsForNetwork(network: ChainId): List<FlowAccount>
     suspend fun fetchAccountByAddress(address: String, network: ChainId)
     suspend fun fetchAccountByCreationTxId(txId: String, network: ChainId): Account
+    suspend fun getEOAAccounts(indexes: List<Int> = listOf(0)): List<EOAAccount>
     suspend fun ethAddress(index: Int = 0): String
     suspend fun ethSignDigest(digest: ByteArray, index: Int = 0): ByteArray
     suspend fun ethSignPersonalMessage(message: ByteArray, index: Int = 0): ByteArray
@@ -321,6 +322,17 @@ abstract class BaseWallet(
         
             // Update the flow
             _accountsFlow.value = _accounts.toMap()
+    }
+
+    override suspend fun getEOAAccounts(indexes: List<Int>): List<EOAAccount> {
+        val key = resolveEthereumKey()
+        val effectiveIndexes = if (indexes.isEmpty()) listOf(0) else indexes
+        return effectiveIndexes.map { index ->
+            val address = key.ethAddress(index)
+            val publicKey = key.ethPublicKey(index)
+            updateEoaCache(address)
+            EOAAccount(address = address, index = index, publicKey = publicKey, key = key)
+        }
     }
 
     override suspend fun ethAddress(index: Int): String {
