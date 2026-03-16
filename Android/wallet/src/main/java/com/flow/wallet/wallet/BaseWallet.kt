@@ -47,7 +47,7 @@ interface Wallet {
     val type: WalletType
     val accounts: Map<ChainId, List<Account>>
     val accountsFlow: StateFlow<Map<ChainId, List<Account>>>
-    val eoaAddresses: StateFlow<Set<String>>
+    val eoaAddressMap: StateFlow<Map<Int, String>>
     val networks: Set<ChainId>
     val storage: StorageProtocol
     val isLoading: StateFlow<Boolean>
@@ -114,8 +114,8 @@ abstract class BaseWallet(
     // Accounts as flow for reactive updates
     internal val _accountsFlow = MutableStateFlow<Map<ChainId, List<Account>>>(emptyMap())
     override val accountsFlow: StateFlow<Map<ChainId, List<Account>>> = _accountsFlow.asStateFlow()
-    private val _eoaAddresses = MutableStateFlow<Set<String>>(emptySet())
-    override val eoaAddresses: StateFlow<Set<String>> = _eoaAddresses.asStateFlow()
+    private val _eoaAddressMap = MutableStateFlow<Map<Int, String>>(emptyMap())
+    override val eoaAddressMap: StateFlow<Map<Int, String>> = _eoaAddressMap.asStateFlow()
     
     // Accounts as map (legacy support)
     override val accounts: Map<ChainId, List<Account>>
@@ -330,7 +330,7 @@ abstract class BaseWallet(
         return effectiveIndexes.map { index ->
             val address = key.ethAddress(index)
             val publicKey = key.ethPublicKey(index)
-            updateEoaCache(address)
+            updateEoaCache(index, address)
             EOAAccount(address = address, index = index, publicKey = publicKey, key = key)
         }
     }
@@ -338,7 +338,7 @@ abstract class BaseWallet(
     override suspend fun ethAddress(index: Int): String {
         val key = resolveEthereumKey()
         val address = key.ethAddress(index)
-        updateEoaCache(address)
+        updateEoaCache(index, address)
         return address
     }
 
@@ -421,8 +421,8 @@ abstract class BaseWallet(
         return key
     }
 
-    private fun updateEoaCache(address: String) {
-        _eoaAddresses.value = _eoaAddresses.value + address
+    private fun updateEoaCache(index: Int, address: String) {
+        _eoaAddressMap.value = _eoaAddressMap.value + (index to address)
     }
 
     protected abstract fun getKeyForAccount(): KeyProtocol?

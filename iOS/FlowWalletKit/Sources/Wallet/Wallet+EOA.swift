@@ -16,7 +16,9 @@ extension Wallet {
         let key = try resolveEthereumKey()
         let normalizedIndexes = indexes?.isEmpty == false ? indexes! : [0]
         let addresses = try deriveEOAAddresses(from: key, indexes: normalizedIndexes)
-        updateEOAAddressCache(with: addresses)
+        for (i, addr) in zip(normalizedIndexes, addresses) {
+            eoaAddressMap[i] = addr.description
+        }
         return addresses
     }
 
@@ -30,6 +32,7 @@ extension Wallet {
         return try normalizedIndexes.map { index in
             let address = try key.ethAddress(index: index)
             let publicKey = try key.ethPublicKey(index: index)
+            eoaAddressMap[index] = address
             return EOAAccount(address: address, index: index, publicKey: publicKey, key: key)
         }
     }
@@ -105,18 +108,18 @@ extension Wallet {
     
     public func refreshEOAAddresses() {
         guard let key = try? resolveEthereumKey() else {
-            eoaAddress = nil
+            eoaAddressMap = [:]
             return
         }
-        
+
         do {
-            let addresses = try deriveEOAAddresses(from: key, indexes: [0])
-            updateEOAAddressCache(with: addresses)
+            let address = try key.ethAddress(index: 0)
+            eoaAddressMap[0] = address
         } catch {
-            eoaAddress = nil
+            eoaAddressMap = [:]
         }
     }
-    
+
     private func deriveEOAAddresses(from key: EthereumKeyProtocol,
                                     indexes: [UInt32]) throws -> [AnyAddress] {
         var results: [AnyAddress] = []
@@ -128,15 +131,6 @@ extension Wallet {
             results.append(address)
         }
         return results
-    }
-    
-    private func updateEOAAddressCache(with addresses: [AnyAddress]) {
-        if addresses.isEmpty {
-            eoaAddress = nil
-            return
-        }
-        let set = Set(addresses.map { $0.description })
-        eoaAddress = set.isEmpty ? nil : set
     }
     
     private func resolveEthereumKey() throws -> EthereumKeyProtocol {

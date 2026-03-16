@@ -196,6 +196,40 @@ final class EOAAccountTests: XCTestCase {
         XCTAssertNotEqual(pk0, pk1)
     }
 
+    // MARK: - Address Map
+
+    func testEOAAddressMapUpdatedOnDerive() throws {
+        let storage = makeEphemeralStorage()
+        let key = try SeedPhraseKey.create(testMnemonic, storage: storage)
+        let wallet = Wallet(type: .key(key), networks: [.mainnet], cacheStorage: storage)
+
+        // Map should have index 0 from init (refreshEOAAddresses)
+        XCTAssertEqual(wallet.eoaAddressMap[0], expectedIndex0Address)
+
+        // Derive more accounts
+        let accounts = try wallet.getEOAAccounts(indexes: [0, 1, 2])
+
+        XCTAssertEqual(wallet.eoaAddressMap.count, 3)
+        XCTAssertEqual(wallet.eoaAddressMap[0], accounts[0].address)
+        XCTAssertEqual(wallet.eoaAddressMap[1], accounts[1].address)
+        XCTAssertEqual(wallet.eoaAddressMap[2], accounts[2].address)
+    }
+
+    func testEOAAddressMapLookupByIndex() throws {
+        let storage = makeEphemeralStorage()
+        let key = try SeedPhraseKey.create(testMnemonic, storage: storage)
+        let wallet = Wallet(type: .key(key), networks: [.mainnet], cacheStorage: storage)
+
+        _ = try wallet.getEOAAccounts(indexes: [0, 5, 10])
+
+        // Can look up any derived address by index
+        XCTAssertNotNil(wallet.eoaAddressMap[0])
+        XCTAssertNotNil(wallet.eoaAddressMap[5])
+        XCTAssertNotNil(wallet.eoaAddressMap[10])
+        // Non-derived index should be nil
+        XCTAssertNil(wallet.eoaAddressMap[3])
+    }
+
     // MARK: - Edge Cases
 
     func testEmptyIndexesDefaultsToZero() throws {

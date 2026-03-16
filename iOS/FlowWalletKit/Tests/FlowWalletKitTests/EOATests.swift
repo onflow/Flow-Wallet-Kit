@@ -68,7 +68,7 @@ final class EOATests: XCTestCase {
 
         XCTAssertEqual(addresses.count, 1)
         XCTAssertEqual(addresses.first?.description, expectedPrivateKeyEthAddress)
-        XCTAssertEqual(wallet.eoaAddress, Set([expectedPrivateKeyEthAddress]))
+        XCTAssertEqual(wallet.eoaAddressMap[0], expectedPrivateKeyEthAddress)
     }
 
     func testWalletPersonalSignMatchesDirectSignature() throws {
