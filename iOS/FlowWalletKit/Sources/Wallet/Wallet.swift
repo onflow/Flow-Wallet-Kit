@@ -93,6 +93,7 @@ public class Wallet: ObservableObject {
             self.cacheStorage = cacheStorage
         }
         try? loadCachedAccount()
+        loadCachedEOAAddressMap()
         refreshEOAAddresses()
     }
     

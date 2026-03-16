@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.onflow.flow.ChainId
 import org.onflow.flow.FlowApi
 import org.onflow.flow.getCreatedAccountAddress
@@ -99,6 +101,7 @@ abstract class BaseWallet(
 
     companion object {
         private const val CACHE_PREFIX = "Accounts"
+        private const val EOA_MAP_CACHE_PREFIX = "EOAMap"
     }
 
     // Loading state management
@@ -327,12 +330,14 @@ abstract class BaseWallet(
     override suspend fun getEOAAccounts(indexes: List<Int>): List<EOAAccount> {
         val key = resolveEthereumKey()
         val effectiveIndexes = if (indexes.isEmpty()) listOf(0) else indexes
-        return effectiveIndexes.map { index ->
+        val accounts = effectiveIndexes.map { index ->
             val address = key.ethAddress(index)
             val publicKey = key.ethPublicKey(index)
             updateEoaCache(index, address)
             EOAAccount(address = address, index = index, publicKey = publicKey, key = key)
         }
+        cacheEOAAddressMap()
+        return accounts
     }
 
     override suspend fun ethAddress(index: Int): String {
@@ -423,6 +428,33 @@ abstract class BaseWallet(
 
     private fun updateEoaCache(index: Int, address: String) {
         _eoaAddressMap.value = _eoaAddressMap.value + (index to address)
+    }
+
+    private val eoaMapCacheId: String
+        get() = "$EOA_MAP_CACHE_PREFIX/${type.name}"
+
+    /** Persist eoaAddressMap to storage. */
+    fun cacheEOAAddressMap() {
+        try {
+            val json = Json.encodeToString(_eoaAddressMap.value.mapKeys { it.key.toString() })
+            storage.set(eoaMapCacheId, json.toByteArray())
+        } catch (e: Exception) {
+            Log.w("BaseWallet", "Failed to cache EOA address map: ${e.message}")
+        }
+    }
+
+    /** Load eoaAddressMap from storage. */
+    fun loadCachedEOAAddressMap() {
+        try {
+            val data = storage.get(eoaMapCacheId) ?: return
+            val stringKeyed = Json.decodeFromString<Map<String, String>>(String(data))
+            val intKeyed = stringKeyed.mapNotNull { (k, v) ->
+                k.toIntOrNull()?.let { it to v }
+            }.toMap()
+            _eoaAddressMap.value = intKeyed
+        } catch (e: Exception) {
+            Log.w("BaseWallet", "Failed to load cached EOA address map: ${e.message}")
+        }
     }
 
     protected abstract fun getKeyForAccount(): KeyProtocol?

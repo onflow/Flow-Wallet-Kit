@@ -29,12 +29,14 @@ extension Wallet {
     public func getEOAAccounts(indexes: [UInt32]? = nil) throws -> [EOAAccount] {
         let key = try resolveEthereumKey()
         let normalizedIndexes = indexes?.isEmpty == false ? indexes! : [0]
-        return try normalizedIndexes.map { index in
+        let accounts = try normalizedIndexes.map { index in
             let address = try key.ethAddress(index: index)
             let publicKey = try key.ethPublicKey(index: index)
             eoaAddressMap[index] = address
             return EOAAccount(address: address, index: index, publicKey: publicKey, key: key)
         }
+        try? cacheEOAAddressMap()
+        return accounts
     }
     
     /// Returns the Ethereum address for the given derivation index (default index 0).
@@ -133,6 +135,34 @@ extension Wallet {
         return results
     }
     
+    // MARK: - EOA Address Map Cache
+
+    private static let eoaMapCachePrefix = "EOAMap"
+
+    private var eoaMapCacheId: String {
+        [Wallet.cachePrefix, Self.eoaMapCachePrefix, type.id].joined(separator: "-")
+    }
+
+    /// Persist the current eoaAddressMap to storage.
+    public func cacheEOAAddressMap() throws {
+        let stringKeyed = Dictionary(uniqueKeysWithValues: eoaAddressMap.map { (String($0.key), $0.value) })
+        let data = try JSONEncoder().encode(stringKeyed)
+        try cacheStorage.set(eoaMapCacheId, value: data)
+    }
+
+    /// Load eoaAddressMap from storage. Called during init.
+    func loadCachedEOAAddressMap() {
+        guard let data = try? cacheStorage.get(eoaMapCacheId),
+              let stringKeyed = try? JSONDecoder().decode([String: String].self, from: data) else {
+            return
+        }
+        for (key, value) in stringKeyed {
+            if let index = UInt32(key) {
+                eoaAddressMap[index] = value
+            }
+        }
+    }
+
     private func resolveEthereumKey() throws -> EthereumKeyProtocol {
         guard case let .key(rawKey) = type,
               let ethereumKey = rawKey as? EthereumKeyProtocol else {
