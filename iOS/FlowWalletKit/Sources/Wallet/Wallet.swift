@@ -54,8 +54,9 @@ public class Wallet: ObservableObject {
     @Published
     public var accounts: [Flow.ChainID: [Account]]? = nil
     
+    /// Map of BIP44 derivation index → EIP-55 checksummed EOA address.
     @Published
-    public var eoaAddress: Set<String>?
+    public var eoaAddressMap: [UInt32: String] = [:]
 
     /// Raw Flow accounts data, used for caching
     /// This property stores the underlying Flow.Account objects
@@ -92,6 +93,7 @@ public class Wallet: ObservableObject {
             self.cacheStorage = cacheStorage
         }
         try? loadCachedAccount()
+        loadCachedEOAAddressMap()
         refreshEOAAddresses()
     }
     

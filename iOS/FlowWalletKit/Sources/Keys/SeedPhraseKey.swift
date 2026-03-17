@@ -207,7 +207,7 @@ public class SeedPhraseKey: KeyProtocol {
             throw FWKError.initChaChapolyFailed
         }
         let model = KeyData(mnemonic: hdWallet.mnemonic,
-                            derivationPath: SeedPhraseKey.derivationPath,
+                            derivationPath: self.derivationPath,
                             passphrase: passphrase)
         let data = try JSONEncoder().encode(model)
         let encrypted = try cipher.encrypt(data: data)
@@ -247,7 +247,7 @@ public class SeedPhraseKey: KeyProtocol {
         guard let curve = signAlgo.WCCurve else {
             return nil
         }
-        var pk = hdWallet.getKeyByCurve(curve: curve, derivationPath: SeedPhraseKey.derivationPath)
+        var pk = hdWallet.getKeyByCurve(curve: curve, derivationPath: self.derivationPath)
         defer { pk = WalletCore.PrivateKey() }
         return pk.data
     }
@@ -266,7 +266,7 @@ public class SeedPhraseKey: KeyProtocol {
             throw FWKError.unsupportSignatureAlgorithm
         }
 
-        var pk = hdWallet.getKeyByCurve(curve: curve, derivationPath: SeedPhraseKey.derivationPath)
+        var pk = hdWallet.getKeyByCurve(curve: curve, derivationPath: self.derivationPath)
         defer { pk = WalletCore.PrivateKey() }
         guard let signature = pk.sign(digest: hashed, curve: curve) else {
             throw FWKError.signError

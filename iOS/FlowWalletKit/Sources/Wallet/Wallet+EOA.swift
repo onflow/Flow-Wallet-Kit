@@ -16,8 +16,27 @@ extension Wallet {
         let key = try resolveEthereumKey()
         let normalizedIndexes = indexes?.isEmpty == false ? indexes! : [0]
         let addresses = try deriveEOAAddresses(from: key, indexes: normalizedIndexes)
-        updateEOAAddressCache(with: addresses)
+        for (i, addr) in zip(normalizedIndexes, addresses) {
+            eoaAddressMap[i] = addr.description
+        }
         return addresses
+    }
+
+    /// Derive multiple EOA accounts from the wallet's seed phrase.
+    /// Each returned `EOAAccount` carries its own signing context.
+    /// - Parameter indexes: BIP44 address indexes to derive (defaults to [0]).
+    /// - Returns: Array of `EOAAccount` instances with signing capabilities.
+    public func getEOAAccounts(indexes: [UInt32]? = nil) throws -> [EOAAccount] {
+        let key = try resolveEthereumKey()
+        let normalizedIndexes = indexes?.isEmpty == false ? indexes! : [0]
+        let accounts = try normalizedIndexes.map { index in
+            let address = try key.ethAddress(index: index)
+            let publicKey = try key.ethPublicKey(index: index)
+            eoaAddressMap[index] = address
+            return EOAAccount(address: address, index: index, publicKey: publicKey, key: key)
+        }
+        try? cacheEOAAddressMap()
+        return accounts
     }
     
     /// Returns the Ethereum address for the given derivation index (default index 0).
@@ -91,18 +110,18 @@ extension Wallet {
     
     public func refreshEOAAddresses() {
         guard let key = try? resolveEthereumKey() else {
-            eoaAddress = nil
+            eoaAddressMap = [:]
             return
         }
-        
+
         do {
-            let addresses = try deriveEOAAddresses(from: key, indexes: [0])
-            updateEOAAddressCache(with: addresses)
+            let address = try key.ethAddress(index: 0)
+            eoaAddressMap[0] = address
         } catch {
-            eoaAddress = nil
+            eoaAddressMap = [:]
         }
     }
-    
+
     private func deriveEOAAddresses(from key: EthereumKeyProtocol,
                                     indexes: [UInt32]) throws -> [AnyAddress] {
         var results: [AnyAddress] = []
@@ -116,15 +135,34 @@ extension Wallet {
         return results
     }
     
-    private func updateEOAAddressCache(with addresses: [AnyAddress]) {
-        if addresses.isEmpty {
-            eoaAddress = nil
+    // MARK: - EOA Address Map Cache
+
+    private static let eoaMapCachePrefix = "EOAMap"
+
+    private var eoaMapCacheId: String {
+        [Wallet.cachePrefix, Self.eoaMapCachePrefix, type.id].joined(separator: "-")
+    }
+
+    /// Persist the current eoaAddressMap to storage.
+    public func cacheEOAAddressMap() throws {
+        let stringKeyed = Dictionary(uniqueKeysWithValues: eoaAddressMap.map { (String($0.key), $0.value) })
+        let data = try JSONEncoder().encode(stringKeyed)
+        try cacheStorage.set(eoaMapCacheId, value: data)
+    }
+
+    /// Load eoaAddressMap from storage. Called during init.
+    func loadCachedEOAAddressMap() {
+        guard let data = try? cacheStorage.get(eoaMapCacheId),
+              let stringKeyed = try? JSONDecoder().decode([String: String].self, from: data) else {
             return
         }
-        let set = Set(addresses.map { $0.description })
-        eoaAddress = set.isEmpty ? nil : set
+        for (key, value) in stringKeyed {
+            if let index = UInt32(key) {
+                eoaAddressMap[index] = value
+            }
+        }
     }
-    
+
     private func resolveEthereumKey() throws -> EthereumKeyProtocol {
         guard case let .key(rawKey) = type,
               let ethereumKey = rawKey as? EthereumKeyProtocol else {

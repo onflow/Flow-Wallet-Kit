@@ -41,7 +41,8 @@ class KeyWallet(
             Log.e(TAG, "Cannot initialize KeyWallet: TrustWalletCore not available")
             throw WalletError.InitHDWalletFailed
         }
-        
+
+        loadCachedEOAAddressMap()
         Log.d(TAG, "Initializing KeyWallet with networks: ${networks.joinToString()}")
         // Initialize wallet by fetching accounts with proper error handling
         scope.launch {
